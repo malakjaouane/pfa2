@@ -90,6 +90,9 @@ public class SecurityConfig {
                         // Initiatives
                         .requestMatchers(HttpMethod.GET, "/api/initiatives/**").hasAuthority("INITIATIVE_CONSULTER")
                         .requestMatchers(HttpMethod.POST, "/api/initiatives").hasAuthority("INITIATIVE_CREER")
+                        // Réordonnancement des étapes : à placer avant la règle générale PUT
+                        .requestMatchers(HttpMethod.PUT, "/api/initiatives/*/etapes/ordre")
+                        .hasAuthority("ETAPE_GERER")
                         .requestMatchers(HttpMethod.PATCH, "/api/initiatives/**").hasAuthority("INITIATIVE_ARCHIVER")
                         .requestMatchers(HttpMethod.PUT, "/api/initiatives/**").hasAuthority("INITIATIVE_MODIFIER")
                         // Étapes / jalons — lecture (GET) déjà autorisée par le
@@ -98,8 +101,6 @@ public class SecurityConfig {
                         // réservée à ETAPE_GERER / JALON_GERER.
                         .requestMatchers("/api/etapes/**", "/api/initiatives/*/etapes").hasAuthority("ETAPE_GERER")
                         .requestMatchers("/api/jalons/**", "/api/initiatives/*/jalons").hasAuthority("JALON_GERER")
-                        .requestMatchers(HttpMethod.PUT, "/api/initiatives/*/etapes/ordre")
-                        .hasAuthority("ETAPE_GERER")
                         // Gestion des permissions d'un rôle
                         .requestMatchers(HttpMethod.PUT, "/api/roles/*/permissions").hasAuthority("ROLE_GERER")
                         .anyRequest().authenticated()

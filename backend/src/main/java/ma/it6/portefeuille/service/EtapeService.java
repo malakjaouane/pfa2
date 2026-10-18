@@ -12,6 +12,8 @@ import ma.it6.portefeuille.repository.EtapeRepository;
 import ma.it6.portefeuille.repository.InitiativeRepository;
 import ma.it6.portefeuille.repository.StatutEtapeRepository;
 import ma.it6.portefeuille.repository.StatutInitiativeRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,15 +41,18 @@ public class EtapeService {
     private final InitiativeRepository initiativeRepository;
     private final StatutEtapeRepository statutEtapeRepository;
     private final StatutInitiativeRepository statutInitiativeRepository;
+    private final HistoriqueStatutService historiqueStatutService;
 
     public EtapeService(EtapeRepository etapeRepository,
                         InitiativeRepository initiativeRepository,
                         StatutEtapeRepository statutEtapeRepository,
-                        StatutInitiativeRepository statutInitiativeRepository) {
+                        StatutInitiativeRepository statutInitiativeRepository,
+                        HistoriqueStatutService historiqueStatutService) {
         this.etapeRepository = etapeRepository;
         this.initiativeRepository = initiativeRepository;
         this.statutEtapeRepository = statutEtapeRepository;
         this.statutInitiativeRepository = statutInitiativeRepository;
+        this.historiqueStatutService = historiqueStatutService;
     }
 
     @Transactional(readOnly = true)
@@ -210,11 +215,38 @@ public class EtapeService {
         initiative.setAvancement(calcule);
 
         // RM07-auto : 100 % atteint -> passage à « Terminée » (transition autorisée).
+        boolean passeATerminee = false;
         if (calcule == 100 && InitiativeService.STATUT_EN_COURS.equals(statutActuel)) {
-            statutInitiativeRepository.findByLibelle(InitiativeService.STATUT_TERMINEE)
-                    .ifPresent(initiative::setStatut);
+            passeATerminee = statutInitiativeRepository
+                    .findByLibelle(InitiativeService.STATUT_TERMINEE)
+                    .map(statut -> {
+                        initiative.setStatut(statut);
+                        return true;
+                    })
+                    .orElse(false);
         }
         initiativeRepository.save(initiative);
+
+        // Chaque changement de statut est journalisé (CDC §7, table
+        // historique_statut : « Traçabilité des changements de statut »),
+        // y compris le passage automatique à « Terminée » déclenché par
+        // les étapes.
+        if (passeATerminee) {
+            historiqueStatutService.enregistrer(initiative, statutActuel,
+                    InitiativeService.STATUT_TERMINEE,
+                    "Passage automatique : toutes les étapes sont terminées",
+                    utilisateurCourant());
+        }
+    }
+
+    /** E-mail de l'utilisateur connecté, ou {@code null} hors contexte de sécurité. */
+    private static String utilisateurCourant() {
+        Authentication authentification = SecurityContextHolder.getContext().getAuthentication();
+        if (authentification == null || authentification.getName() == null
+                || authentification.getName().isBlank()) {
+            return null;
+        }
+        return authentification.getName();
     }
 
     /**

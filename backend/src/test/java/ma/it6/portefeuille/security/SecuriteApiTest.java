@@ -215,6 +215,27 @@ class SecuriteApiTest {
                             .with(auth("DASHBOARD_CONSULTER")))
                     .andExpect(status().isOk());
         }
+
+        @Test
+        @DisplayName("réordonnancement des étapes : ETAPE_GERER compte, pas la règle générale PUT")
+        void reordonnerEtapes() throws Exception {
+            when(etapeService.reordonner(any(), any())).thenReturn(List.of());
+
+            // La règle spécifique doit primer sur « PUT /api/initiatives/** » :
+            // ETAPE_GERER seul suffit, sans INITIATIVE_MODIFIER.
+            mockMvc.perform(put("/api/initiatives/1/etapes/ordre")
+                            .with(auth("ETAPE_GERER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("[1,2]"))
+                    .andExpect(status().isOk());
+
+            // Et l'inverse : INITIATIVE_MODIFIER seul ne donne pas ce droit.
+            mockMvc.perform(put("/api/initiatives/1/etapes/ordre")
+                            .with(auth("INITIATIVE_MODIFIER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("[1,2]"))
+                    .andExpect(status().isForbidden());
+        }
     }
 
     // =================================================================
