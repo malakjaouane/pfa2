@@ -227,10 +227,9 @@ public class EtapeService {
         }
         initiativeRepository.save(initiative);
 
-        // Chaque changement de statut est journalisé (CDC §7, table
-        // historique_statut : « Traçabilité des changements de statut »),
-        // y compris le passage automatique à « Terminée » déclenché par
-        // les étapes.
+        // Chaque changement de statut est journalisé (CDC §7.2 : tout
+        // changement de statut est inscrit dans l'historique), y compris
+        // le passage automatique à « Terminée » déclenché par les étapes.
         if (passeATerminee) {
             historiqueStatutService.enregistrer(initiative, statutActuel,
                     InitiativeService.STATUT_TERMINEE,

@@ -58,8 +58,8 @@ test fonctionnel `tests-api.ps1`).
 
 | Fonctionnalité (CDC) | Mise en œuvre | Validation |
 |---|---|---|
-| **Vue Kanban** : 5 colonnes par statut métier, lecture + navigation vers le détail | `KanbanBoard.jsx`, bascule Tableau/Kanban dans `InitiativesPage.jsx` (`/initiatives`) | Build Vite + API (données réelles depuis `/initiatives`) |
-| Déplacements par glisser-déposer | Non implémenté (hors périmètre : modification via le formulaire dédié, cycle de vie contrôlé par le backend) | — |
+| **Vue Kanban** : 5 colonnes par statut métier, navigation vers le détail | `KanbanBoard.jsx`, bascule Tableau/Kanban dans `InitiativesPage.jsx` (`/initiatives`) | Build Vite + API (données réelles depuis `/initiatives`) |
+| Déplacements par glisser-déposer (changement de statut) | `KanbanBoard.jsx` (glisser-déposer), `PUT /initiatives/{id}/statut` (`InitiativeController.changerStatut`), mêmes règles de cycle de vie que le formulaire | `SecuriteApiTest` (changement de statut), tests API (transitions) |
 | **Roadmap** : timeline mensuelle calculée depuis les dates réelles, barres colorées par statut, ligne « aujourd'hui », initiatives non planifiées listées sous le graphique | `RoadmapPage.jsx` (`/roadmap`), calcul 100 % frontend (`moisEntre`, positions en % de la période) | Build Vite + API (données réelles) |
 
 ## 4ter. P2 — Objectifs stratégiques et Demandes
@@ -87,7 +87,7 @@ test fonctionnel `tests-api.ps1`).
   refus avec/sans motif, transformation sans doublon, permissions.
 - Les règles structurales (RM02/08/09/12/13/16) sont garanties par le schéma
   (clés étrangères, contraintes de non-null) et exercées par les tests de l'API.
-- Les KPI du CDC sont tous calculés en base (aucune valeur codée en dur),
+- Les KPI du CDC sont tous calculés par l'API (aucune valeur codée en dur),
   contrôlés par recalculation indépendante dans `tests-api.ps1`.
 
 > Document généré à partir du code source et du cahier des charges ; à faire

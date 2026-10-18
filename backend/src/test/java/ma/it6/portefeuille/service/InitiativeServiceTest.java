@@ -34,6 +34,9 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -307,6 +310,33 @@ class InitiativeServiceTest {
                     request("INIT-1", 100, terminee.getIdStatut(), BigDecimal.TEN, null, null, null)))
                     .isInstanceOf(BadRequestException.class)
                     .hasMessageContaining("archivée");
+        }
+        @Test
+        @DisplayName("conserve le statut actuel quand idStatut est absent")
+        void modifier_sansIdStatut_conserveLeStatut() {
+            Initiative existante = initiativeExistante(enCours, 40, false);
+            when(initiativeRepository.findById(1L)).thenReturn(Optional.of(existante));
+            when(initiativeRepository.existsByCodeAndIdInitiativeNot("INIT-1", 1L)).thenReturn(false);
+
+            InitiativeResponse response = service.modifier(1L,
+                    request("INIT-1", 40, null, BigDecimal.TEN, null, null, null));
+
+            assertThat(response.statut().libelle()).isEqualTo(InitiativeService.STATUT_EN_COURS);
+            verify(statutInitiativeRepository, never()).findById(anyLong());
+        }
+
+        @Test
+        @DisplayName("applique « Terminée » à 100 % même sans idStatut (RM07-auto)")
+        void modifier_sansIdStatut_avancement100_forceTerminee() {
+            Initiative existante = initiativeExistante(enCours, 50, false);
+            when(initiativeRepository.findById(1L)).thenReturn(Optional.of(existante));
+            when(initiativeRepository.existsByCodeAndIdInitiativeNot("INIT-1", 1L)).thenReturn(false);
+
+            InitiativeResponse response = service.modifier(1L,
+                    request("INIT-1", 100, null, BigDecimal.TEN, null, null, null));
+
+            assertThat(response.statut().libelle()).isEqualTo(InitiativeService.STATUT_TERMINEE);
+            assertThat(response.avancement()).isEqualTo(100);
         }
     }
 

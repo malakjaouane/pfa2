@@ -279,7 +279,7 @@ sequenceDiagram
 
 ## 6. Diagramme de séquence — calcul des KPI du dashboard
 
-Les KPI sont **calculés en base** (aucune donnée codée en dur).
+Les KPI sont **calculés par l'API** (aucune donnée codée en dur).
 
 ```mermaid
 sequenceDiagram

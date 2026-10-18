@@ -73,14 +73,14 @@ Points d'architecture notables :
 
 ## 4. Étape 3 — Modélisation (UML et MPD)
 
-Les 10 diagrammes corrigés sont fournis dans **deux formats** :
+Les 11 diagrammes de référence sont fournis en images dans `docs/UML/images/`
+(voir `docs/UML/README.md`) : cas d'utilisation, classes, BPMN du processus, MCD,
+MLD, MPD et cinq séquences (authentification, création d'une initiative,
+consultation de la liste, changement de statut, mise à jour d'une étape).
 
-- `docs/UML/diagrammes-mermaid.md` — 10 diagrammes Mermaid ;
-- `docs/UML/plantuml/*.puml` — les mêmes en PlantUML.
-
-Couverture : cas d'utilisation, diagramme de classes, séquences (authentification,
-CRUD initiative, cycle de vie), diagramme d'états (statuts d'initiative),
-activité, composants, déploiement et modèle entité-association.
+Les sources Mermaid (`docs/UML/diagrammes-mermaid.md`) et PlantUML
+(`docs/UML/plantuml/*.puml`) restent disponibles pour les diagrammes
+complémentaires (états, activité, composants, déploiement, KPI).
 
 Le modèle de données (MPD) comporte : `role`, `permission`, `role_permission`,
 `entite`, `utilisateur`, `statut_initiative`, `priorite`, `initiative`,
@@ -130,8 +130,9 @@ un statut (champ `archive`).
 - **Kanban** : bascule « Tableau / Kanban » sur la page Initiatives
   (`KanbanBoard.jsx`), 5 colonnes par statut métier, cartes cliquables vers la
   fiche détail, mise en évidence en rouge des initiatives en retard, compteurs
-  par colonne. Lecture + navigation uniquement (le déplacement se fait par le
-  formulaire dédié, avec le cycle de vie contrôlé par le backend).
+  par colonne. Le statut se change par glisser-déposer d'une carte
+  (`PUT /initiatives/{id}/statut`) ou par le formulaire ; le cycle de vie est
+  contrôlé par le backend dans les deux cas.
 - **Roadmap** (`RoadmapPage.jsx` via `/roadmap`) : timeline **mensuelle calculée
   côté frontend** depuis les dates réelles (début/fin), barres colorées par
   statut (palette dédiée), **ligne « aujourd'hui »** au marqueur rouge, et
@@ -277,8 +278,9 @@ toutes vérifiées par des scénarios API dédiés et des tests unitaires.
   tests d'intégration sur base réelle (possibles via Testcontainers).
 - La suite API est écrite en PowerShell (Windows) ; une version portable
   (Node/Python) serait un plus.
-- Le **Kanban** est en lecture + navigation : le déplacement d'une carte se fait
-  par le formulaire de modification (le drag & drop n'est pas implémenté).
+- Le glisser-déposer du **Kanban** appelle l'API de changement de statut : un
+  déplacement interdit par le cycle de vie est refusé (400) et le message
+  d'erreur est affiché au-dessus du tableau.
 - Les 10 croquis UML fournis n'étaient pas exploitables par l'outil ; les
   diagrammes ont été régénérés à partir du code et du cahier des charges, à
   faire valider visuellement par l'encadrant.

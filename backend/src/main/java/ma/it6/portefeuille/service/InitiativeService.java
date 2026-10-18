@@ -266,8 +266,11 @@ public class InitiativeService {
             nouvelAvancement = avancementCalcule;
         }
 
-        StatutInitiative statutCible = statutInitiativeRepository.findById(request.idStatut())
-                .orElseThrow(() -> new ResourceNotFoundException("Statut introuvable : " + request.idStatut()));
+        // Statut absent de la requête : on conserve le statut actuel.
+        StatutInitiative statutCible = request.idStatut() == null
+                ? initiative.getStatut()
+                : statutInitiativeRepository.findById(request.idStatut())
+                        .orElseThrow(() -> new ResourceNotFoundException("Statut introuvable : " + request.idStatut()));
         String statutDemande = statutCible.getLibelle();
 
         // RM07-auto : l'avancement atteint 100 % -> l'initiative passe à « Terminée »

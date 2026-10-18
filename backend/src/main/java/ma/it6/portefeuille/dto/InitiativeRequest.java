@@ -11,6 +11,10 @@ import java.time.LocalDate;
 
 /**
  * Corps de création / modification d'une initiative.
+ *
+ * <p>{@code idStatut} est facultatif : à la création le statut est dérivé par le
+ * système (RC01) et la valeur envoyée est ignorée ; à la modification, son
+ * absence conserve le statut actuel.</p>
  */
 public record InitiativeRequest(
         @NotBlank(message = "Le code est obligatoire") String code,
@@ -23,7 +27,7 @@ public record InitiativeRequest(
         @Max(value = 100, message = "L'avancement doit être entre 0 et 100") Integer avancement,
         @NotNull(message = "L'entité est obligatoire") Long idEntite,
         Long idResponsable,
-        @NotNull(message = "Le statut est obligatoire") Long idStatut,
+        Long idStatut,
         @NotNull(message = "La priorité est obligatoire") Long idPriorite,
         Long idObjectif
 ) {

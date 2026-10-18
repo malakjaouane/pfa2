@@ -33,7 +33,8 @@ Toute erreur renvoie un corps JSON :
 | 401 | Absence de jeton, jeton invalide/expiré, identifiants incorrects |
 | 403 | Permissions insuffisantes |
 | 404 | Initiative/utilisateur/… inexistant, route inconnue (réponse **JSON**, plus de page HTML) |
-| 409 | Contrainte d'intégrité (valeur dupliquée en base) |
+| 409 | Contrainte d'intégrité (valeur dupliquée en base) ou modification concurrente (verrouillage optimiste, RC06) |
+| 429 | Trop de tentatives de connexion (limitation par IP et e-mail) |
 | 500 | Erreur interne |
 
 ---
@@ -44,6 +45,7 @@ Toute erreur renvoie un corps JSON :
 |---|---|---|---|
 | POST | `/auth/login` | publique | Connexion → `{ token, type, idUser, nom, prenom, email, role, entite, permissions[] }` |
 | GET | `/auth/me` | connecté | Profil + permissions du compte courant |
+| POST | `/auth/changer-mot-de-passe` | connecté | Changement du mot de passe du compte courant |
 
 ```json
 { "email": "admin@it6.ma", "motDePasse": "Admin@123" }
@@ -93,7 +95,9 @@ et la note sous le budget de la fiche d'une initiative.
 | GET | `/initiatives/{id}` | `INITIATIVE_CONSULTER` | Détail d'une initiative |
 | POST | `/initiatives` | `INITIATIVE_CREER` | Création (statut dérivé par le domaine : « À planifier », ou « Terminée » si avancement 100 %) |
 | PUT | `/initiatives/{id}` | `INITIATIVE_MODIFIER` | Modification + contrôle du cycle de vie |
-| PATCH | `/initiatives/{id}/archive` | `INITIATIVE_ARCHIVER` | Archivage (réservé à « Terminée » / « Annulée ») |
+| PUT | `/initiatives/{id}/statut` | `INITIATIVE_MODIFIER` | Changement de statut seul (Kanban, glisser-déposer) : `{ idStatut, commentaire? }`, mêmes règles de cycle de vie que la modification |
+| GET | `/initiatives/{id}/historique-statuts` | `INITIATIVE_CONSULTER` | Historique des changements de statut |
+| PATCH | `/initiatives/{id}/archive` | `INITIATIVE_ARCHIVER` | Archivage (réservé à « Terminée » / « Annulée », RC03) |
 
 ### Filtres (`GET /initiatives`)
 
@@ -103,11 +107,14 @@ et la note sous le budget de la fiche d'une initiative.
 | `entite` | `long` | `entite=1` |
 | `responsable` | `long` | `responsable=2` |
 | `priorite` | `long` | `priorite=3` |
-| `dateDebutMin` / `dateDebutMax` | `date` | `dateDebutMin=2026-01-01` |
-| `dateFinMin` / `dateFinMax` | `date` | `dateFinMax=2026-12-31` |
+| `dateDu` / `dateAu` | `date` | `dateDu=2026-01-01&dateAu=2026-12-31` — initiatives actives sur la période (dont la durée chevauche l'intervalle) |
 | `recherche` | `string` | `recherche=MOB` |
 | `objectif` | `long` | `objectif=1` |
 | `archive` | `boolean` | `archive=true` |
+| `page`, `size` | `int` | pagination facultative (`page` à partir de 0) ; sans elle, liste complète |
+| `tri`, `direction` | `string` | tri facultatif sur un champ autorisé (`asc` / `desc`) |
+
+L'en-tête de réponse `X-Total-Count` donne le nombre total de résultats hors pagination. `GET /dashboard` accepte les mêmes filtres.
 
 ### Corps de création / modification (`InitiativeRequest`)
 
@@ -128,6 +135,8 @@ et la note sous le budget de la fiche d'une initiative.
 }
 ```
 
+`idStatut` est facultatif : à la création le statut est dérivé par le système (RC01, la valeur envoyée est ignorée) ; à la modification, son absence conserve le statut actuel.
+
 ### Objet liaison (`initiative.objectif`)
 
 Les initiatives exposent leur rattachement à un objectif stratégique :
@@ -142,9 +151,11 @@ Les initiatives exposent leur rattachement à un objectif stratégique :
 
 | Méthode | Route | Permission | Description |
 |---|---|---|---|
-| GET | `/initiatives/{idInitiative}/etapes` | `ETAPE_GERER` | Étapes d'une initiative (tri par ordre) |
+| GET | `/initiatives/{idInitiative}/etapes` | `INITIATIVE_CONSULTER` | Étapes d'une initiative (tri par ordre) |
 | POST | `/initiatives/{idInitiative}/etapes` | `ETAPE_GERER` | Ajout (ordre auto = max+1, statut par défaut « À faire ») |
-| PUT | `/etapes/{idEtape}` | `ETAPE_GERER` | Modification |
+| PUT | `/etapes/{idEtape}` | `ETAPE_GERER` | Modification ; recalcule l'avancement de l'initiative |
+| DELETE | `/etapes/{idEtape}` | `ETAPE_GERER` | Suppression (refusée si l'initiative est archivée) ; l'ordre est recompacté |
+| PUT | `/initiatives/{idInitiative}/etapes/ordre` | `ETAPE_GERER` | Réordonner les étapes |
 
 ---
 
@@ -152,9 +163,10 @@ Les initiatives exposent leur rattachement à un objectif stratégique :
 
 | Méthode | Route | Permission | Description |
 |---|---|---|---|
-| GET | `/initiatives/{idInitiative}/jalons` | `JALON_GERER` | Jalons d'une initiative |
+| GET | `/initiatives/{idInitiative}/jalons` | `INITIATIVE_CONSULTER` | Jalons d'une initiative |
 | POST | `/initiatives/{idInitiative}/jalons` | `JALON_GERER` | Ajout (statut par défaut « À atteindre ») |
 | PUT | `/jalons/{idJalon}` | `JALON_GERER` | Modification (RM15 : date de réalisation gérée selon le statut) |
+| DELETE | `/jalons/{idJalon}` | `JALON_GERER` | Suppression |
 
 ---
 

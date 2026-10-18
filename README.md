@@ -40,7 +40,7 @@ appliquée suit le fil conducteur **Sujet → Cahier des charges → UML → Arc
 ## Architecture du dépôt
 
 ```
-pfa/
+Portefeuille-d-initiatives-digitales/
 ├── backend/                     # API REST Spring Boot
 │   ├── src/main/java/ma/it6/portefeuille/
 │   │   ├── config/              # Sécurité, initialisation des données
@@ -62,7 +62,7 @@ pfa/
 │   ├── init-mysql.ps1           # Initialisation du datadir MySQL local
 │   ├── start-mysql.ps1          # Démarrage du serveur MySQL
 │   └── tests-api.ps1            # Suite de tests fonctionnels de l'API
-├── docs/UML/                     # Diagrammes UML (Mermaid + PlantUML)
+├── docs/UML/                     # Diagrammes (images de référence + Mermaid/PlantUML)
 └── .env.example                 # Modèle de variables d'environnement
 ```
 
@@ -148,7 +148,7 @@ variables d'environnement. Copiez `.env.example` en `.env` et adaptez au besoin.
 |---|---|---|
 | `DB_URL` | URL JDBC MySQL | `jdbc:mysql://127.0.0.1:3306/portefeuille_initiatives…` |
 | `DB_USERNAME` | Utilisateur MySQL | `pfa_user` |
-| `DB_PASSWORD` | Mot de passe MySQL | `pfa2026` |
+| `DB_PASSWORD` | Mot de passe MySQL | `pfa2026` (exemple de développement, à changer) |
 | `JWT_SECRET` | Clé de signature HS256 (≥ 32 octets) | clé de développement |
 | `JWT_EXPIRATION_MS` | Durée de validité du jeton | `28800000` (8 h) |
 | `SERVER_PORT` | Port HTTP du backend | `8080` |
@@ -160,7 +160,7 @@ variables d'environnement. Copiez `.env.example` en `.env` et adaptez au besoin.
 ## Fonctionnalités
 
 - **Authentification** JWT (login/logout) et gestion des droits par permission.
-- **Dashboard / KPI** calculés en base : total, en cours, terminées, en pause,
+- **Dashboard / KPI** calculés par l'API : total, en cours, terminées, en pause,
   en retard, budget total, avancement moyen ; répartitions par statut, priorité,
   entité, responsable et **objectif stratégique** ; liste des initiatives en
   retard.
@@ -179,7 +179,8 @@ variables d'environnement. Copiez `.env.example` en `.env` et adaptez au besoin.
 - **Recherche et filtres** combinables (texte, statut, priorité, entité,
   responsable, objectif, archivage).
 - **Kanban** : bascule Tableau / Kanban sur la page Initiatives (5 colonnes par
-  statut, cartes cliquables, retard en évidence).
+  statut, cartes cliquables, retard en évidence, changement de statut par
+  glisser-déposer).
 - **Roadmap** (`/roadmap`) : timeline mensuelle calculée côté frontend depuis les
   dates réelles, barres colorées par statut, ligne « aujourd'hui », initiatives
   non planifiées listées à part.
@@ -250,11 +251,12 @@ Get-Content database\cleanup-test-data.sql | mysql -u pfa_user -p portefeuille_i
 
 ## Documentation UML
 
-Les diagrammes corrigés sont fournis en deux formats dans `docs/UML/` :
+Les 11 diagrammes de référence (cas d'utilisation, classes, BPMN, MCD, MLD, MPD
+et cinq séquences) sont fournis en images dans `docs/UML/images/` ; la liste
+détaillée est dans `docs/UML/README.md`.
 
-- `diagrammes-mermaid.md` — 10 diagrammes Mermaid (cas d'utilisation, classes,
-  séquence, états, activité, déploiement, composants, ERD…).
-- `plantuml/*.puml` — les mêmes diagrammes en PlantUML.
+Les sources `diagrammes-mermaid.md` et `plantuml/*.puml` complètent ce jeu
+(états, activité, composants, déploiement, KPI).
 
 ## Documentation complémentaire
 
