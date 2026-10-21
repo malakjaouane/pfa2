@@ -6,6 +6,7 @@ import ma.it6.portefeuille.dto.UserSummaryDto;
 import ma.it6.portefeuille.entity.HistoriqueStatut;
 import ma.it6.portefeuille.entity.Initiative;
 import ma.it6.portefeuille.entity.Utilisateur;
+import ma.it6.portefeuille.exception.ResourceNotFoundException;
 import ma.it6.portefeuille.mapper.UtilisateurMapper;
 import ma.it6.portefeuille.repository.HistoriqueStatutRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
@@ -30,9 +31,10 @@ import java.util.List;
  * <p>Chaque ligne porte aussi son <strong>origine</strong> : manuelle
  * (action explicite d'un utilisateur) ou automatique (moteur de règles
  * RM07/RM17, alignement au démarrage). La lecture globale alimente la page
- * « Historique des statuts » ; il n'existe aucune écriture publique autre que
- * {@link #enregistrer}, réservée au serveur — le journal est en lecture seule
- * pour l'interface.</p>
+ * « Historique des statuts » ; aucune écriture n'y est exposée à
+ * l'interface hormis {@link #supprimer}, réservée aux administrateurs
+ * ({@code UTILISATEUR_GERER}) — {@link #enregistrer} reste lui réservé au
+ * serveur.</p>
  */
 @Service
 public class HistoriqueStatutService {
@@ -164,6 +166,20 @@ public class HistoriqueStatutService {
         return historiqueRepository.trouverAuteurs().stream()
                 .map(UtilisateurMapper::toSummary)
                 .toList();
+    }
+
+    /**
+     * Suppression d'une ligne du journal — opération administrative réservée
+     * aux comptes titulaires de {@code UTILISATEUR_GERER} (droit existant,
+     * aucun nouveau droit créé). Une ligne inexistante lève
+     * {@link ResourceNotFoundException} → 404.
+     */
+    @Transactional
+    public void supprimer(Long idHistorique) {
+        HistoriqueStatut entree = historiqueRepository.findById(idHistorique)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Ligne d'historique introuvable : " + idHistorique));
+        historiqueRepository.delete(entree);
     }
 
     // ------------------------------------------------------------------

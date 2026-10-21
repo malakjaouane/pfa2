@@ -48,6 +48,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -243,7 +244,7 @@ class SecuriteApiTest {
         }
 
         @Test
-        @DisplayName("journal des statuts : lecture avec INITIATIVE_CONSULTER, aucune écriture exposée")
+        @DisplayName("journal des statuts : lecture INITIATIVE_CONSULTER, suppression UTILISATEUR_GERER")
         void journalDesStatuts() throws Exception {
             when(historiqueStatutService.lister(any(), anyInt(), anyInt(), anyBoolean()))
                     .thenReturn(List.of());
@@ -270,12 +271,23 @@ class SecuriteApiTest {
                             .with(auth("DEMANDE_SOUMETTRE")))
                     .andExpect(status().isForbidden());
 
-            // Lecture seule : aucun POST/PUT n'est déclaré sur le journal.
+            // Création/Modification : aucun POST/PUT n'est déclaré sur le journal.
             mockMvc.perform(post("/api/historique-statuts")
                             .with(auth("INITIATIVE_CONSULTER"))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
                     .andExpect(status().isMethodNotAllowed());
+
+            // Suppression : réservée aux administrateurs (UTILISATEUR_GERER,
+            // droit existant) — la consultation seule ne suffit pas.
+            mockMvc.perform(delete("/api/historique-statuts/1"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(delete("/api/historique-statuts/1")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete("/api/historique-statuts/1")
+                            .with(auth("UTILISATEUR_GERER")))
+                    .andExpect(status().isNoContent());
         }
     }
 

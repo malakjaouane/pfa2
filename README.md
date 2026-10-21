@@ -195,8 +195,8 @@ variables d'environnement. Copiez `.env.example` en `.env` et adaptez au besoin.
   `Brouillon → Soumise → En évaluation → Acceptée/Refusée`, refus avec motif
   facultatif, transformation en initiative (code `DEM-xxxxxx`, aucune création
   en double).
-- **Historique des statuts** (`/historique`) : journal global en **lecture
-  seule** de tous les changements de statut — recherche par code ou nom
+- **Historique des statuts** (`/historique`) : journal global de tous les
+  changements de statut — recherche par code ou nom
   d'initiative (insensible à la casse et aux accents), filtres statut,
   utilisateur et période, tri (récent / ancien), pagination et export CSV de
   l'affichage. Chaque ligne porte son **origine** (manuelle ou automatique,
@@ -204,8 +204,11 @@ variables d'environnement. Copiez `.env.example` en `.env` et adaptez au besoin.
   Les événements sont écrits en base dans la même transaction que le
   changement (aucune donnée fictive) ; la fiche initiative n'en garde qu'un
   résumé (5 derniers changements) plus un bouton « Voir tout l'historique »
-  qui ouvre la page déjà filtrée. Aucun nouveau droit : lecture soumise à
-  `INITIATIVE_CONSULTER`.
+  qui ouvre la page déjà filtrée. Lecture soumise à `INITIATIVE_CONSULTER`
+  (aucun nouveau droit) ; les **administrateurs** (`UTILISATEUR_GERER`,
+  droit existant) peuvent supprimer une entrée erronée via la colonne
+  « Actions » (confirmation systématique, `DELETE` refusée aux autres
+  profils) — aucune autre écriture n'est exposée.
 - **Administration** : utilisateurs, rôles, permissions.
 
 ---
@@ -240,10 +243,12 @@ Couvrent `InitiativeService` (création, transitions, RM04/05/06/07/14),
 `BudgetService` (consommé / effectif / écart), `DemandeService`
 (workflow des demandes, transformation en initiative), `EtapeService`
 (étapes et jalons), `HistoriqueStatutService` (origine manuelle/automatique des
-lignes du journal, filtres/tri/pagination de la lecture globale),
-`SecuriteApiTest` (règles d'URL et filtrage JWT, dont la lecture du journal) et
+lignes du journal, filtres/tri/pagination de la lecture globale, suppression
+d'une entrée avec 404 si elle n'existe pas),
+`SecuriteApiTest` (règles d'URL et filtrage JWT, dont lecture et suppression du
+journal) et
 `ApiErreurHttpTest` (codes HTTP d'erreur : 405 / 400 / 415 / 406 au lieu de 500).
-**109 tests, 0 échec.**
+**111 tests, 0 échec.**
 
 ### Tests fonctionnels de l'API
 
@@ -257,9 +262,10 @@ l'authentification, les KPI, les filtres, les règles métier, le cycle de vie,
 les autorisations, les utilisateurs, les rôles, les **objectifs stratégiques**,
 le **workflow des demandes** et l'**historique des statuts** (sections 10, 11 et
 12 : page globale, origine manuelle/automatique, recherche, filtres statut /
-utilisateur / période, pagination, tri, permissions, lecture seule). Les KPI
+utilisateur / période, pagination, tri, permissions, création interdite et
+suppression administrative 401/403/404/204). Les KPI
 sont comparés à un recalcul indépendant issu de la liste réelle des initiatives
-(aucune valeur codée en dur). **142 scénarios, 0 échec.**
+(aucune valeur codée en dur). **145 scénarios, 0 échec.**
 
 Après une campagne de tests, purgez les résidus (initiatives `TEST*` archivées,
 initiatives issues de demandes de test `DEM-*`, demandes `TEST-DEM*`, objectifs

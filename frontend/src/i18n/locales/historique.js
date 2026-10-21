@@ -4,7 +4,7 @@
 export default {
   fr: {
     'historique.titre': 'Historique des statuts',
-    'historique.sousTitre': 'Journal en lecture seule de tous les changements de statut des initiatives.',
+    'historique.sousTitre': 'Journal de tous les changements de statut des initiatives.',
     'historique.chargement': 'Chargement de l’historique…',
     'historique.aucunResultat': 'Aucun événement ne correspond aux critères.',
     'historique.recherchePlaceholder': 'Rechercher par code ou nom d’initiative…',
@@ -38,12 +38,16 @@ export default {
     'historique.pastilleInitiative': 'Filtre initiative : {code} — {nom}',
     'historique.pastilleRetirer': 'Retirer le filtre initiative',
     'historique.pastilleSansNom': 'Initiative #{id}',
-    'historique.csvOrigineInconnue': 'Non renseignée'
+    'historique.csvOrigineInconnue': 'Non renseignée',
+    'historique.colActions': 'Actions',
+    'historique.supprimer': 'Supprimer',
+    'historique.supprimerConfirmer': "Supprimer définitivement la ligne {ligne} de l'historique des statuts ?",
+    'historique.supprimeOk': "Entrée d'historique supprimée."
   },
 
   en: {
     'historique.titre': 'Status history',
-    'historique.sousTitre': 'Read-only log of every status change across all initiatives.',
+    'historique.sousTitre': 'Log of every status change across all initiatives.',
     'historique.chargement': 'Loading history…',
     'historique.aucunResultat': 'No event matches the criteria.',
     'historique.recherchePlaceholder': 'Search by initiative code or name…',
@@ -77,12 +81,16 @@ export default {
     'historique.pastilleInitiative': 'Initiative filter: {code} — {nom}',
     'historique.pastilleRetirer': 'Remove the initiative filter',
     'historique.pastilleSansNom': 'Initiative #{id}',
-    'historique.csvOrigineInconnue': 'Not set'
+    'historique.csvOrigineInconnue': 'Not set',
+    'historique.colActions': 'Actions',
+    'historique.supprimer': 'Delete',
+    'historique.supprimerConfirmer': 'Permanently delete history row {ligne}?',
+    'historique.supprimeOk': 'History entry deleted.'
   },
 
   ar: {
     'historique.titre': 'تاريخ الحالات',
-    'historique.sousTitre': 'سجل للقراءة فقط يضم جميع تغييرات حالات المبادرات.',
+    'historique.sousTitre': 'سجل جميع تغييرات حالات المبادرات.',
     'historique.chargement': 'جارٍ تحميل التاريخ…',
     'historique.aucunResultat': 'لا يوجد حدث مطابق للمعايير.',
     'historique.recherchePlaceholder': 'البحث بالرمز أو اسم المبادرة…',
@@ -116,12 +124,16 @@ export default {
     'historique.pastilleInitiative': 'تصفية المبادرة: {code} — {nom}',
     'historique.pastilleRetirer': 'إزالة تصفية المبادرة',
     'historique.pastilleSansNom': 'مبادرة #{id}',
-    'historique.csvOrigineInconnue': 'غير محدد'
+    'historique.csvOrigineInconnue': 'غير محدد',
+    'historique.colActions': 'إجراءات',
+    'historique.supprimer': 'حذف',
+    'historique.supprimerConfirmer': 'حذف نهائيًا للسطر {ligne} من سجل حالات المبادرات؟',
+    'historique.supprimeOk': 'تم حذف سجل الحالة.'
   },
 
   es: {
     'historique.titre': 'Historial de estados',
-    'historique.sousTitre': 'Registro de solo lectura de todos los cambios de estado de las iniciativas.',
+    'historique.sousTitre': 'Registro de todos los cambios de estado de las iniciativas.',
     'historique.chargement': 'Cargando historial…',
     'historique.aucunResultat': 'Ningún evento coincide con los criterios.',
     'historique.recherchePlaceholder': 'Buscar por código o nombre de iniciativa…',
@@ -155,6 +167,10 @@ export default {
     'historique.pastilleInitiative': 'Filtro de iniciativa: {code} — {nom}',
     'historique.pastilleRetirer': 'Quitar el filtro de iniciativa',
     'historique.pastilleSansNom': 'Iniciativa #{id}',
-    'historique.csvOrigineInconnue': 'Sin indicar'
+    'historique.csvOrigineInconnue': 'Sin indicar',
+    'historique.colActions': 'Acciones',
+    'historique.supprimer': 'Eliminar',
+    'historique.supprimerConfirmer': '¿Eliminar definitivamente la fila {ligne} del historial?',
+    'historique.supprimeOk': 'Entrada del historial eliminada.'
   }
 };

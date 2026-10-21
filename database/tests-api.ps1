@@ -440,7 +440,7 @@ Test-Check 'Demande : détail OK' ($detailDem.OK -and $detailDem.Body.idDemande 
 $listeDem = Invoke-Api 'Get' "$Base/demandes" $null $adminToken
 Test-Check 'Demandes : liste contient les demandes de test' ($listeDem.OK -and @($listeDem.Body | Where-Object { $_.titre -like 'TEST-DEM*' }).Count -ge 3) "($(@($listeDem.Body | Where-Object { $_.titre -like 'TEST-DEM*' }).Count))"
 
-Write-Output '=== 12. Historique des statuts (journal global, lecture seule) ==='
+Write-Output '=== 12. Historique des statuts (journal global, lecture + suppression admin) ==='
 # Une initiative dédiée enchaîne les trois origines possibles : création
 # (manuelle), transition explicite (manuelle), puis passage RM07-auto
 # déclenché par les étapes (automatique). Chaque ligne du journal doit
@@ -528,11 +528,28 @@ Test-Check 'Anonyme : journal global interdit -> 401' ($histAnonyme.OK -eq $fals
 $histVisiteur = Invoke-Api 'Get' "$Base/historique-statuts" $null $visiteurToken
 Test-Check 'Visiteur : lecture du journal autorisée -> 200' ($histVisiteur.OK -and $histVisiteur.Status -eq 200) "($($histVisiteur.Status))"
 
-# Lecture seule : aucune écriture n'existe sur le journal (CDC et spécification).
+# Écriture : aucune création ni modification sur le journal (pas de POST/PUT).
+# La suppression d'une ligne existe mais reste réservée aux administrateurs
+# (UTILISATEUR_GERER) — la consultation seule ne suffit pas.
 $histEcriture = Invoke-Api 'Post' "$Base/historique-statuts" @{ nouveauStatut = 'Terminée' } $adminToken
 Test-Check 'Écriture sur le journal refusée (POST -> 4xx)' ($histEcriture.OK -eq $false -and $histEcriture.Status -ge 400 -and $histEcriture.Status -lt 500) "($($histEcriture.Status))"
-$histSuppr = Invoke-Api 'Delete' "$Base/historique-statuts/1" $null $adminToken
-Test-Check 'Suppression d''une entrée refusée (DELETE -> 4xx)' ($histSuppr.OK -eq $false -and $histSuppr.Status -ge 400 -and $histSuppr.Status -lt 500) "($($histSuppr.Status))"
+
+$histLigneASuppr = @($histInit.Body)[0].idHistorique
+$histSupprVisiteur = Invoke-Api 'Delete' "$Base/historique-statuts/$histLigneASuppr" $null $visiteurToken
+Test-Check 'Suppression journal : visiteur interdit -> 403' ($histSupprVisiteur.OK -eq $false -and $histSupprVisiteur.Status -eq 403) "($($histSupprVisiteur.Status))"
+$histSupprAnonyme = Invoke-Api 'Delete' "$Base/historique-statuts/$histLigneASuppr" $null $null
+Test-Check 'Suppression journal : anonyme -> 401' ($histSupprAnonyme.OK -eq $false -and $histSupprAnonyme.Status -eq 401) "($($histSupprAnonyme.Status))"
+$histSupprInconnue = Invoke-Api 'Delete' "$Base/historique-statuts/999999999" $null $adminToken
+Test-Check 'Suppression journal : id inexistant -> 404' ($histSupprInconnue.OK -eq $false -and $histSupprInconnue.Status -eq 404) "($($histSupprInconnue.Status))"
+
+$histAvantSuppr = Invoke-Api 'Get' "$Base/historique-statuts" $null $adminToken
+$histTotalAvant = 0
+if ($histAvantSuppr.OK) { $histTotalAvant = [int](@($histAvantSuppr.Headers['X-Total-Count'])[0]) }
+$histSuppr = Invoke-Api 'Delete' "$Base/historique-statuts/$histLigneASuppr" $null $adminToken
+$histApresSuppr = Invoke-Api 'Get' "$Base/historique-statuts" $null $adminToken
+$histTotalApres = 0
+if ($histApresSuppr.OK) { $histTotalApres = [int](@($histApresSuppr.Headers['X-Total-Count'])[0]) }
+Test-Check 'Suppression journal : admin -> 204, total diminué de 1' ($histSuppr.OK -and $histSuppr.Status -eq 204 -and $histTotalApres -eq ($histTotalAvant - 1)) "($($histSuppr.Status)/$histTotalAvant->$histTotalApres)"
 
 # Nettoyage : « Terminée » -> archivée (exclue des KPI des exécutions suivantes).
 $histArch = Invoke-Api 'Patch' "$Base/initiatives/$idHist/archive" $null $adminToken

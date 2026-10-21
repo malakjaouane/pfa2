@@ -90,11 +90,14 @@ public class SecurityConfig {
                         // Initiatives
                         .requestMatchers(HttpMethod.GET, "/api/initiatives/**").hasAuthority("INITIATIVE_CONSULTER")
                         .requestMatchers(HttpMethod.POST, "/api/initiatives").hasAuthority("INITIATIVE_CREER")
-                        // Journal des statuts : même permission que la lecture
-                        // des initiatives (pas de nouveau droit). Seul GET est
-                        // ouvert — le journal est en lecture seule.
+                        // Journal des statuts : lecture = même permission que
+                        // la lecture des initiatives (pas de nouveau droit).
+                        // Suppression d'une ligne = administrateurs seulement
+                        // (UTILISATEUR_GERER, droit existant). Aucun POST/PUT.
                         .requestMatchers(HttpMethod.GET, "/api/historique-statuts/**")
                         .hasAuthority("INITIATIVE_CONSULTER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/historique-statuts/**")
+                        .hasAuthority("UTILISATEUR_GERER")
                         // Réordonnancement des étapes : à placer avant la règle générale PUT
                         .requestMatchers(HttpMethod.PUT, "/api/initiatives/*/etapes/ordre")
                         .hasAuthority("ETAPE_GERER")

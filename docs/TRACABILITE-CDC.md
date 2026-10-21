@@ -81,7 +81,8 @@ test fonctionnel `tests-api.ps1`).
 | **Origine du changement** : colonne `historique_statut.automatique` (manuel / moteur de règles : RM07-auto, réouverture, RM17, alignement de démarrage) ; migration douce idempotente + re-classement rétroactif depuis le motif enregistré | Entité `HistoriqueStatut.automatique`, surcharge `enregistrer(..., boolean)`, `database/schema.sql` (ALTER gardé par `information_schema`) | JUnit (origine manuelle/automatique) + API (`automatique = false` sur création/transition choisie, `= true` sur RM07) |
 | **Page dédiée** `/historique` : table (code, nom, ancien/nouveau statut, utilisateur, date-heure, origine), recherche code/nom (insensible casse/accents), filtres statut/utilisateur/période, tri, pagination, export CSV | `HistoriquePage.jsx`, `GET /api/historique-statuts` (`HistoriqueStatutController` + `HistoriqueStatutRepository.rechercher/compter`, en-tête `X-Total-Count`), route/menu gated `INITIATIVE_CONSULTER` | API section 12 (recherche, filtres, pagination, tri, 400 paramètres) + build Vite |
 | **Résumé sur la fiche** : 5 derniers changements + bouton « Voir tout l'historique » ouvrant la page filtrée (`?initiative=id`, pastille débrayable) | `InitiativeDetailPage.jsx` (`slice(0, 5)`), lien `Link`, pastille `filtre-pastille` | Build Vite + API (champ `initiative` sur chaque ligne) |
-| **Lecture seule + permissions existantes** : aucune écriture publique sur le journal, aucun nouveau droit | `SecurityConfig` : `GET /api/historique-statuts/**` → `INITIATIVE_CONSULTER` uniquement ; aucun `@PostMapping/@DeleteMapping` | JUnit `SecuriteApiTest` (401/403/200, POST → 405) + API (anonyme 401, visiteur 200, POST/DELETE → 4xx) |
+| **Lecture + permissions existantes** : lecture ouverte à `INITIATIVE_CONSULTER`, aucune création/édition possible, aucun nouveau droit | `SecurityConfig` : `GET /api/historique-statuts/**` → `INITIATIVE_CONSULTER` ; aucun `@PostMapping/@PutMapping` (POST → 405) | JUnit `SecuriteApiTest` (401/403/200, POST → 405) + API (anonyme 401, visiteur 200) |
+| **Suppression d'une entrée (admin)** : nettoyage d'une ligne erronée depuis la colonne « Actions » avec confirmation ; réservée aux administrateurs | `DELETE /api/historique-statuts/{id}` (`HistoriqueStatutController.supprimer`, 204 / 404 si absent), `SecurityConfig` : `DELETE` → `UTILISATEUR_GERER` (droit existant) ; bouton `btn-danger` conditionné à `hasPermission('UTILISATEUR_GERER')` | JUnit `SecuriteApiTest` (anonyme 401, consultation seule 403, admin 204) + `HistoriqueStatutServiceTest` (suppression / 404) + API section 12 (401, 403, 404, 204 + total −1) |
 
 ## 5. Acteurs et permissions
 
@@ -97,10 +98,11 @@ test fonctionnel `tests-api.ps1`).
 - **P1/P2** : 15 scénarios fonctionnels supplémentaires (sections 10 et 11 de
   `tests-api.ps1`) : référentiel objectifs, filtre, workflow complet des demandes,
   refus avec/sans motif, transformation sans doublon, permissions.
-- **P3 (historique des statuts)** : 27 scénarios supplémentaires (section 12 de
+- **P3 (historique des statuts)** : 30 scénarios supplémentaires (section 12 de
   `tests-api.ps1`) : origine manuelle/automatique des lignes, page globale,
   recherche, filtres statut/utilisateur/période, pagination, tri, validation des
-  paramètres, permissions et lecture seule.
+  paramètres, permissions, lecture seule (POST → 405) et suppression
+  administrative (401/403/404/204 + total décrémenté).
 - Les règles structurales (RM02/08/09/12/13/16) sont garanties par le schéma
   (clés étrangères, contraintes de non-null) et exercées par les tests de l'API.
 - Les KPI du CDC sont tous calculés par l'API (aucune valeur codée en dur),

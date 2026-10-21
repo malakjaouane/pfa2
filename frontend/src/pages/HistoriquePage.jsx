@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api, { messageErreur } from '../api';
+import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import { useReferentiels } from '../i18n/referentiels';
 import StatutBadge from '../components/StatutBadge';
@@ -73,8 +74,11 @@ function Surligner({ texte, requete }) {
 
 /**
  * Page « Historique des statuts » : journal global de toutes les
- * initiatives, en lecture seule (aucun bouton d'édition ni de suppression —
- * les entrées ne sont modifiables nulle part depuis l'interface).
+ * initiatives. Lecture ouverte à tous les consultants
+ * (INITIATIVE_CONSULTER) ; la colonne « Actions » permet aux
+ * administrateurs (UTILISATEUR_GERER) de supprimer une entrée erronée,
+ * avec confirmation — aucune autre écriture n'existe (ni édition, ni
+ * création).
  *
  * Recherche (code ou nom), filtres statut / utilisateur / période, tri,
  * pagination et export CSV du résultat affiché. L'URL porte les critères :
@@ -84,6 +88,8 @@ function Surligner({ texte, requete }) {
 export default function HistoriquePage() {
   const { t, langue } = useI18n();
   const ref = useReferentiels();
+  const { hasPermission } = useAuth();
+  const peutSupprimer = hasPermission('UTILISATEUR_GERER');
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [filtres, setFiltres] = useState(() => lireDepuisUrl(searchParams));
@@ -94,6 +100,7 @@ export default function HistoriquePage() {
   const [initiativeFiltree, setInitiativeFiltree] = useState(null);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState('');
+  const [info, setInfo] = useState('');
 
   // Référentiel des statuts + auteurs présents dans le journal (une fois).
   useEffect(() => {
@@ -216,6 +223,30 @@ export default function HistoriquePage() {
     URL.revokeObjectURL(url);
   };
 
+  /**
+   * Suppression d'une entrée (admin) : confirmation puis rechargement.
+   * Si la ligne supprimée était la dernière de sa page, on revient à la
+   * page précédente pour ne pas afficher une page vide sur un total > 0.
+   */
+  const demanderSuppression = (ev) => {
+    const libelle = `${ev.initiative?.code ?? ''} — ${formaterDate(ev.dateChangement, langue)}`;
+    if (!window.confirm(t('historique.supprimerConfirmer', { ligne: libelle }))) return;
+    api.delete(`/historique-statuts/${ev.idHistorique}`)
+      .then(() => {
+        setErreur('');
+        setInfo(t('historique.supprimeOk'));
+        if (lignes.length === 1 && filtres.page > 0) {
+          allerPage(filtres.page - 1);
+        } else {
+          charger(filtres);
+        }
+      })
+      .catch((err) => {
+        setInfo('');
+        setErreur(messageErreur(err));
+      });
+  };
+
   const pagesTotales = Math.max(1, Math.ceil(total / TAILLE_PAGE));
   const depart = total === 0 ? 0 : filtres.page * TAILLE_PAGE + 1;
   const arrivee = Math.min((filtres.page + 1) * TAILLE_PAGE, total);
@@ -245,6 +276,7 @@ export default function HistoriquePage() {
       </header>
 
       {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
+      {info && <div className="alerte alerte-succes">{info}</div>}
 
       <form className="carte filtre-bar" onSubmit={appliquerFiltres}>
         <div className="filtre-ligne">
@@ -360,6 +392,7 @@ export default function HistoriquePage() {
                   <th>{t('historique.colUtilisateur')}</th>
                   <th>{t('historique.colDate')}</th>
                   <th>{t('historique.colOrigine')}</th>
+                  {peutSupprimer && <th>{t('historique.colActions')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -391,6 +424,17 @@ export default function HistoriquePage() {
                         {ev.automatique ? t('historique.origineAutomatique') : t('historique.origineManuelle')}
                       </span>
                     </td>
+                    {peutSupprimer && (
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-petit btn-danger"
+                          onClick={() => demanderSuppression(ev)}
+                        >
+                          {t('historique.supprimer')}
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

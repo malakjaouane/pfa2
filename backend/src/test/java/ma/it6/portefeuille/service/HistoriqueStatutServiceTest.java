@@ -4,6 +4,7 @@ import ma.it6.portefeuille.dto.HistoriqueStatutResponse;
 import ma.it6.portefeuille.entity.HistoriqueStatut;
 import ma.it6.portefeuille.entity.Initiative;
 import ma.it6.portefeuille.entity.Utilisateur;
+import ma.it6.portefeuille.exception.ResourceNotFoundException;
 import ma.it6.portefeuille.repository.HistoriqueStatutRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,9 +29,11 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,9 +41,10 @@ import static org.mockito.Mockito.when;
  * Journal des statuts : origine des lignes (manuel / automatique) et lecture
  * globale paginée de la page « Historique des statuts ».
  *
- * <p>Deux familles : l'<strong>écriture</strong> — seule zone sensible, puisque
- * l'interface n'expose aucune écriture sur le journal — et la
- * <strong>lecture</strong> : construction des filtres, tri et pagination.</p>
+ * <p>Trois familles : l'<strong>écriture</strong> — zone serveur uniquement —,
+ * la <strong>lecture</strong> : construction des filtres, tri et pagination, et
+ * la <strong>suppression</strong> d'une entrée (nettoyage administratif,404 si
+ * la ligne n'existe pas).</p>
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -259,6 +263,37 @@ class HistoriqueStatutServiceTest {
             assertThat(auteurs).hasSize(1);
             assertThat(auteurs.get(0).idUser()).isEqualTo(7L);
             assertThat(auteurs.get(0).nomComplet()).isEqualTo("Marie Dupont");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Suppression : nettoyage d'une entrée (administrateurs)
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Suppression — une ligne retirée,404 si elle n'existe pas")
+    class Suppression {
+
+        @Test
+        @DisplayName("une ligne existante est retirée du journal")
+        void ligneExistanteSupprimee() {
+            HistoriqueStatut entree = ligne(false);
+            when(historiqueRepository.findById(42L)).thenReturn(Optional.of(entree));
+
+            service.supprimer(42L);
+
+            verify(historiqueRepository).delete(entree);
+        }
+
+        @Test
+        @DisplayName("une ligne inexistante lève une404 et ne supprime rien")
+        void ligneInexistante() {
+            when(historiqueRepository.findById(404L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.supprimer(404L))
+                    .isInstanceOf(ResourceNotFoundException.class);
+
+            verify(historiqueRepository, never()).delete(any(HistoriqueStatut.class));
         }
     }
 }

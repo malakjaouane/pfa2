@@ -6,7 +6,9 @@ import ma.it6.portefeuille.exception.BadRequestException;
 import ma.it6.portefeuille.service.HistoriqueStatutService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,16 +18,19 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Journal global des transitions de statut — <strong>lecture seule</strong>.
+ * Journal global des transitions de statut.
  *
- * <p>Aucun POST/PUT/PATCH/DELETE n'est déclaré ici (et la règle d'URL en
- * SecurityConfig n'ouvre que GET) : les anciennes entrées ne peuvent ni être
- * modifiées ni être supprimées depuis l'interface. Seule l'écriture interne du
- * service, appelée dans la transaction du changement de statut, alimente le
- * journal.</p>
+ * <p>Lecture ouverte à {@code INITIATIVE_CONSULTER} ; aucune création ni
+ * modification n'est possible (aucun POST/PUT/PATCH déclaré — un POST renvoie
+ * donc 405). Seule l'écriture interne du service, appelée dans la transaction
+ * du changement de statut, alimente le journal.</p>
  *
- * <p>La permission exigée est {@code INITIATIVE_CONSULTER} — la même que la
- * consultation des initiatives : aucun nouveau droit n'est créé.</p>
+ * <p>La suppression d'une ligne existe mais est réservée aux administrateurs
+ * ({@code UTILISATEUR_GERER} en SecurityConfig) : nettoyage d'une entrée
+ * erronée, sans nouveau droit pour la consultation.</p>
+ *
+ * <p>La permission de lecture est {@code INITIATIVE_CONSULTER} — la même que
+ * la consultation des initiatives : aucun nouveau droit n'est créé.</p>
  */
 @RestController
 @RequestMapping("/api/historique-statuts")
@@ -96,5 +101,17 @@ public class HistoriqueStatutController {
     @GetMapping("/auteurs")
     public ResponseEntity<List<UserSummaryDto>> auteurs() {
         return ResponseEntity.ok(historiqueStatutService.auteurs());
+    }
+
+    /**
+     * Suppression d'une ligne du journal — administrateurs uniquement
+     * (droit existant {@code UTILISATEUR_GERER}, imposé par SecurityConfig).
+     *
+     * @return {@code 204} si la ligne existait, {@code 404} sinon
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> supprimer(@PathVariable Long id) {
+        historiqueStatutService.supprimer(id);
+        return ResponseEntity.noContent().build();
     }
 }
