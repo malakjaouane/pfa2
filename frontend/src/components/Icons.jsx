@@ -1,5 +1,5 @@
 /**
- * Jeu d'icônes SVG (style Atlassian / Jira).
+ * Jeu d'icônes SVG (trait fin, charte IT6).
  * Chaque icône hérite de la couleur du texte via `currentColor`.
  */
 

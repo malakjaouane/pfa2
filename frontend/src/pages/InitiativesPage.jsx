@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import api, { messageErreur } from '../api';
 import { useAuth } from '../AuthContext';
 import StatutBadge from '../components/StatutBadge';
+import SanteBadge from '../components/SanteBadge';
 import ProgressBar from '../components/ProgressBar';
 import KanbanBoard from '../components/KanbanBoard';
 import { useI18n } from '../i18n/I18nContext';
@@ -235,6 +236,7 @@ export default function InitiativesPage() {
                   <th>{t('initiatives.colEntite')}</th>
                   <th>{t('initiatives.colResponsable')}</th>
                   <th>{t('initiatives.colStatut')}</th>
+                  <th>{t('sante.colonne')}</th>
                   <th>{t('initiatives.colPriorite')}</th>
                   <th>{t('initiatives.colAvancement')}</th>
                   <th>{t('initiatives.colDebut')}</th>
@@ -251,6 +253,7 @@ export default function InitiativesPage() {
                     <td>{i.entite?.nom ?? '—'}</td>
                     <td>{i.responsable?.nomComplet ?? '—'}</td>
                     <td><StatutBadge libelle={i.statut?.libelle} /></td>
+                    <td><SanteBadge sante={i.sante} avecRaison /></td>
                     <td>{ref.priorite(i.priorite?.libelle) ?? '—'}</td>
                     <td><ProgressBar valeur={i.avancement} /></td>
                     <td>{i.dateDebut ?? '—'}</td>

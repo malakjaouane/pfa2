@@ -26,4 +26,15 @@ public interface JalonRepository extends JpaRepository<Jalon, Long> {
             """)
     long countEnRetardParInitiatives(@Param("date") LocalDate date,
                                      @Param("ids") Collection<Long> ids);
+
+    /**
+     * Score de santé : jalons (et statut) de toute une page d'initiatives
+     * chargés en une seule requête — évite le N+1 du calcul par ligne.
+     */
+    @Query("""
+            select j from Jalon j
+            join fetch j.statutJalon
+            where j.initiative.idInitiative in :ids
+            """)
+    List<Jalon> chercherParInitiatives(@Param("ids") Collection<Long> ids);
 }

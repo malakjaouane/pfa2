@@ -13,6 +13,7 @@ import roadmap from './roadmap';
 import objectifs from './objectifs';
 import demandes from './demandes';
 import historique from './historique';
+import sante from './sante';
 import users from './users';
 import roles from './roles';
 import motdepasse from './motdepasse';
@@ -36,6 +37,7 @@ const FRAGMENTS = [
   objectifs,
   demandes,
   historique,
+  sante,
   users,
   roles,
   motdepasse

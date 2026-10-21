@@ -1,11 +1,11 @@
 /* ============================================================
    Portefeuille d'initiatives digitales — IT6 Consulting
-   Feuille de style globale — identité visuelle type Atlassian / Jira
+   Feuille de style globale — charte IT6 Consulting
    ------------------------------------------------------------
-   Palette (inspirée du design system Atlassian) :
-     Bleu primaire   #0052CC   | Bleu foncé #0747A6 | Bleu clair #4C9AFF
-     Fond           #F4F5F7   | Bordures  #DFE1E6 | Texte #172B4D
-     Vert #00875A | Jaune #FFAB00 | Rouge #DE350B | Violet #5243AA
+   Palette de marque IT6 Consulting :
+     Bordeaux principal #8C2136 | Bordeaux foncé #4E101E | Bordeaux clair #B4485C
+     Navy #032D42 | Cyan d'accent #24C2CE
+     Fond #F5F6F7 | Bordures #E2E5E7 | Texte #1D1D1D
    ============================================================ */
 
 /* ------------------------------------------------------------
@@ -72,12 +72,12 @@
 }
 
 :root {
-  /* ---- Bleus Atlassian (Jira Cloud) ---- */
-  --jira-blue: #0C66E4;
-  --jira-blue-hover: #0055CC;
-  --jira-blue-dark: #09326C;
-  --jira-blue-light: #579DFF;
-  --jira-blue-bg: #E9F2FF;
+  /* ---- Charte IT6 Consulting : bordeaux principal ---- */
+  --accent: #8C2136;
+  --accent-hover: #751A2D;
+  --accent-fonce: #4E101E;
+  --accent-clair: #B4485C;
+  --accent-pale: #F3DEE3;
 
   /* ---- Neutres ---- */
   --n0: #FFFFFF;
@@ -119,15 +119,15 @@
   --ombre-haute: 0 8px 16px -4px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
 
   /* ---- Alias hérités (compatibilité) ---- */
-  --primaire-900: var(--jira-blue-dark);
-  --primaire-700: var(--jira-blue);
-  --ice-cold: var(--jira-blue-light);
+  --primaire-900: var(--accent-fonce);
+  --primaire-700: var(--accent);
+  --ice-cold: var(--accent-clair);
   --freeze-purple: var(--n20);
-  --medium-purple: var(--jira-blue-bg);
-  --purple-pain: var(--jira-blue);
+  --medium-purple: var(--accent-pale);
+  --purple-pain: var(--accent);
   --heavy-purple: var(--purple);
   --bleu-primaire: var(--n800);
-  --bleu-clair: var(--jira-blue);
+  --bleu-clair: var(--accent);
   --cyan: var(--teal);
   --fond: var(--n20);
   --carte: var(--n0);
@@ -161,7 +161,7 @@ body {
 }
 
 a {
-  color: var(--jira-blue);
+  color: var(--accent);
   text-decoration: none;
   font-weight: 500;
 }
@@ -255,8 +255,8 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 }
 
 .nav-link.active {
-  background: var(--jira-blue-bg);
-  color: var(--jira-blue);
+  background: var(--accent-pale);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -296,7 +296,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--jira-blue);
+  background: var(--accent);
   color: #fff;
   font-weight: 700;
   display: flex;
@@ -400,7 +400,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   color: var(--n500);
 }
 
-.kpi-bleu .kpi-icone { background: var(--jira-blue-bg); color: var(--jira-blue); }
+.kpi-bleu .kpi-icone { background: var(--accent-pale); color: var(--accent); }
 .kpi-cyan .kpi-icone { background: var(--teal-bg); color: var(--teal-text); }
 .kpi-vert .kpi-icone { background: var(--green-bg); color: var(--green); }
 .kpi-ambre .kpi-icone { background: var(--yellow-bg); color: var(--orange); }
@@ -490,7 +490,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 }
 
 /* ============================================================
-   Badges (lozenges Atlassian)
+   Badges (pastilles d'état)
    ============================================================ */
 
 .badge {
@@ -507,7 +507,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   line-height: 1.6;
 }
 
-.badge-bleu { background: var(--jira-blue-bg); color: var(--jira-blue-dark); }
+.badge-bleu { background: var(--accent-pale); color: var(--accent-fonce); }
 .badge-vert { background: var(--green-bg); color: var(--green-text); }
 .badge-ambre { background: var(--yellow-bg); color: var(--yellow-text); }
 .badge-rouge { background: var(--red-bg); color: var(--red-text); }
@@ -553,7 +553,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 }
 
 .progress-vert { background: var(--green); }
-.progress-bleu { background: var(--jira-blue); }
+.progress-bleu { background: var(--accent); }
 /* Le jaune est clair : le libellé doit être foncé pour rester lisible
    (contraste 8.7:1 contre 1.9:1 en blanc — exigence WCAG AA). */
 .progress-ambre { background: var(--yellow); color: var(--n900); }
@@ -584,11 +584,11 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-primaire {
-  background: var(--jira-blue);
+  background: var(--accent);
   color: #fff;
 }
 
-.btn-primaire:hover:not(:disabled) { background: var(--jira-blue-hover); }
+.btn-primaire:hover:not(:disabled) { background: var(--accent-hover); }
 
 .btn-secondaire {
   background: var(--n20);
@@ -617,10 +617,10 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 
 .btn-blanc {
   background: #fff;
-  color: var(--jira-blue-dark);
+  color: var(--accent-fonce);
 }
 
-.btn-blanc:hover:not(:disabled) { background: var(--jira-blue-bg); }
+.btn-blanc:hover:not(:disabled) { background: var(--accent-pale); }
 
 .btn-petit {
   padding: 4px 9px;
@@ -708,8 +708,8 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 .filtre-bar select:focus {
   outline: none;
   background: #fff;
-  border-color: var(--jira-blue-light);
-  box-shadow: 0 0 0 2px var(--jira-blue-bg);
+  border-color: var(--accent-clair);
+  box-shadow: 0 0 0 2px var(--accent-pale);
 }
 
 .form-actions {
@@ -883,9 +883,9 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 }
 
 .alerte-info {
-  background: var(--jira-blue-bg);
+  background: var(--accent-pale);
   border-color: #85B8FF;
-  color: var(--jira-blue-dark);
+  color: var(--accent-fonce);
 }
 
 .texte-muet { color: var(--texte-muet); }
@@ -903,17 +903,20 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
    ============================================================ */
 
 .login-page {
+  position: relative;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(76, 154, 255, 0.35), transparent 60%),
-    linear-gradient(150deg, var(--jira-blue-dark), var(--jira-blue) 70%, #2d7ef7);
+    radial-gradient(1200px 600px at 80% -10%, rgba(233, 168, 180, 0.30), transparent 60%),
+    linear-gradient(150deg, var(--accent-fonce), var(--accent) 70%, #A32D45);
   padding: 24px;
 }
 
 .login-boite {
+  position: relative;
+  z-index: 1;
   background: #fff;
   border-radius: var(--radius-card);
   padding: 32px;
@@ -921,6 +924,88 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   max-width: 400px;
   box-shadow: 0 20px 50px rgba(9, 30, 66, 0.4);
 }
+
+/* ============================================================
+   Motif zellige — signature graphique IT6 (SVG inline, teinte
+   héritée de currentColor, symétrique → compatible RTL)
+   ============================================================ */
+
+.motif-zellige {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Fond du login : étoiles blanches très pâles sur le dégradé bordeaux */
+.motif-fond-login { color: rgba(255, 255, 255, 0.09); }
+
+/* Bandeau fin en tête de la barre supérieure navy */
+.motif-bande {
+  bottom: auto;
+  height: 10px;
+  color: rgba(36, 194, 206, 0.45);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ============================================================
+   Score de santé automatique (feu vert / vigilance / à risque)
+   Puce + libellé ; le motif s'affiche sous le badge quand la
+   page le demande (liste, fiche, surveillance du dashboard).
+   ============================================================ */
+
+.sante {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.sante-puce {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sante-puce::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.sante-verte .sante-puce { background: var(--green-bg); color: var(--green-text); }
+.sante-orange .sante-puce { background: var(--yellow-bg); color: var(--yellow-text); }
+.sante-rouge .sante-puce { background: var(--red-bg); color: var(--red-text); }
+
+.sante-raison {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--texte-muet);
+  max-width: 260px;
+  line-height: 1.35;
+}
+
+/* Fiche et dashboard : le niveau s'écrit en toutes lettres, couleur en guise
+   de puce, et le motif reste visible en dessous. */
+.fiche-grille .sante-libelle,
+.surveillance-titre .sante-libelle { display: inline; }
+
+.fiche-grille .sante-puce,
+.surveillance-titre .sante-puce { display: none; }
+
+.fiche-grille .sante { gap: 4px; }
+
+.fiche-grille .sante-verte .sante-libelle { color: var(--green-text); font-weight: 600; }
+.fiche-grille .sante-orange .sante-libelle { color: var(--yellow-text); font-weight: 600; }
+.fiche-grille .sante-rouge .sante-libelle { color: var(--red-text); font-weight: 600; }
 
 .login-haut {
   display: flex;
@@ -971,12 +1056,12 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   background: none;
   border: none;
   font-size: 12.5px;
-  color: var(--jira-blue);
+  color: var(--accent);
   cursor: pointer;
   text-decoration: underline;
 }
 
-.login-lien:hover { color: var(--jira-blue-hover); }
+.login-lien:hover { color: var(--accent-hover); }
 
 /* ============================================================
    Utilisateurs / Rôles (modales)
@@ -1050,7 +1135,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   color: var(--texte-muet);
 }
 
-.perm-cochee { background: var(--jira-blue-bg); }
+.perm-cochee { background: var(--accent-pale); }
 
 /* ============================================================
    P1/P2 — Kanban, Roadmap, Demandes, Objectifs
@@ -1087,7 +1172,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 
 .vue-toggle button.actif {
   background: #fff;
-  color: var(--jira-blue);
+  color: var(--accent);
   font-weight: 600;
   box-shadow: var(--ombre);
 }
@@ -1214,9 +1299,9 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 /* Colonne survolée par une carte : c'est la seule indication, en sus du
    surlignage du curseur, de l'endroit où la carte sera déposée. */
 .kanban-col.colonne-survol {
-  border-color: var(--jira-blue);
+  border-color: var(--accent);
   border-style: dashed;
-  background: var(--jira-blue-bg);
+  background: var(--accent-pale);
 }
 
 /* ---------- Journal des statuts (fiche initiative) ---------- */
@@ -1252,7 +1337,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 }
 
 /* La création est le seul événement sans prédécesseur : on le souligne. */
-.historique-item:first-child::before { background: var(--jira-blue); }
+.historique-item:first-child::before { background: var(--accent); }
 
 .historique-date {
   grid-column: 1;
@@ -1311,12 +1396,12 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   border: 0;
   padding: 0;
   font: inherit;
-  color: var(--jira-blue);
+  color: var(--accent);
   cursor: pointer;
   text-decoration: underline;
 }
 
-.lien-bouton:hover { color: var(--jira-blue-hover); }
+.lien-bouton:hover { color: var(--accent-hover); }
 
 /* Pastille « filtré sur cette initiative » (venue de la fiche détaillée). */
 .filtre-pastille {
@@ -1325,8 +1410,8 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   gap: 6px;
   margin: 0 0 12px;
   padding: 4px 9px;
-  background: var(--jira-blue-bg);
-  color: var(--jira-blue-dark);
+  background: var(--accent-pale);
+  color: var(--accent-fonce);
   border-radius: var(--radius);
   font-size: 12px;
   font-weight: 600;
@@ -1502,7 +1587,7 @@ mark {
 
 /* ============================================================
    Page d'accueil publique (vitrine)
-   Direction artistique inspirée de ServiceNow « brand evolution » :
+   Direction artistique IT6 Consulting :
      Navy #032D42 · Bordeaux IT6 #8C2136 · Rose clair #E9A8B4 · Cyan #24C2CE
    Le bordeaux reprend la teinte du logo ; la variante rose sert aux
    accents posés sur les fonds sombres (navy), où le bordeaux profond
@@ -2671,7 +2756,7 @@ mark {
 }
 
 .langue-item:hover { background: var(--n20); }
-.langue-item.actif { background: var(--jira-blue-bg); color: var(--jira-blue); font-weight: 600; }
+.langue-item.actif { background: var(--accent-pale); color: var(--accent); font-weight: 600; }
 
 .langue-item-code {
   display: inline-flex;
@@ -2686,7 +2771,7 @@ mark {
   letter-spacing: 0.4px;
 }
 
-.langue-item.actif .langue-item-code { background: var(--jira-blue); color: #fff; }
+.langue-item.actif .langue-item-code { background: var(--accent); color: #fff; }
 
 /* Variante vitrine (page d'accueil / connexion sur fond clair) */
 .langue-vitrine .langue-bouton {
@@ -2738,8 +2823,8 @@ mark {
 
 .topbar-recherche:focus-within {
   background: #fff;
-  border-color: var(--jira-blue);
-  box-shadow: 0 0 0 2px var(--jira-blue-bg);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-pale);
 }
 
 .topbar-recherche input {
@@ -2866,7 +2951,7 @@ mark {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--jira-blue);
+  color: var(--accent);
   margin-bottom: 6px;
 }
 
@@ -3000,8 +3085,8 @@ mark {
 }
 
 .champ-recherche:focus-within {
-  border-color: var(--jira-blue);
-  box-shadow: 0 0 0 2px var(--jira-blue-bg);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-pale);
 }
 
 .champ-recherche input {
@@ -3021,7 +3106,7 @@ mark {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   font-weight: 600;
-  color: var(--jira-blue-dark);
+  color: var(--accent-fonce);
   white-space: nowrap;
 }
 
@@ -3081,7 +3166,7 @@ mark {
 }
 
 .surveillance-titre a { font-weight: 600; color: var(--n800); font-size: 14px; }
-.surveillance-titre a:hover { color: var(--jira-blue); text-decoration: none; }
+.surveillance-titre a:hover { color: var(--accent); text-decoration: none; }
 
 .surveillance-meta {
   display: flex;
@@ -3416,19 +3501,12 @@ mark {
 }
 
 /* ============================================================
-   Thème ServiceNow — application interne
+   Charte IT6 — application interne
    Navy #032D42 · Bordeaux IT6 #8C2136 · Cyan #24C2CE · Teal lien #00718F
    Applique la charte de la vitrine à l'ensemble de l'application.
    ============================================================ */
 
 :root {
-  /* Accent principal : bordeaux IT6 (remplace le bleu Atlassian) */
-  --jira-blue: #8C2136;
-  --jira-blue-hover: #751A2D;
-  --jira-blue-dark: #4E101E;
-  --jira-blue-light: #B4485C;
-  --jira-blue-bg: #F3DEE3;
-
   /* Neutres légèrement adoucis */
   --n10: #FAFBFB;
   --n20: #F5F6F7;
@@ -3452,7 +3530,7 @@ mark {
 /* Titres : Poppins (cohérent avec la vitrine) */
 h1, h2, h3 { font-family: 'Poppins', 'Inter', sans-serif; }
 
-/* Liens : teal ServiceNow lisible sur fond clair (la vitrine garde ses propres règles) */
+/* Liens : teal lisible sur fond clair (la vitrine garde ses propres règles) */
 a { color: #00718F; }
 a:hover { color: #00566D; }
 
@@ -3477,7 +3555,7 @@ a:hover { color: #00566D; }
   background: #8C2136;
 }
 
-/* Statut « En cours » / priorité « Moyenne » : bleu cyan ServiceNow (sémantique conservée) */
+/* Statut « En cours » / priorité « Moyenne » : bleu cyan d'accent (sémantique conservée) */
 .badge-bleu { background: #D6EEF3; color: #0E7180; }
 .kpi-bleu .kpi-icone { background: #D6EEF3; color: #0E8F9B; }
 .progress-bleu { background: #24C2CE; }
@@ -3486,7 +3564,7 @@ a:hover { color: #00566D; }
 .vue-toggle button.actif,
 .dashboard-hero-eyebrow { color: #4E101E; }
 
-/* Barre supérieure navy (Next Experience de ServiceNow) */
+/* Barre supérieure navy (charte IT6) */
 .topbar {
   background: #032D42;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);

@@ -16,6 +16,7 @@ import { useI18n } from '../i18n/I18nContext';
 import { useReferentiels } from '../i18n/referentiels';
 import KpiCard from '../components/KpiCard';
 import StatutBadge from '../components/StatutBadge';
+import SanteBadge from '../components/SanteBadge';
 import ProgressBar from '../components/ProgressBar';
 import {
   IconProject,
@@ -547,11 +548,15 @@ export default function DashboardPage() {
                           {i.nom}
                         </Link>
                         <StatutBadge libelle={i.statut?.libelle} />
+                        <SanteBadge sante={i.sante} />
                       </div>
                       <div className="surveillance-meta">
                         <span className="cellule-code">{i.code}</span>
                         <span><IconClock size={13} /> {t('dashboard.surveiller.echeance', { date: formatDate(i.dateFinPrevue) })}</span>
                         <span className="surveillance-retard">{t('dashboard.surveiller.joursRetard', { n: joursDeRetard(i.dateFinPrevue) })}</span>
+                        {i.sante?.raison && (
+                          <span className="texte-muet">{t(`sante.raison.${i.sante.raison}`, i.sante.parametres ?? {})}</span>
+                        )}
                       </div>
                       <div className="surveillance-progression">
                         <ProgressBar valeur={i.avancement} />

@@ -2,11 +2,15 @@
 # Tests fonctionnels de l'API REST (PHASE 10)
 # Portefeuille d'initiatives digitales - IT6 Consulting
 # Usage : powershell -NoProfile -ExecutionPolicy Bypass -File tests-api.ps1
+#   Backend local (profil dev) : valeur par défaut, 127.0.0.1:8080
+#   Backend Docker : -Base http://127.0.0.1:8081/api
 # La suite est idempotente : codes/emails uniques à chaque exécution,
 # l'initiative de test termine « Terminée » + archivée (exclue des KPI).
 # Fichier en UTF-8 (BOM) pour les comparaisons accentuées.
 # ============================================================
-$Base = 'http://127.0.0.1:8080/api'
+param(
+    [string]$Base = 'http://127.0.0.1:8080/api'
+)
 $suffixe = Get-Date -Format 'HHmmssfff'
 $codeTest = "TEST-$suffixe"
 $emailTest = "test$suffixe@it6.ma"
@@ -135,6 +139,28 @@ Test-Check 'Recherche texte « MOB » trouve MOB-SUI-003' ($recherche.OK -and @(
 $filtreCombo = Invoke-Api 'Get' "$Base/initiatives?responsable=2&priorite=3&statut=2" $null $adminToken
 Test-Check 'Combinaison de filtres acceptée (200)' $filtreCombo.OK
 
+# Score de santé automatique : chaque ligne de la liste en porte un, avec un
+# niveau de l'énumération et un motif ; MOB-SUI-003 (date butoir dépassée)
+# doit ressortir ROUGE « finDepassee ». La fiche et la surveillance du
+# dashboard sont enrichies par les mêmes règles.
+$niveaux = @('VERTE', 'ORANGE', 'ROUGE')
+Test-Check 'Santé présente sur chaque initiative (niveau + motif)' (
+    $liste.OK -and @($liste.Body | Where-Object {
+        $null -eq $_.sante -or $niveaux -notcontains $_.sante.niveau -or [string]::IsNullOrEmpty($_.sante.raison)
+    }).Count -eq 0) "($($liste.Body.Count) lignes)"
+$mob = @($liste.Body | Where-Object { $_.code -eq 'MOB-SUI-003' })
+Test-Check 'MOB-SUI-003 (en retard) -> santé ROUGE « finDepassee »' (
+    $mob.Count -eq 1 -and $mob[0].sante.niveau -eq 'ROUGE' -and $mob[0].sante.raison -eq 'finDepassee') "($($mob[0].sante.niveau)/$($mob[0].sante.raison))"
+$idMob = 0; if ($mob.Count -eq 1) { $idMob = $mob[0].idInitiative }
+$ficheMob = Invoke-Api 'Get' "$Base/initiatives/$idMob" $null $adminToken
+Test-Check 'Fiche détaillée : santé renvoyée avec niveau valide' (
+    $ficheMob.OK -and $niveaux -contains $ficheMob.Body.sante.niveau -and
+    -not [string]::IsNullOrEmpty($ficheMob.Body.sante.raison)) "($($ficheMob.Body.sante.niveau)/$($ficheMob.Body.sante.raison))"
+Test-Check 'Surveillance du dashboard : santé enrichie sur chaque ligne' (
+    $dash.OK -and @($dash.Body.initiativesEnRetard | Where-Object {
+        $null -eq $_.sante -or $niveaux -notcontains $_.sante.niveau
+    }).Count -eq 0) "($($dash.Body.initiativesEnRetard.Count) lignes)"
+
 Write-Output "=== 4. Création et règles métier ($codeTest) ==="
 $corps = @{
     code = $codeTest; nom = 'Initiative de test'; description = 'Créée par les tests';
@@ -144,6 +170,7 @@ $corps = @{
 $cree = Invoke-Api 'Post' "$Base/initiatives" $corps $adminToken
 Test-Check 'Création valide -> 201' ($cree.OK -and $cree.Body.idInitiative -gt 0)
 $idTest = $cree.Body.idInitiative
+Test-Check 'Création : santé non calculée sur les écritures (null)' ($null -eq $cree.Body.sante)
 Test-Check 'Statut créé = À planifier' ($cree.Body.statut.libelle -eq 'À planifier') "($($cree.Body.statut.libelle))"
 Test-Check 'Responsable affecté' ($cree.Body.responsable.nomComplet -eq 'Karim Alaoui') "($($cree.Body.responsable.nomComplet))"
 
@@ -507,8 +534,16 @@ $histParUtil = Invoke-Api 'Get' "$Base/historique-statuts?utilisateur=$idAuteurH
 Test-Check 'Filtre utilisateur : lignes toutes du même auteur' (@($histParUtil.Body).Count -gt 0 -and @($histParUtil.Body | Where-Object { $_.utilisateur.idUser -eq $idAuteurHist }).Count -eq @($histParUtil.Body).Count) "($(@($histParUtil.Body).Count))"
 
 $jour = Get-Date -Format 'yyyy-MM-dd'
-$histJour = Invoke-Api 'Get' "$Base/historique-statuts?du=$jour&au=$jour" $null $adminToken
-Test-Check 'Filtre période du/au = aujourd''hui : événements du jour' (@($histJour.Body).Count -ge 3 -and @($histJour.Body | Where-Object { $_.dateChangement -like "$jour*" }).Count -eq @($histJour.Body).Count) "($(@($histJour.Body).Count))"
+$hier = (Get-Date).AddDays(-1).ToString('yyyy-MM-dd')
+# Les événements sont horodatés en UTC côté serveur : la fenêtre couvre hier
+# ET aujourd'hui pour rester valide de part et d'autre de minuit (minuit
+# local peut encore être la veille en UTC).
+$histJour = Invoke-Api 'Get' "$Base/historique-statuts?du=$hier&au=$jour" $null $adminToken
+Test-Check 'Filtre période du/au = aujourd''hui : événements du jour' (
+    @($histJour.Body).Count -ge 3 -and
+    @($histJour.Body | Where-Object {
+        $_.dateChangement -like "$jour*" -or $_.dateChangement -like "$hier*"
+    }).Count -eq @($histJour.Body).Count) "($(@($histJour.Body).Count))"
 $histFutur = Invoke-Api 'Get' "$Base/historique-statuts?du=2099-01-01&au=2099-01-02" $null $adminToken
 Test-Check 'Filtre période future : aucune ligne' ($histFutur.OK -and @($histFutur.Body).Count -eq 0) "($(@($histFutur.Body).Count))"
 

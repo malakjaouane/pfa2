@@ -4,6 +4,7 @@ import ma.it6.portefeuille.dto.DashboardResponse;
 import ma.it6.portefeuille.dto.DashboardResponse.ChartDatum;
 import ma.it6.portefeuille.dto.InitiativeFilterRequest;
 import ma.it6.portefeuille.dto.InitiativeResponse;
+import ma.it6.portefeuille.dto.SanteDto;
 import ma.it6.portefeuille.entity.Initiative;
 import ma.it6.portefeuille.mapper.InitiativeMapper;
 import ma.it6.portefeuille.repository.InitiativeRepository;
@@ -52,11 +53,14 @@ public class DashboardService {
 
     private final InitiativeRepository initiativeRepository;
     private final JalonRepository jalonRepository;
+    private final CalculeurSante calculeurSante;
 
     public DashboardService(InitiativeRepository initiativeRepository,
-                            JalonRepository jalonRepository) {
+                            JalonRepository jalonRepository,
+                            CalculeurSante calculeurSante) {
         this.initiativeRepository = initiativeRepository;
         this.jalonRepository = jalonRepository;
+        this.calculeurSante = calculeurSante;
     }
 
     @Transactional(readOnly = true)
@@ -119,8 +123,12 @@ public class DashboardService {
                 trierParCompte(initiatives, i -> i.getObjectif() == null ? NON_RATTACHE : i.getObjectif().getLibelle()),
                 i -> i.getObjectif() == null ? NON_RATTACHE : i.getObjectif().getLibelle());
 
+        // Les initiatives à surveiller portent aussi leur score de santé
+        // (calculé en lot) : la page d'accueil affiche le niveau et le motif.
+        Map<Long, SanteDto> santes =
+                calculeurSante.calculerTous(enRetardListe);
         List<InitiativeResponse> enRetardReponses = enRetardListe.stream()
-                .map(InitiativeMapper::toResponse)
+                .map(i -> InitiativeMapper.toResponse(i, santes.get(i.getIdInitiative())))
                 .toList();
 
         return new DashboardResponse(total, enCours, terminees, enPause, enRetard, jalonsEnRetard,

@@ -4,6 +4,7 @@ import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import { useReferentiels } from '../i18n/referentiels';
 import LanguageSwitcher from './LanguageSwitcher';
+import MotifZellige from './MotifZellige';
 import {
   IconDashboard,
   IconProject,
@@ -166,6 +167,7 @@ export default function Layout() {
 
       <div className="app-corps">
         <header className="topbar">
+          <MotifZellige className="motif-bande" taille={12} />
           <button
             className="topbar-burger"
             onClick={basculerMenu}

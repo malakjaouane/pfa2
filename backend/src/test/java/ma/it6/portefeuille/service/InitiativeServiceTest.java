@@ -74,6 +74,8 @@ class InitiativeServiceTest {
     private EtapeRepository etapeRepository;
     @Mock
     private HistoriqueStatutService historiqueStatutService;
+    @Mock
+    private CalculeurSante calculeurSante;
 
     @InjectMocks
     private InitiativeService service;

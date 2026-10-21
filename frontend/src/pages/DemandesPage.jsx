@@ -31,7 +31,7 @@ const CLES_STATUT_DEMANDE = {
 const formVide = { titre: '', descriptionBesoin: '', justificationMetier: '', idEntite: '', idPriorite: '' };
 
 /**
- * Module « Demandes d'initiatives » (inspiration ServiceNow SPM) :
+ * Module « Demandes d'initiatives » (workflow SPM) :
  * workflow Brouillon -> Soumise -> En évaluation -> Acceptée / Refusée,
  * et transformation d'une demande acceptée en initiative du portefeuille.
  */

@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import MotifZellige from '../components/MotifZellige';
 import { messageErreur } from '../api';
 
 /**
@@ -51,6 +52,7 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
+      <MotifZellige className="motif-fond-login" />
       <div className="login-boite">
         <div className="login-haut">
           <Link to="/" className="login-retour">← {t('login.retour')}</Link>

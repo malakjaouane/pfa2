@@ -36,7 +36,7 @@ const CLES_MOIS = [
 ];
 
 /**
- * Roadmap visuelle (inspiration Jira Align) : échéancier des initiatives
+ * Roadmap visuelle : échéancier des initiatives
  * sur une période mensuelle, calculé uniquement à partir des données réelles
  * (dates de début / fin prévues). Filtres combinés et barres colorées par statut.
  */

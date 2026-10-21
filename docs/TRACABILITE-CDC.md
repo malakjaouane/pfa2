@@ -84,6 +84,16 @@ test fonctionnel `tests-api.ps1`).
 | **Lecture + permissions existantes** : lecture ouverte à `INITIATIVE_CONSULTER`, aucune création/édition possible, aucun nouveau droit | `SecurityConfig` : `GET /api/historique-statuts/**` → `INITIATIVE_CONSULTER` ; aucun `@PostMapping/@PutMapping` (POST → 405) | JUnit `SecuriteApiTest` (401/403/200, POST → 405) + API (anonyme 401, visiteur 200) |
 | **Suppression d'une entrée (admin)** : nettoyage d'une ligne erronée depuis la colonne « Actions » avec confirmation ; réservée aux administrateurs | `DELETE /api/historique-statuts/{id}` (`HistoriqueStatutController.supprimer`, 204 / 404 si absent), `SecurityConfig` : `DELETE` → `UTILISATEUR_GERER` (droit existant) ; bouton `btn-danger` conditionné à `hasPermission('UTILISATEUR_GERER')` | JUnit `SecuriteApiTest` (anonyme 401, consultation seule 403, admin 204) + `HistoriqueStatutServiceTest` (suppression / 404) + API section 12 (401, 403, 404, 204 + total −1) |
 
+## 4quinquies. Améliorations — score de santé et durcissement
+
+| Fonctionnalité | Mise en œuvre | Validation |
+|---|---|---|
+| **Score de santé automatique** : feu vert / vigilance / à risque, calculé depuis les données déjà suivies — date butoir dépassée (rouge), ≥ 2 jalons en retard (rouge), 1 jalon (orange), écart planning/avancement ≥ 30 pts (rouge) / ≥ 15 pts (orange), terminée (vert) ; archivée = sans objet. Motif i18n affiché (« Date butoir dépassée de N jours », « X % du temps écoulé pour Y % d'avancement »…) | `CalculeurSante` (règles pures déterministes), `SanteDto(niveau, raison, parametres)` dans chaque `InitiativeResponse` de lecture (liste, fiche, surveillance dashboard) ; jalons chargés en lot (`JalonRepository.chercherParInitiatives`, une requête, pas de N+1) ; `SanteBadge.jsx` + `i18n/locales/sante.js` (fr/en/ar/es) | JUnit `CalculeurSanteTest` (13 tests : chaque règle, priorité du rouge, jalons atteints ignorés, chargement en lot) — API section 3 (niveau + motif sur chaque ligne, MOB-SUI-003 → ROUGE `finDepassee`, fiche enrichie, surveillance enrichie, écritures → `null`) |
+| **Secrets non codés en dur** : compte administrateur initial paramétré par environnement | `app.admin.email/password` (application.yml) lus par `DataInitializer` via `ADMIN_EMAIL` / `ADMIN_PASSWORD` ; plus de mot de passe en dur dans le code source ; transmis par `docker-compose.yml` | Démarrage backend ( création du compte admin avec les variables d'environnement ) + suite API (login admin inchangé) |
+| **JWT** : `.env` livré avec une clé aléatoire réelle (48 octets tirés au sort) ; `.env.example` n'expose plus la valeur par défaut connue | `VerificationSecrets` (refus hors profil dev), `package.ps1` exclut déjà `.env` des archives de remise | Démarrage du backend Docker (refus sans secret) + login/requêtes avec le nouveau secret |
+| **CSP (Content-Security-Policy)** : `default-src 'self'`, `script-src 'self'` (aucun script inline), `font-src 'self'` (polices embarquées), `style-src` limité aux styles inline React ; en-têtes repris dans `location /assets/` (règle d'héritage `add_header` de nginx) | `frontend/nginx.conf` | Console navigateur : 0 violation sur login, dashboard, liste et fiche ; en-tête présent sur `/` et `/assets/*` (vérifié via requête HTTP) |
+| **Identité visuelle IT6** : variables `--jira-*` renommées `--accent-*` (51 occurrences), plus aucune mention Jira/Atlassian dans la feuille de style, palette bordeaux IT6 assumée ; motif zellige (étoile à huit branches, SVG inline, RTL-safe) sur le login et l'en-tête | `styles.css`, `MotifZellige.jsx`, `LoginPage.jsx`, `Layout.jsx` | Build Vite + console navigateur (0 violation CSP : SVG inline, aucune image externe) + DOM (`svg pattern` sur login et topbar) |
+
 ## 5. Acteurs et permissions
 
 | Rôle (CDC) | Permissions (15 / 12 / 3) | Mise en œuvre |
@@ -103,6 +113,11 @@ test fonctionnel `tests-api.ps1`).
   recherche, filtres statut/utilisateur/période, pagination, tri, validation des
   paramètres, permissions, lecture seule (POST → 405) et suppression
   administrative (401/403/404/204 + total décrémenté).
+- **Score de santé** : 5 scénarios fonctionnels (section 3 de `tests-api.ps1`) et
+  13 tests JUnit (`CalculeurSanteTest`) : niveau + motif sur liste/fiche/surveillance,
+  rouge sur initiative en retard, `null` sur les écritures.
+- **Bilan chiffré** : **124 tests JUnit** et **150 scénarios fonctionnels**,
+  0 échec (dernière campagne).
 - Les règles structurales (RM02/08/09/12/13/16) sont garanties par le schéma
   (clés étrangères, contraintes de non-null) et exercées par les tests de l'API.
 - Les KPI du CDC sont tous calculés par l'API (aucune valeur codée en dur),

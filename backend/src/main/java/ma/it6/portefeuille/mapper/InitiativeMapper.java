@@ -2,6 +2,7 @@ package ma.it6.portefeuille.mapper;
 
 import ma.it6.portefeuille.dto.InitiativeResponse;
 import ma.it6.portefeuille.dto.ObjectifDto;
+import ma.it6.portefeuille.dto.SanteDto;
 import ma.it6.portefeuille.dto.StatutInitiativeDto;
 import ma.it6.portefeuille.dto.PrioriteDto;
 import ma.it6.portefeuille.entity.Initiative;
@@ -58,6 +59,15 @@ public final class InitiativeMapper {
     }
 
     public static InitiativeResponse toResponse(Initiative i) {
+        return toResponse(i, null);
+    }
+
+    /**
+     * @param sante score de santé calculé (voir {@code CalculeurSante}) ;
+     *              {@code null} quand il n'a pas été demandé (écritures,
+     *              archives)
+     */
+    public static InitiativeResponse toResponse(Initiative i, SanteDto sante) {
         if (i == null) {
             return null;
         }
@@ -72,6 +82,7 @@ public final class InitiativeMapper {
                 i.getAvancement(),
                 i.getArchive(),
                 enRetard(i, LocalDate.now()),
+                sante,
                 UtilisateurMapper.toEntiteDto(i.getEntite()),
                 UtilisateurMapper.toSummary(i.getResponsable()),
                 toStatutDto(i.getStatut()),

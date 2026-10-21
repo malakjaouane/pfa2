@@ -4,6 +4,7 @@ import ma.it6.portefeuille.dto.ChangerStatutRequest;
 import ma.it6.portefeuille.dto.InitiativeFilterRequest;
 import ma.it6.portefeuille.dto.InitiativeRequest;
 import ma.it6.portefeuille.dto.InitiativeResponse;
+import ma.it6.portefeuille.dto.SanteDto;
 import ma.it6.portefeuille.entity.*;
 import ma.it6.portefeuille.exception.BadRequestException;
 import ma.it6.portefeuille.exception.ResourceNotFoundException;
@@ -47,6 +48,7 @@ public class InitiativeService {
     private final ObjectifStrategiqueRepository objectifRepository;
     private final EtapeRepository etapeRepository;
     private final HistoriqueStatutService historiqueStatutService;
+    private final CalculeurSante calculeurSante;
 
     public InitiativeService(InitiativeRepository initiativeRepository,
                              StatutInitiativeRepository statutInitiativeRepository,
@@ -55,7 +57,8 @@ public class InitiativeService {
                              UtilisateurRepository utilisateurRepository,
                              ObjectifStrategiqueRepository objectifRepository,
                              EtapeRepository etapeRepository,
-                             HistoriqueStatutService historiqueStatutService) {
+                             HistoriqueStatutService historiqueStatutService,
+                             CalculeurSante calculeurSante) {
         this.initiativeRepository = initiativeRepository;
         this.statutInitiativeRepository = statutInitiativeRepository;
         this.prioriteRepository = prioriteRepository;
@@ -64,6 +67,7 @@ public class InitiativeService {
         this.objectifRepository = objectifRepository;
         this.etapeRepository = etapeRepository;
         this.historiqueStatutService = historiqueStatutService;
+        this.calculeurSante = calculeurSante;
     }
 
     // ------------------------------------------------------------------
@@ -117,21 +121,30 @@ public class InitiativeService {
         Sort sort = construireTri(tri, direction);
 
         if (page == null && size == null) {
-            return initiativeRepository
+            return versReponsesAvecSante(initiativeRepository
                     .findAll(InitiativeSpecifications.filtrer(filtre), sort)
                     .stream()
-                    .map(InitiativeMapper::toResponse)
-                    .toList();
+                    .toList());
         }
 
         int numeroPage = Math.max(0, page == null ? 0 : page);
         int taille = (size == null || size <= 0) ? TAILLE_PAR_DEFAUT : Math.min(size, TAILLE_MAXIMALE);
         Pageable pageable = PageRequest.of(numeroPage, taille, sort);
 
-        return initiativeRepository
+        return versReponsesAvecSante(initiativeRepository
                 .findAll(InitiativeSpecifications.filtrer(filtre), pageable)
                 .stream()
-                .map(InitiativeMapper::toResponse)
+                .toList());
+    }
+
+    /**
+     * DTOs d'une liste d'initiatives, enrichis du score de santé calculé en
+     * lot (une seule requête de jalons pour toute la page).
+     */
+    private List<InitiativeResponse> versReponsesAvecSante(List<Initiative> initiatives) {
+        Map<Long, SanteDto> santes = calculeurSante.calculerTous(initiatives);
+        return initiatives.stream()
+                .map(i -> InitiativeMapper.toResponse(i, santes.get(i.getIdInitiative())))
                 .toList();
     }
 
@@ -156,7 +169,8 @@ public class InitiativeService {
 
     @Transactional(readOnly = true)
     public InitiativeResponse trouver(Long idInitiative) {
-        return InitiativeMapper.toResponse(getInitiative(idInitiative));
+        Initiative initiative = getInitiative(idInitiative);
+        return InitiativeMapper.toResponse(initiative, calculeurSante.calculer(initiative));
     }
 
     @Transactional(readOnly = true)

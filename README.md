@@ -240,6 +240,9 @@ cd backend
 
 Couvrent `InitiativeService` (création, transitions, RM04/05/06/07/14),
 `InitiativeMapper` (règle « en retard »), `DashboardService` (agrégation des KPI),
+`CalculeurSante` (score de santé automatique : archivée / terminée / date
+butor / jalons en retard / écart planning-avancement, et chargement en lot des
+jalons sans N+1),
 `BudgetService` (consommé / effectif / écart), `DemandeService`
 (workflow des demandes, transformation en initiative), `EtapeService`
 (étapes et jalons), `HistoriqueStatutService` (origine manuelle/automatique des
@@ -248,24 +251,27 @@ d'une entrée avec 404 si elle n'existe pas),
 `SecuriteApiTest` (règles d'URL et filtrage JWT, dont lecture et suppression du
 journal) et
 `ApiErreurHttpTest` (codes HTTP d'erreur : 405 / 400 / 415 / 406 au lieu de 500).
-**111 tests, 0 échec.**
+**124 tests, 0 échec.**
 
 ### Tests fonctionnels de l'API
 
 ```powershell
-# le backend doit être démarré
+# le backend doit être démarré (local : valeur par défaut)
 powershell -NoProfile -ExecutionPolicy Bypass -File database\tests-api.ps1
+# backend Docker : -Base http://127.0.0.1:8081/api
 ```
 
 Suite idempotente (codes/emails uniques par exécution) qui couvre
 l'authentification, les KPI, les filtres, les règles métier, le cycle de vie,
 les autorisations, les utilisateurs, les rôles, les **objectifs stratégiques**,
-le **workflow des demandes** et l'**historique des statuts** (sections 10, 11 et
+le **workflow des demandes**, l'**historique des statuts** (sections 10, 11 et
 12 : page globale, origine manuelle/automatique, recherche, filtres statut /
 utilisateur / période, pagination, tri, permissions, création interdite et
-suppression administrative 401/403/404/204). Les KPI
+suppression administrative 401/403/404/204) et le **score de santé** (niveau et
+motif sur chaque ligne de la liste, de la fiche et de la surveillance du
+dashboard, rouge sur une initiative en retard, absent des écritures). Les KPI
 sont comparés à un recalcul indépendant issu de la liste réelle des initiatives
-(aucune valeur codée en dur). **145 scénarios, 0 échec.**
+(aucune valeur codée en dur). **150 scénarios, 0 échec.**
 
 Après une campagne de tests, purgez les résidus (initiatives `TEST*` archivées,
 initiatives issues de demandes de test `DEM-*`, demandes `TEST-DEM*`, objectifs

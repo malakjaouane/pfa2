@@ -8,7 +8,7 @@ import { afficherMessage } from '../i18n/message';
 const formVide = { code: '', libelle: '', description: '' };
 
 /**
- * Objectifs stratégiques (inspiration Jira Align) : consultation du
+ * Objectifs stratégiques : consultation du
  * référentiel, création / modification, et initiatives contribuant à
  * chaque objectif (décompte calculé depuis la base réelle).
  */

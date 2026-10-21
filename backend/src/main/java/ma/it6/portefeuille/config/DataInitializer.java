@@ -6,6 +6,7 @@ import ma.it6.portefeuille.service.CalculeurAvancement;
 import ma.it6.portefeuille.service.HistoriqueStatutService;
 import ma.it6.portefeuille.service.InitiativeService;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,11 +21,15 @@ import java.util.List;
  *  - un petit portefeuille d'initiatives (avec étapes et jalons) afin de
  *    visualiser le dashboard et les KPI dès le premier lancement.
  * Seules les tables vides sont alimentées (idempotent).
+ *
+ * <p>Le compte administrateur est paramétré par environnement
+ * ({@code ADMIN_EMAIL} / {@code ADMIN_PASSWORD}, cf. {@code app.admin} dans
+ * application.yml) : aucun mot de passe n'est codé en dur dans le code
+ * source. Les valeurs par défaut ne servent qu'au lancement local.</p>
  */
 @Component
 public class DataInitializer implements CommandLineRunner {
 
-    public static final String ADMIN_PASSWORD = "Admin@123";
     public static final String RESPONSABLE_PASSWORD = "Resp@123";
     public static final String VISITEUR_PASSWORD = "Visi@123";
 
@@ -41,6 +46,8 @@ public class DataInitializer implements CommandLineRunner {
     private final ObjectifStrategiqueRepository objectifRepository;
     private final HistoriqueStatutService historiqueStatutService;
     private final PasswordEncoder passwordEncoder;
+    private final String emailAdmin;
+    private final String motDePasseAdmin;
 
     public DataInitializer(UtilisateurRepository utilisateurRepository,
                            RoleRepository roleRepository,
@@ -54,7 +61,9 @@ public class DataInitializer implements CommandLineRunner {
                            StatutJalonRepository statutJalonRepository,
                            ObjectifStrategiqueRepository objectifRepository,
                            HistoriqueStatutService historiqueStatutService,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           @Value("${app.admin.email}") String emailAdmin,
+                           @Value("${app.admin.password}") String motDePasseAdmin) {
         this.utilisateurRepository = utilisateurRepository;
         this.roleRepository = roleRepository;
         this.entiteRepository = entiteRepository;
@@ -68,6 +77,8 @@ public class DataInitializer implements CommandLineRunner {
         this.objectifRepository = objectifRepository;
         this.historiqueStatutService = historiqueStatutService;
         this.passwordEncoder = passwordEncoder;
+        this.emailAdmin = emailAdmin;
+        this.motDePasseAdmin = motDePasseAdmin;
     }
 
     @Override
@@ -240,8 +251,8 @@ public class DataInitializer implements CommandLineRunner {
         Entite si = entiteRepository.findById(3L).orElse(null);
 
         utilisateurRepository.save(Utilisateur.builder()
-                .nom("Administrateur").prenom("Système").email("admin@it6.ma")
-                .motDePasse(passwordEncoder.encode(ADMIN_PASSWORD))
+                .nom("Administrateur").prenom("Système").email(emailAdmin)
+                .motDePasse(passwordEncoder.encode(motDePasseAdmin))
                 .telephone("0611111111").actif(true).role(admin).entite(it6).build());
 
         utilisateurRepository.save(Utilisateur.builder()
@@ -267,7 +278,7 @@ public class DataInitializer implements CommandLineRunner {
         Priorite critique = prioriteRepository.findById(4L).orElseThrow();
 
         Utilisateur responsable = utilisateurRepository.findByEmail("responsable@it6.ma").orElse(null);
-        Utilisateur admin = utilisateurRepository.findByEmail("admin@it6.ma").orElse(null);
+        Utilisateur admin = utilisateurRepository.findByEmail(emailAdmin).orElse(null);
         Entite it6 = entiteRepository.findById(1L).orElse(null);
         Entite dv = entiteRepository.findById(2L).orElse(null);
         Entite si = entiteRepository.findById(3L).orElse(null);

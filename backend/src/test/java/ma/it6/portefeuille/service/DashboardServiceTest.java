@@ -21,6 +21,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -43,6 +44,8 @@ class DashboardServiceTest {
     private InitiativeRepository initiativeRepository;
     @Mock
     private JalonRepository jalonRepository;
+    @Mock
+    private CalculeurSante calculeurSante;
 
     @InjectMocks
     private DashboardService service;
@@ -50,6 +53,7 @@ class DashboardServiceTest {
     @SuppressWarnings("unchecked")
     private void brancher(List<Initiative> initiatives) {
         when(initiativeRepository.findAll(any(Specification.class))).thenReturn(initiatives);
+        when(calculeurSante.calculerTous(any())).thenReturn(Map.of());
     }
 
     private Initiative initiative(Long id, String statut, Integer ordreStatut, int avancement,

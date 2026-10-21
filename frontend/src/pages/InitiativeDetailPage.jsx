@@ -6,6 +6,7 @@ import { useI18n } from '../i18n/I18nContext';
 import { afficherMessage } from '../i18n/message';
 import { useReferentiels } from '../i18n/referentiels';
 import StatutBadge from '../components/StatutBadge';
+import SanteBadge from '../components/SanteBadge';
 import ProgressBar from '../components/ProgressBar';
 import { IconTarget, IconAlert } from '../components/Icons';
 
@@ -241,6 +242,10 @@ export default function InitiativeDetailPage() {
           <div>
             <span className="libelle">{t('initiativeDetail.statut')}</span>
             <StatutBadge libelle={initiative.statut?.libelle} />
+          </div>
+          <div>
+            <span className="libelle">{t('sante.colonne')}</span>
+            <SanteBadge sante={initiative.sante} avecRaison />
           </div>
           <div>
             <span className="libelle">{t('initiativeDetail.priorite')}</span>
