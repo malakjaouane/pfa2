@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api, { messageErreur } from '../api';
 import { useI18n } from '../i18n/I18nContext';
+import { afficherMessage } from '../i18n/message';
 import { useReferentiels } from '../i18n/referentiels';
 
 /**
@@ -52,7 +53,7 @@ export default function RolesPage() {
   const enregistrer = async (role) => {
     try {
       await api.put(`/roles/${role.idRole}/permissions`, { idsPermissions: [...(selection[role.idRole] ?? [])] });
-      setInfo(t('roles.permissionsEnregistrees', { role: ref.role(role.code, role.libelle) }));
+      setInfo({ cle: 'roles.permissionsEnregistrees', params: { role: ref.role(role.code, role.libelle) } });
       charger();
     } catch (err) {
       setErreur(messageErreur(err));
@@ -68,8 +69,8 @@ export default function RolesPage() {
         </div>
       </header>
 
-      {info && <div className="alerte alerte-succes">{info}</div>}
-      {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
+      {info && <div className="alerte alerte-succes">{afficherMessage(t, info)}</div>}
+      {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
 
       <div className="roles-grille">
         {roles.map((role) => (

@@ -48,6 +48,19 @@ public class HistoriqueStatut {
     @Column(name = "date_changement", nullable = false)
     private LocalDateTime dateChangement;
 
+    /**
+     * Origine du changement : {@code true} lorsque la transition a été
+     * déclenchée par le moteur de règles (RM07-auto, réouverture, RM17,
+     * alignement au démarrage), {@code false} pour une action explicite
+     * d'un utilisateur (formulaire, Kanban, archivage).
+     *
+     * <p>Le journal étant en lecture seule côté interface, cette colonne
+     * alimente l'affichage « manuel / automatique » de la page
+     * « Historique des statuts » sans jamais être modifiable.</p>
+     */
+    @Column(name = "automatique", nullable = false)
+    private boolean automatique;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_utilisateur")
     private Utilisateur utilisateur;

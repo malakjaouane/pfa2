@@ -110,7 +110,8 @@ public class DataInitializer implements CommandLineRunner {
                     statut == null ? "Non défini" : statut,
                     "Initiative antérieure à l'ouverture du journal : la date portée est celle "
                             + "de la mise en service du journal, pas celle de la création réelle.",
-                    null);
+                    null,
+                    true);
         }
     }
 
@@ -118,6 +119,17 @@ public class DataInitializer implements CommandLineRunner {
      * L'avancement d'une initiative est piloté par ses étapes : à chaque
      * démarrage, on aligne les valeurs afin qu'une base créée avant cette
      * règle ne conserve pas un pourcentage saisi à la main.
+     *
+     * <p>L'invariant RM07 « 100 % ⇒ Terminée » est également réappliqué ici.
+     * Une base héritée — créée avant le passage automatique — peut contenir
+     * une initiative bloquée à 100 % sous un statut actif (« À planifier »,
+     * « En cours », « En pause ») : le démarrage la replace à « Terminée »
+     * et en laisse la trace au journal des statuts.</p>
+     *
+     * <p>La règle RM18 (l'avancement d'une étape découle de son statut :
+     * « À faire » = 0 %, « Terminée » = 100 %) est d'abord réappliquée aux
+     * étapes héritées, afin que l'affichage et le calcul partagent toujours
+     * les mêmes valeurs.</p>
      */
     private void alignerAvancements() {
         for (Initiative initiative : initiativeRepository.findAll()) {
@@ -128,18 +140,94 @@ public class DataInitializer implements CommandLineRunner {
             if (InitiativeService.STATUT_ANNULEE.equals(statut)) {
                 continue;
             }
-            int calcule = CalculeurAvancement.calculer(
-                    etapeRepository.findByInitiativeIdInitiativeOrderByOrdreAsc(initiative.getIdInitiative()));
-            if (calcule < 0) {
-                continue; // aucune étape : on conserve la valeur saisie
+
+            // RM18 : une étape « À faire » héritée à 100 % (ou « Terminée » à
+            // 0 %) est remise à la valeur imposée par son statut.
+            List<Etape> etapes = etapeRepository
+                    .findByInitiativeIdInitiativeOrderByOrdreAsc(initiative.getIdInitiative());
+            for (Etape etape : etapes) {
+                Integer coherente = avancementCoherent(etape);
+                if (coherente != null
+                        && (etape.getAvancement() == null || !coherente.equals(etape.getAvancement()))) {
+                    etape.setAvancement(coherente);
+                    etapeRepository.save(etape);
+                }
             }
-            // RM07 : une initiative « Terminée » affiche toujours 100 %.
-            int attendu = InitiativeService.STATUT_TERMINEE.equals(statut) ? 100 : calcule;
-            if (initiative.getAvancement() == null || initiative.getAvancement() != attendu) {
-                initiative.setAvancement(attendu);
-                initiativeRepository.save(initiative);
+
+            int calcule = CalculeurAvancement.calculer(etapes);
+            int attendu;
+            if (calcule >= 0) {
+                // RM07 : une initiative « Terminée » affiche toujours 100 %.
+                attendu = InitiativeService.STATUT_TERMINEE.equals(statut) ? 100 : calcule;
+                if (initiative.getAvancement() == null || initiative.getAvancement() != attendu) {
+                    initiative.setAvancement(attendu);
+                    initiativeRepository.save(initiative);
+                }
+            } else {
+                // Aucune étape : on conserve la valeur saisie — sauf pour une
+                // « Terminée », que la règle RM07 maintient à 100 %.
+                attendu = InitiativeService.STATUT_TERMINEE.equals(statut)
+                        ? 100
+                        : (initiative.getAvancement() == null ? 0 : initiative.getAvancement());
+                if (initiative.getAvancement() == null || initiative.getAvancement() != attendu) {
+                    initiative.setAvancement(attendu);
+                    initiativeRepository.save(initiative);
+                }
+            }
+
+            // RM07-auto : 100 % atteint et statut encore actif -> « Terminée ».
+            if (attendu == 100 && !InitiativeService.STATUT_TERMINEE.equals(statut)) {
+                statutInitiativeRepository.findByLibelle(InitiativeService.STATUT_TERMINEE)
+                        .ifPresent(terminee -> {
+                            initiative.setStatut(terminee);
+                            initiativeRepository.save(initiative);
+                            historiqueStatutService.enregistrer(
+                                    initiative, statut, InitiativeService.STATUT_TERMINEE,
+                                    "Passage automatique : avancement atteint 100 % "
+                                            + "(RM07, alignement au démarrage)",
+                                    null, true);
+                        });
+            }
+
+            // 0 % piloté par les étapes : rien n'a commencé -> « À planifier ».
+            // Un « En cours » resté sans progression (donnée héritée) est
+            // ramené à l'état réel du travail, avec trace au journal.
+            if (calcule >= 0 && attendu == 0
+                    && InitiativeService.STATUT_EN_COURS.equals(statut)) {
+                statutInitiativeRepository.findByLibelle(InitiativeService.STATUT_A_PLANIFIER)
+                        .ifPresent(aPlanifier -> {
+                            initiative.setStatut(aPlanifier);
+                            initiativeRepository.save(initiative);
+                            historiqueStatutService.enregistrer(
+                                    initiative, statut, InitiativeService.STATUT_A_PLANIFIER,
+                                    "Retour automatique : avancement à 0 %, "
+                                            + "l'initiative n'a pas commencé "
+                                            + "(alignement au démarrage)",
+                                    null, true);
+                        });
             }
         }
+    }
+
+    /**
+     * RM18 : valeur d'avancement imposée par le statut d'une étape
+     * (« Terminée » 100 %, « À faire » 0 %, « En cours » à 0 % → 50 % car
+     * un champ non renseigné) ; {@code null} sinon (valeur saisie
+     * conservée pour « En cours » et statuts inconnus).
+     */
+    private static Integer avancementCoherent(Etape etape) {
+        String statut = etape.getStatutEtape() == null ? null : etape.getStatutEtape().getLibelle();
+        if (CalculeurAvancement.ETAPE_TERMINEE.equals(statut)) {
+            return 100;
+        }
+        if (CalculeurAvancement.ETAPE_A_FAIRE.equals(statut)) {
+            return 0;
+        }
+        if (CalculeurAvancement.ETAPE_EN_COURS.equals(statut)
+                && (etape.getAvancement() == null || etape.getAvancement() == 0)) {
+            return 50;
+        }
+        return null;
     }
 
     private void creerUtilisateurs() {

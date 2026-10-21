@@ -21,6 +21,9 @@ export default {
     'dashboard.kpi.enPause': 'En pause',
 
     'dashboard.filtre.titre': 'Filtres du portefeuille',
+    'dashboard.filtre.ariaStatut': 'Filtrer par statut',
+    'dashboard.filtre.ariaEntite': 'Filtrer par entité',
+    'dashboard.filtre.ariaResponsable': 'Filtrer par responsable',
     'dashboard.filtre.tousStatuts': 'Tous les statuts',
     'dashboard.filtre.toutesEntites': 'Toutes les entités',
     'dashboard.filtre.tousResponsables': 'Tous les responsables',
@@ -92,6 +95,9 @@ export default {
     'dashboard.kpi.enPause': 'On hold',
 
     'dashboard.filtre.titre': 'Portfolio filters',
+    'dashboard.filtre.ariaStatut': 'Filter by status',
+    'dashboard.filtre.ariaEntite': 'Filter by entity',
+    'dashboard.filtre.ariaResponsable': 'Filter by owner',
     'dashboard.filtre.tousStatuts': 'All statuses',
     'dashboard.filtre.toutesEntites': 'All entities',
     'dashboard.filtre.tousResponsables': 'All owners',
@@ -163,6 +169,9 @@ export default {
     'dashboard.kpi.enPause': 'متوقفة',
 
     'dashboard.filtre.titre': 'مرشحات المحفظة',
+    'dashboard.filtre.ariaStatut': 'تصفية حسب الحالة',
+    'dashboard.filtre.ariaEntite': 'تصفية حسب الكيانة',
+    'dashboard.filtre.ariaResponsable': 'تصفية حسب المسؤول',
     'dashboard.filtre.tousStatuts': 'كل الحالات',
     'dashboard.filtre.toutesEntites': 'كل الكيانات',
     'dashboard.filtre.tousResponsables': 'كل المسؤولين',
@@ -234,6 +243,9 @@ export default {
     'dashboard.kpi.enPause': 'En pausa',
 
     'dashboard.filtre.titre': 'Filtros del portafolio',
+    'dashboard.filtre.ariaStatut': 'Filtrar por estado',
+    'dashboard.filtre.ariaEntite': 'Filtrar por entidad',
+    'dashboard.filtre.ariaResponsable': 'Filtrar por responsable',
     'dashboard.filtre.tousStatuts': 'Todos los estados',
     'dashboard.filtre.toutesEntites': 'Todas las entidades',
     'dashboard.filtre.tousResponsables': 'Todos los responsables',

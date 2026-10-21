@@ -89,9 +89,10 @@ public class EtapeService {
                 .dateDebut(request.dateDebut())
                 .dateFinPrevue(request.dateFinPrevue())
                 .initiative(initiative)
-                .statutEtape(statut)
                 .build();
-        etape.setAvancement(cohererAvancement(request.avancement(), statut));
+        Harmonisation harmonisation = harmoniser(request.avancement(), statut);
+        etape.setStatutEtape(harmonisation.statut());
+        etape.setAvancement(harmonisation.avancement());
 
         validerEtape(etape, initiative);
         Etape sauvegardee = etapeRepository.save(etape);
@@ -108,20 +109,21 @@ public class EtapeService {
             throw new BadRequestException("L'initiative est archivée : modification d'étape refusée.");
         }
 
-        StatutEtape statut = etape.getStatutEtape();
+        StatutEtape statutChoisi = etape.getStatutEtape();
         if (request.idStatutEtape() != null) {
-            statut = statutEtapeRepository.findById(request.idStatutEtape())
+            statutChoisi = statutEtapeRepository.findById(request.idStatutEtape())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Statut d'étape introuvable : " + request.idStatutEtape()));
         }
-        etape.setStatutEtape(statut);
 
         etape.setNom(request.nom().trim());
         etape.setDescription(request.description());
         etape.setOrdre(request.ordre() != null ? request.ordre() : etape.getOrdre());
         etape.setDateDebut(request.dateDebut());
         etape.setDateFinPrevue(request.dateFinPrevue());
-        etape.setAvancement(cohererAvancement(request.avancement(), statut));
+        Harmonisation harmonisation = harmoniser(request.avancement(), statutChoisi);
+        etape.setStatutEtape(harmonisation.statut());
+        etape.setAvancement(harmonisation.avancement());
 
         validerEtape(etape, initiative);
         Etape sauvegardee = etapeRepository.save(etape);
@@ -201,10 +203,43 @@ public class EtapeService {
         String statutActuel = initiative.getStatut() == null
                 ? "" : initiative.getStatut().getLibelle();
 
-        // RM07 : une initiative « Terminée » affiche toujours 100 %.
+        // RM07 : une initiative « Terminée » affiche toujours 100 % — et le
+        // reste tant que toutes ses étapes sont terminées. En revanche, si
+        // une étape est rouverte (ou ajoutée) et que le recalcul descend sous
+        // 100 %, la clôture n'est plus justifiée : l'initiative est
+        // réouverte automatiquement, avec trace au journal. « Terminée »
+        // n'est donc pas un état figé. La cible suit l'avancement recalculé :
+        // 0 % = rien n'a commencé -> « À planifier », sinon -> « En cours ».
         if (InitiativeService.STATUT_TERMINEE.equals(statutActuel)) {
-            initiative.setAvancement(100);
+            if (calcule >= 100) {
+                // Toujours complet : l'invariant RM07 « Terminée = 100 % » tient.
+                initiative.setAvancement(100);
+                initiativeRepository.save(initiative);
+                return;
+            }
+            String cible = calcule == 0
+                    ? InitiativeService.STATUT_A_PLANIFIER
+                    : InitiativeService.STATUT_EN_COURS;
+            boolean reouverte = statutInitiativeRepository
+                    .findByLibelle(cible)
+                    .map(statut -> {
+                        initiative.setStatut(statut);
+                        return true;
+                    })
+                    .orElse(false);
+            if (!reouverte) {
+                // Référentiel incomplet : on ne touche ni au statut ni à 100 %.
+                initiative.setAvancement(100);
+                initiativeRepository.save(initiative);
+                return;
+            }
+            initiative.setAvancement(calcule);
             initiativeRepository.save(initiative);
+            historiqueStatutService.enregistrer(
+                    initiative, InitiativeService.STATUT_TERMINEE, cible,
+                    "Réouverture automatique : les étapes ne sont plus toutes "
+                            + "terminées (avancement recalculé à " + calcule + " %)",
+                    utilisateurCourant(), true);
             return;
         }
         // Une initiative « Annulée » garde son avancement figé.
@@ -214,11 +249,24 @@ public class EtapeService {
 
         initiative.setAvancement(calcule);
 
-        // RM07-auto : 100 % atteint -> passage à « Terminée » (transition autorisée).
+        // RM07-auto : 100 % atteint -> passage à « Terminée », quel que soit
+        // l'état de départ (« À planifier », « En cours » ou « En pause »).
+        // Inversement, un retour à 0 % signifie que rien n'a commencé :
+        // « En cours » redevient « À planifier » (« En pause » est laissé
+        // tel quel : c'est un arrêt délibéré). Statuts finaux traités plus haut.
         boolean passeATerminee = false;
-        if (calcule == 100 && InitiativeService.STATUT_EN_COURS.equals(statutActuel)) {
+        boolean repasseAPlanifier = false;
+        if (calcule == 100) {
             passeATerminee = statutInitiativeRepository
                     .findByLibelle(InitiativeService.STATUT_TERMINEE)
+                    .map(statut -> {
+                        initiative.setStatut(statut);
+                        return true;
+                    })
+                    .orElse(false);
+        } else if (calcule == 0 && InitiativeService.STATUT_EN_COURS.equals(statutActuel)) {
+            repasseAPlanifier = statutInitiativeRepository
+                    .findByLibelle(InitiativeService.STATUT_A_PLANIFIER)
                     .map(statut -> {
                         initiative.setStatut(statut);
                         return true;
@@ -229,12 +277,21 @@ public class EtapeService {
 
         // Chaque changement de statut est journalisé (CDC §7.2 : tout
         // changement de statut est inscrit dans l'historique), y compris
-        // le passage automatique à « Terminée » déclenché par les étapes.
+        // les passages automatiques déclenchés par les étapes. L'origine
+        // (true) alimente la colonne « automatique » de la page
+        // « Historique des statuts ».
         if (passeATerminee) {
             historiqueStatutService.enregistrer(initiative, statutActuel,
                     InitiativeService.STATUT_TERMINEE,
                     "Passage automatique : toutes les étapes sont terminées",
-                    utilisateurCourant());
+                    utilisateurCourant(), true);
+        }
+        if (repasseAPlanifier) {
+            historiqueStatutService.enregistrer(initiative, statutActuel,
+                    InitiativeService.STATUT_A_PLANIFIER,
+                    "Retour automatique : avancement à 0 %, l'initiative "
+                            + "n'a pas commencé",
+                    utilisateurCourant(), true);
         }
     }
 
@@ -249,18 +306,46 @@ public class EtapeService {
     }
 
     /**
-     * Cohérence avancement / statut : « Terminée » vaut 100 %, « À faire » vaut 0 %.
+     * RM18 (double sens) : le statut choisit sa valeur par défaut
+     * (« À faire » 0 %, « En cours » 50 %, « Terminée » 100 %) lorsque le
+     * champ n'est pas renseigné (absent ou 0) ; inversement, un nombre
+     * clairement saisi prime sur le statut : 1-99 -> « En cours »,
+     * 100 -> « Terminée ». La paire retournée est toujours cohérente.
      */
-    private Integer cohererAvancement(Integer avancement, StatutEtape statut) {
-        int valeur = avancement == null ? 0 : avancement;
-        String libelle = statut == null ? null : statut.getLibelle();
+    private Harmonisation harmoniser(Integer avancement, StatutEtape statutChoisi) {
+        int valeur = avancement == null ? -1 : Math.max(0, Math.min(100, avancement));
+        if (valeur >= 1 && valeur <= 99) {
+            return new Harmonisation(
+                    statutOuReferentiel(statutChoisi, CalculeurAvancement.ETAPE_EN_COURS), valeur);
+        }
+        if (valeur == 100) {
+            return new Harmonisation(
+                    statutOuReferentiel(statutChoisi, CalculeurAvancement.ETAPE_TERMINEE), 100);
+        }
+        // Champ non renseigné (absent ou 0) : la valeur découle du statut choisi.
+        String libelle = statutChoisi == null ? null : statutChoisi.getLibelle();
         if (CalculeurAvancement.ETAPE_TERMINEE.equals(libelle)) {
-            return 100;
+            return new Harmonisation(statutChoisi, 100);
         }
-        if (CalculeurAvancement.ETAPE_A_FAIRE.equals(libelle)) {
-            return 0;
+        if (CalculeurAvancement.ETAPE_EN_COURS.equals(libelle)) {
+            return new Harmonisation(statutChoisi, 50);
         }
-        return Math.max(0, Math.min(100, valeur));
+        return new Harmonisation(statutChoisi, 0);
+    }
+
+    /** Statut demandé s'il porte déjà le bon libellé, sinon chargement du référentiel. */
+    private StatutEtape statutOuReferentiel(StatutEtape choisi, String libelle) {
+        if (choisi != null && libelle.equals(choisi.getLibelle())) {
+            return choisi;
+        }
+        return statutEtapeRepository.findAllByOrderByOrdreAsc().stream()
+                .filter(s -> libelle.equals(s.getLibelle()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Statut d'étape introuvable : " + libelle));
+    }
+
+    /** Paire (statut, avancement) harmonisée selon la règle RM18. */
+    private record Harmonisation(StatutEtape statut, Integer avancement) {
     }
 
     // ------------------------------------------------------------------

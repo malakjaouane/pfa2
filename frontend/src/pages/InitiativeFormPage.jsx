@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api, { messageErreur } from '../api';
 import { useI18n } from '../i18n/I18nContext';
+import { afficherMessage } from '../i18n/message';
 import { useReferentiels } from '../i18n/referentiels';
 
 const vide = (statutPlanifier) => ({
@@ -33,6 +34,11 @@ export default function InitiativeFormPage() {
   const [chargement, setChargement] = useState(edition);
   const [soumission, setSoumission] = useState(false);
   const [erreur, setErreur] = useState('');
+  // Dès qu'une initiative possède des étapes, son avancement est recalculé
+  // côté serveur (moyenne des étapes) : la saisie manuelle serait ignorée.
+  // On grise alors le champ et on l'explique, plutôt que de laisser croire
+  // qu'une valeur à 100 % clôture l'initiative.
+  const [etapesPilotent, setEtapesPilotent] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -72,6 +78,11 @@ export default function InitiativeFormPage() {
         })
         .catch((err) => setErreur(messageErreur(err)))
         .finally(() => setChargement(false));
+
+      api
+        .get(`/initiatives/${id}/etapes`)
+        .then((res) => setEtapesPilotent(Array.isArray(res.data) && res.data.length > 0))
+        .catch(() => {});
     }
   }, [id, edition]);
 
@@ -80,6 +91,13 @@ export default function InitiativeFormPage() {
   const gererSoumission = async (e) => {
     e.preventDefault();
     setErreur('');
+    // Contrôle explicite côté interface : le message s'affiche dans la page,
+    // sans dépendre de la bulle de validation native du navigateur.
+    const avancementSaisi = form.avancement === '' ? 0 : Number(form.avancement);
+    if (!Number.isFinite(avancementSaisi) || avancementSaisi < 0 || avancementSaisi > 100) {
+      setErreur({ cle: 'initiativeForm.erreurAvancement' });
+      return;
+    }
     setSoumission(true);
     const corps = {
       ...form,
@@ -119,7 +137,7 @@ export default function InitiativeFormPage() {
         </div>
       </header>
 
-      {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
+      {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
 
       <form className="carte formulaire" onSubmit={gererSoumission}>
         <div className="form-grille">
@@ -136,8 +154,8 @@ export default function InitiativeFormPage() {
             <textarea value={form.description} onChange={set('description')} rows={3} placeholder={t('initiativeForm.descriptionPlaceholder')} />
           </div>
           <div className="champ">
-            <label>{t('initiativeForm.entite')}</label>
-            <select value={form.idEntite} onChange={set('idEntite')} required>
+            <label htmlFor="if-entite">{t('initiativeForm.entite')}</label>
+            <select id="if-entite" value={form.idEntite} onChange={set('idEntite')} required>
               <option value="">—</option>
               {referentiels.entites.map((en) => (
                 <option key={en.idEntite} value={en.idEntite}>{en.nom}</option>
@@ -145,8 +163,8 @@ export default function InitiativeFormPage() {
             </select>
           </div>
           <div className="champ">
-            <label>{t('initiativeForm.responsable')}</label>
-            <select value={form.idResponsable} onChange={set('idResponsable')}>
+            <label htmlFor="if-responsable">{t('initiativeForm.responsable')}</label>
+            <select id="if-responsable" value={form.idResponsable} onChange={set('idResponsable')}>
               <option value="">—</option>
               {referentiels.responsables.map((r) => (
                 <option key={r.idUser} value={r.idUser}>{r.nomComplet}</option>
@@ -154,20 +172,20 @@ export default function InitiativeFormPage() {
             </select>
           </div>
           <div className="champ">
-            <label>{t('initiativeForm.statut')}</label>
+            <label htmlFor="if-statut">{t('initiativeForm.statut')}</label>
             {edition ? (
-              <select value={form.idStatut} onChange={set('idStatut')}>
+              <select id="if-statut" value={form.idStatut} onChange={set('idStatut')}>
                 {referentiels.statuts.map((st) => (
                   <option key={st.idStatut} value={st.idStatut}>{ref.statut(st.libelle)}</option>
                 ))}
               </select>
             ) : (
-              <input value={ref.statut('À planifier')} disabled />
+              <input id="if-statut" value={ref.statut('À planifier')} disabled />
             )}
           </div>
           <div className="champ">
-            <label>{t('initiativeForm.priorite')}</label>
-            <select value={form.idPriorite} onChange={set('idPriorite')} required>
+            <label htmlFor="if-priorite">{t('initiativeForm.priorite')}</label>
+            <select id="if-priorite" value={form.idPriorite} onChange={set('idPriorite')} required>
               <option value="">—</option>
               {referentiels.priorites.map((p) => (
                 <option key={p.idPriorite} value={p.idPriorite}>{ref.priorite(p.libelle)}</option>
@@ -175,8 +193,8 @@ export default function InitiativeFormPage() {
             </select>
           </div>
           <div className="champ">
-            <label>{t('initiativeForm.objectif')}</label>
-            <select value={form.idObjectif} onChange={set('idObjectif')}>
+            <label htmlFor="if-objectif">{t('initiativeForm.objectif')}</label>
+            <select id="if-objectif" value={form.idObjectif} onChange={set('idObjectif')}>
               <option value="">—</option>
               {referentiels.objectifs.map((o) => (
                 <option key={o.idObjectif} value={o.idObjectif}>{o.libelle}</option>
@@ -196,8 +214,14 @@ export default function InitiativeFormPage() {
             <input type="number" min="0" step="0.01" value={form.budget} onChange={set('budget')} placeholder="0" />
           </div>
           <div className="champ">
-            <label>{t('initiativeForm.avancement')}</label>
-            <input type="number" min="0" max="100" value={form.avancement} onChange={set('avancement')} placeholder="0" />
+            <label htmlFor="if-avancement">{t('initiativeForm.avancement')}</label>
+            <input id="if-avancement" type="number" min="0" max="100" value={form.avancement}
+              onChange={set('avancement')} placeholder="0" disabled={etapesPilotent}
+              aria-describedby={etapesPilotent ? 'if-avancement-aide' : undefined}
+              onInvalid={() => setErreur({ cle: 'initiativeForm.erreurAvancement' })} />
+            {etapesPilotent && (
+              <p className="aide-champ" id="if-avancement-aide">{t('initiativeForm.avancementEtapes')}</p>
+            )}
           </div>
         </div>
 

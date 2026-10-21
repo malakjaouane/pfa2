@@ -271,6 +271,11 @@ CREATE TABLE IF NOT EXISTS historique_statut (
     nouveau_statut  VARCHAR(50)   NOT NULL,
     commentaire     VARCHAR(500)  NULL,
     date_changement DATETIME      NOT NULL,
+    -- Origine du changement : FALSE = action manuelle d'un utilisateur,
+    -- TRUE = moteur de règles (RM07-auto, réouverture, RM17, alignement au
+    -- démarrage). Lecture seule depuis l'interface (page « Historique des
+    -- statuts ») : aucune écriture utilisateur n'est exposée.
+    automatique     BOOLEAN       NOT NULL DEFAULT FALSE,
     id_utilisateur  BIGINT        NULL,
     PRIMARY KEY (id_historique),
     CONSTRAINT fk_historique_initiative  FOREIGN KEY (id_initiative)  REFERENCES initiative (id_initiative) ON DELETE CASCADE,
@@ -401,3 +406,40 @@ SET @sql_audit = IF(@col = 0,
 PREPARE stmt_audit FROM @sql_audit;
 EXECUTE stmt_audit;
 DEALLOCATE PREPARE stmt_audit;
+
+-- Table : historique_statut — origine du changement (manuel / automatique).
+-- Colonne de la page « Historique des statuts » : FALSE = action explicite
+-- d'un utilisateur, TRUE = moteur de règles. Lecture seule côté interface.
+SET @col = (SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'historique_statut' AND COLUMN_NAME = 'automatique');
+SET @sql_origine = IF(@col = 0,
+        'ALTER TABLE historique_statut ADD COLUMN automatique BOOLEAN NOT NULL DEFAULT FALSE',
+        'SELECT 1');
+PREPARE stmt_origine FROM @sql_origine;
+EXECUTE stmt_origine;
+DEALLOCATE PREPARE stmt_origine;
+
+-- Rétroactif : les lignes déjà au journal dont le MOTIF déclare un passage
+-- automatique sont reclassées « automatique » (ces motifs sont posés par le
+-- code, jamais saisis librement). Idempotent : la garde `automatique = FALSE`
+-- rend toute seconde exécution sans effet sur les lignes déjà classées.
+UPDATE historique_statut
+   SET automatique = TRUE
+ WHERE automatique = FALSE
+   AND (commentaire LIKE 'Passage automatique%'
+     OR commentaire LIKE 'Retour automatique%'
+     OR commentaire LIKE 'Réouverture automatique%'
+     OR commentaire LIKE 'Initiative antérieure%');
+
+-- La page « Historique des statuts » lit le journal ENTIER trié par date et
+-- filtre sur la période : contrairement à l'index (initiative, date) qui sert
+-- la fiche, cet index sert le tri global.
+SET @col = (SELECT COUNT(*) FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'historique_statut'
+        AND INDEX_NAME = 'idx_historique_statut_date');
+SET @sql_date = IF(@col = 0,
+        'CREATE INDEX idx_historique_statut_date ON historique_statut (date_changement)',
+        'SELECT 1');
+PREPARE stmt_date FROM @sql_date;
+EXECUTE stmt_date;
+DEALLOCATE PREPARE stmt_date;

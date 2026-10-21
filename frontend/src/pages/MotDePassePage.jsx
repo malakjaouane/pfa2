@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useI18n } from '../i18n/I18nContext';
+import { afficherMessage } from '../i18n/message';
 import api, { messageErreur } from '../api';
 
 /**
@@ -25,7 +26,7 @@ export default function MotDePassePage() {
     setSucces('');
 
     if (nouveau !== confirmation) {
-      setErreur(t('motDePasse.erreurConfirmation'));
+      setErreur({ cle: 'motDePasse.erreurConfirmation' });
       return;
     }
 
@@ -56,7 +57,7 @@ export default function MotDePassePage() {
       </header>
 
       {succes && <div className="alerte alerte-succes">{succes}</div>}
-      {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
+      {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
 
       <div className="carte carte-formulaire">
         <form className="formulaire" onSubmit={soumettre}>

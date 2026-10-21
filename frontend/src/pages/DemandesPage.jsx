@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api, { messageErreur } from '../api';
 import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
+import { afficherMessage } from '../i18n/message';
 import { useReferentiels } from '../i18n/referentiels';
 
 const STYLES_DEMANDE = {
@@ -107,10 +108,10 @@ export default function DemandesPage() {
     try {
       if (idEdition) {
         await api.put(`/demandes/${idEdition}`, corps);
-        setInfo(t('demandes.infoModifiee'));
+        setInfo({ cle: 'demandes.infoModifiee' });
       } else {
         await api.post('/demandes', corps);
-        setInfo(t('demandes.infoCreee'));
+        setInfo({ cle: 'demandes.infoCreee' });
       }
       setFormVisible(false);
       setForm(formVide);
@@ -136,7 +137,7 @@ export default function DemandesPage() {
   const confirmerRefus = async (id) => {
     try {
       await api.post(`/demandes/${id}/refuser`, { motifRefus: motifRefus || null });
-      setInfo(t('demandes.infoRefusee'));
+      setInfo({ cle: 'demandes.infoRefusee' });
       setRefusPour(null);
       setMotifRefus('');
       charger();
@@ -149,7 +150,7 @@ export default function DemandesPage() {
     if (!window.confirm(t('demandes.confirmTransformer', { titre: d.titre }))) return;
     try {
       const res = await api.post(`/demandes/${d.idDemande}/transformer`);
-      setInfo(t('demandes.infoTransformee', { code: res.data.initiativeLiee?.code ?? '' }));
+      setInfo({ cle: 'demandes.infoTransformee', params: { code: res.data.initiativeLiee?.code ?? '' } });
       charger();
     } catch (err) {
       setErreur(messageErreur(err));
@@ -170,8 +171,8 @@ export default function DemandesPage() {
         )}
       </header>
 
-      {info && <div className="alerte alerte-succes">{info}</div>}
-      {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
+      {info && <div className="alerte alerte-succes">{afficherMessage(t, info)}</div>}
+      {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
 
       {formVisible && (
         <form className="carte formulaire" onSubmit={enregistrer}>
@@ -182,15 +183,15 @@ export default function DemandesPage() {
               <input value={form.titre} onChange={set('titre')} required placeholder={t('demandes.placeholderTitre')} />
             </div>
             <div className="champ">
-              <label>{t('demandes.champEntite')} *</label>
-              <select value={form.idEntite} onChange={set('idEntite')} required>
+              <label htmlFor="dem-entite">{t('demandes.champEntite')} *</label>
+              <select id="dem-entite" value={form.idEntite} onChange={set('idEntite')} required>
                 <option value="">—</option>
                 {entites.map((en) => <option key={en.idEntite} value={en.idEntite}>{en.nom}</option>)}
               </select>
             </div>
             <div className="champ">
-              <label>{t('demandes.champPriorite')} *</label>
-              <select value={form.idPriorite} onChange={set('idPriorite')} required>
+              <label htmlFor="dem-priorite">{t('demandes.champPriorite')} *</label>
+              <select id="dem-priorite" value={form.idPriorite} onChange={set('idPriorite')} required>
                 <option value="">—</option>
                 {priorites.map((p) => <option key={p.idPriorite} value={p.idPriorite}>{ref.priorite(p.libelle)}</option>)}
               </select>
@@ -259,19 +260,19 @@ export default function DemandesPage() {
                           {d.statut?.libelle === 'Brouillon' && peutSoumettre && (
                             <>
                               <button className="btn btn-petit btn-secondaire" onClick={() => ouvrirEdition(d)}>{t('demandes.modifier')}</button>
-                              <button className="btn btn-petit btn-primaire" onClick={() => action(d.idDemande, 'soumettre', t('demandes.infoSoumise'))}>
+                              <button className="btn btn-petit btn-primaire" onClick={() => action(d.idDemande, 'soumettre', { cle: 'demandes.infoSoumise' })}>
                                 {t('demandes.soumettre')}
                               </button>
                             </>
                           )}
                           {d.statut?.libelle === 'Soumise' && peutEvaluer && (
-                            <button className="btn btn-petit btn-primaire" onClick={() => action(d.idDemande, 'evaluer', t('demandes.infoEnEvaluation'))}>
+                            <button className="btn btn-petit btn-primaire" onClick={() => action(d.idDemande, 'evaluer', { cle: 'demandes.infoEnEvaluation' })}>
                               {t('demandes.evaluer')}
                             </button>
                           )}
                           {d.statut?.libelle === 'En évaluation' && peutEvaluer && (
                             <>
-                              <button className="btn btn-petit btn-primaire" onClick={() => action(d.idDemande, 'accepter', t('demandes.infoAcceptee'))}>
+                              <button className="btn btn-petit btn-primaire" onClick={() => action(d.idDemande, 'accepter', { cle: 'demandes.infoAcceptee' })}>
                                 {t('demandes.accepter')}
                               </button>
                               <button className="btn btn-petit btn-danger" onClick={() => { setRefusPour(d.idDemande); setMotifRefus(''); }}>

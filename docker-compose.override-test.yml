@@ -1,0 +1,16 @@
+# ==================================================================
+# Override TEMPORAIRE : renomme les conteneurs de cette pile en pfa2-*
+# (container_name étant global à Docker, les noms pfa-* sont déjà
+#  pris par la pile de l'autre dossier, actuellement arrêtée).
+# Portées de ce fichier : uniquement les noms de conteneurs ; les
+# ports (80 / 8081 / 3307) viennent du .env.
+# A supprimer le jour où cette pile sera démontée définitivement.
+# ==================================================================
+
+services:
+  mysql:
+    container_name: pfa2-mysql
+  backend:
+    container_name: pfa2-backend
+  frontend:
+    container_name: pfa2-frontend

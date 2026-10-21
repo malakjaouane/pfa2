@@ -273,20 +273,29 @@ public class InitiativeService {
                         .orElseThrow(() -> new ResourceNotFoundException("Statut introuvable : " + request.idStatut()));
         String statutDemande = statutCible.getLibelle();
 
-        // RM07-auto : l'avancement atteint 100 % -> l'initiative passe à « Terminée »
-        if (nouvelAvancement == 100
+        // RM07-auto : l'avancement atteint 100 % -> l'initiative passe à « Terminée »,
+        // quel que soit l'état de départ (« À planifier », « En cours » ou « En pause »).
+        boolean passageAutoTerminee = nouvelAvancement == 100
                 && !statutActuel.equals(STATUT_TERMINEE)
-                && !statutActuel.equals(STATUT_ANNULEE)) {
+                && !statutActuel.equals(STATUT_ANNULEE);
+        if (passageAutoTerminee) {
             statutDemande = STATUT_TERMINEE;
         }
+
+        // RM17 (0 % ⇒ « À planifier ») : ici le statut vient d'un CHOIX
+        // manuel dans le formulaire — il est respecté tel quel. La règle
+        // ne s'applique qu'aux recalculs automatiques pilotés par les
+        // étapes (EtapeService) et à l'alignement de démarrage.
 
         // RM07 : une initiative « Terminée » doit avoir un avancement de 100 %
         if (statutDemande.equals(STATUT_TERMINEE) && nouvelAvancement < 100) {
             throw new BadRequestException("Une initiative « Terminée » doit avoir un avancement de 100 %.");
         }
 
-        // Contrôle de la transition demandée (diagramme d'état)
-        verifierTransition(statutActuel, statutDemande);
+        // Contrôle de la transition demandée (diagramme d'état). Le passage
+        // automatique RM07 est une exception au diagramme : il est accepté
+        // depuis n'importe quel état actif.
+        verifierTransition(statutActuel, statutDemande, passageAutoTerminee);
 
         initiative.setCode(request.code().trim());
         initiative.setNom(request.nom().trim());
@@ -310,8 +319,14 @@ public class InitiativeService {
         // changé — sinon la fiche se remplirait d'événements « En cours →
         // En cours » à chaque simple retouche d'un budget.
         if (!statutActuel.equals(statutDemande)) {
+            // Origine portée par la ligne : un passage forcé par RM07-auto
+            // (100 % atteint) est « automatique », une transition choisie au
+            // formulaire reste « manuelle ».
             historiqueStatutService.enregistrer(enregistree, statutActuel, statutDemande,
-                    "Modification de l'initiative", utilisateurCourant());
+                    passageAutoTerminee
+                            ? "Passage automatique : avancement atteint 100 %"
+                            : "Modification de l'initiative",
+                    utilisateurCourant(), passageAutoTerminee);
         }
 
         return InitiativeMapper.toResponse(enregistree);
@@ -423,7 +438,22 @@ public class InitiativeService {
     // Règles métier
     // ------------------------------------------------------------------
 
+    /**
+     * Contrôle une transition manuelle (diagramme d'état strict).
+     */
     private void verifierTransition(String actuel, String demande) {
+        verifierTransition(actuel, demande, false);
+    }
+
+    /**
+     * Contrôle une transition de statut.
+     *
+     * @param passageAuto {@code true} lorsque le passage est déclenché
+     *                    automatiquement par la règle RM07 (avancement atteint
+     *                    100 %) : il est alors accepté depuis n'importe quel
+     *                    état actif, contrairement à une transition manuelle.
+     */
+    private void verifierTransition(String actuel, String demande, boolean passageAuto) {
         if (actuel.equals(demande)) {
             return;
         }
@@ -436,6 +466,8 @@ public class InitiativeService {
                 || (actuel.equals(STATUT_EN_PAUSE) && demande.equals(STATUT_EN_COURS))
                 // En cours → Terminée (avancement = 100 vérifié séparément)
                 || (actuel.equals(STATUT_EN_COURS) && demande.equals(STATUT_TERMINEE))
+                // RM07-auto : avancement 100 % -> Terminée, quel que soit l'état de départ
+                || (passageAuto && demande.equals(STATUT_TERMINEE))
                 // À planifier / En cours / En pause → Annulée
                 || (actuel.equals(STATUT_A_PLANIFIER) && demande.equals(STATUT_ANNULEE))
                 || (actuel.equals(STATUT_EN_COURS) && demande.equals(STATUT_ANNULEE))

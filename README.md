@@ -23,6 +23,7 @@ appliquée suit le fil conducteur **Sujet → Cahier des charges → UML → Arc
 9. [Tests](#tests)
 10. [Documentation UML](#documentation-uml)
 11. [Charte graphique](#charte-graphique)
+12. [Limites connues](#limites-connues)
 
 ---
 
@@ -108,6 +109,10 @@ java -jar target\portefeuille-backend-0.0.1-SNAPSHOT.jar
 
 L'API écoute sur `http://localhost:8080/api`.
 
+> Si Maven est déjà installé sur la machine, les commandes `mvn spring-boot:run`
+> et `mvn clean package` fonctionnent à l'identique ; le dossier `tools/` n'est
+> qu'une copie locale de Maven.
+
 ### 3. Frontend (React)
 
 ```powershell
@@ -190,6 +195,17 @@ variables d'environnement. Copiez `.env.example` en `.env` et adaptez au besoin.
   `Brouillon → Soumise → En évaluation → Acceptée/Refusée`, refus avec motif
   facultatif, transformation en initiative (code `DEM-xxxxxx`, aucune création
   en double).
+- **Historique des statuts** (`/historique`) : journal global en **lecture
+  seule** de tous les changements de statut — recherche par code ou nom
+  d'initiative (insensible à la casse et aux accents), filtres statut,
+  utilisateur et période, tri (récent / ancien), pagination et export CSV de
+  l'affichage. Chaque ligne porte son **origine** (manuelle ou automatique,
+  colonne `historique_statut.automatique` alimentée par le moteur de règles).
+  Les événements sont écrits en base dans la même transaction que le
+  changement (aucune donnée fictive) ; la fiche initiative n'en garde qu'un
+  résumé (5 derniers changements) plus un bouton « Voir tout l'historique »
+  qui ouvre la page déjà filtrée. Aucun nouveau droit : lecture soumise à
+  `INITIATIVE_CONSULTER`.
 - **Administration** : utilisateurs, rôles, permissions.
 
 ---
@@ -221,9 +237,13 @@ cd backend
 
 Couvrent `InitiativeService` (création, transitions, RM04/05/06/07/14),
 `InitiativeMapper` (règle « en retard »), `DashboardService` (agrégation des KPI),
-`BudgetService` (consommé / effectif / écart) et `DemandeService`
-(workflow des demandes, transformation en initiative).
-**66 tests, 0 échec.**
+`BudgetService` (consommé / effectif / écart), `DemandeService`
+(workflow des demandes, transformation en initiative), `EtapeService`
+(étapes et jalons), `HistoriqueStatutService` (origine manuelle/automatique des
+lignes du journal, filtres/tri/pagination de la lecture globale),
+`SecuriteApiTest` (règles d'URL et filtrage JWT, dont la lecture du journal) et
+`ApiErreurHttpTest` (codes HTTP d'erreur : 405 / 400 / 415 / 406 au lieu de 500).
+**109 tests, 0 échec.**
 
 ### Tests fonctionnels de l'API
 
@@ -234,10 +254,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File database\tests-api.ps1
 
 Suite idempotente (codes/emails uniques par exécution) qui couvre
 l'authentification, les KPI, les filtres, les règles métier, le cycle de vie,
-les autorisations, les utilisateurs, les rôles, les **objectifs stratégiques**
-et le **workflow des demandes** (sections 10 et 11). Les KPI sont comparés à un
-recalcul indépendant issu de la liste réelle des initiatives (aucune valeur
-codée en dur). **102 scénarios, 0 échec.**
+les autorisations, les utilisateurs, les rôles, les **objectifs stratégiques**,
+le **workflow des demandes** et l'**historique des statuts** (sections 10, 11 et
+12 : page globale, origine manuelle/automatique, recherche, filtres statut /
+utilisateur / période, pagination, tri, permissions, lecture seule). Les KPI
+sont comparés à un recalcul indépendant issu de la liste réelle des initiatives
+(aucune valeur codée en dur). **142 scénarios, 0 échec.**
 
 Après une campagne de tests, purgez les résidus (initiatives `TEST*` archivées,
 initiatives issues de demandes de test `DEM-*`, demandes `TEST-DEM*`, objectifs
@@ -246,6 +268,26 @@ initiatives issues de demandes de test `DEM-*`, demandes `TEST-DEM*`, objectifs
 ```powershell
 Get-Content database\cleanup-test-data.sql | mysql -u pfa_user -p portefeuille_initiatives
 ```
+
+---
+
+## Limites connues
+
+Points connus et acceptés pour un prototype, à traiter avant une mise en production :
+
+- **Jeton JWT dans `localStorage`** : exposé en cas de faille XSS. Évolution
+  possible : cookie `HttpOnly`.
+- **Anti force brute en mémoire** (`ProtectionConnexions`) : compteurs perdus au
+  redémarrage et non partagés entre plusieurs instances du backend.
+- **Comptes de démonstration** (`admin@it6.ma`, `responsable@it6.ma`,
+  `visiteur@it6.ma`) aux mots de passe connus : à modifier ou supprimer en production.
+- **Secrets de développement** (`DB_PASSWORD`, `JWT_SECRET`) : valeurs par défaut
+  tolérées uniquement en profil `dev` / `test` / `local` ; le démarrage est refusé
+  sinon.
+- **Droits par rôle, non par initiative** : un responsable disposant de
+  `INITIATIVE_MODIFIER` peut modifier toute initiative non archivée.
+- **Objectifs stratégiques** : pas de permission dédiée ; l'écriture exige
+  `INITIATIVE_MODIFIER`.
 
 ---
 

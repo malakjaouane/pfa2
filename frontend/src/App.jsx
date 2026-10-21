@@ -13,6 +13,7 @@ import UsersPage from './pages/UsersPage';
 import RolesPage from './pages/RolesPage';
 import RoadmapPage from './pages/RoadmapPage';
 import DemandesPage from './pages/DemandesPage';
+import HistoriquePage from './pages/HistoriquePage';
 import ObjectifsPage from './pages/ObjectifsPage';
 import MotDePassePage from './pages/MotDePassePage';
 
@@ -47,6 +48,14 @@ export default function App() {
           />
           <Route path="/initiatives/:id/modifier" element={<InitiativeFormPage />} />
           <Route path="/initiatives/:id" element={<InitiativeDetailPage />} />
+          <Route
+            path="/historique"
+            element={
+              <RequireAuth permissions={['INITIATIVE_CONSULTER']}>
+                <HistoriquePage />
+              </RequireAuth>
+            }
+          />
           <Route path="/mot-de-passe" element={<MotDePassePage />} />
           <Route
             path="/utilisateurs"

@@ -6,6 +6,7 @@ import StatutBadge from '../components/StatutBadge';
 import ProgressBar from '../components/ProgressBar';
 import KanbanBoard from '../components/KanbanBoard';
 import { useI18n } from '../i18n/I18nContext';
+import { afficherMessage } from '../i18n/message';
 import { useReferentiels } from '../i18n/referentiels';
 
 const vide = {
@@ -108,7 +109,7 @@ export default function InitiativesPage() {
    */
   const apresDeplacement = async () => {
     await chargerListe();
-    setInfo(t('initiatives.deplacementEffectue'));
+    setInfo({ cle: 'initiatives.deplacementEffectue' });
   };
 
   const appliquerFiltres = (e) => {
@@ -128,7 +129,7 @@ export default function InitiativesPage() {
     }
     try {
       await api.patch(`/initiatives/${initiative.idInitiative}/archive`);
-      setInfo(t('initiatives.initiativeArchivee', { nom: initiative.nom }));
+      setInfo({ cle: 'initiatives.initiativeArchivee', params: { nom: initiative.nom } });
       chargerListe();
     } catch (err) {
       setErreur(messageErreur(err));
@@ -148,10 +149,10 @@ export default function InitiativesPage() {
     }));
 
   const selects = [
-    { name: 'statut', options: referentiels.statuts.map((s) => ({ value: s.idStatut, label: ref.statut(s.libelle) })), vide: t('initiatives.filtreTousStatuts') },
-    { name: 'entite', options: referentiels.entites.map((e) => ({ value: e.idEntite, label: e.nom })), vide: t('initiatives.filtreToutesEntites') },
-    { name: 'responsable', options: referentiels.responsables.map((r) => ({ value: r.idUser, label: r.nomComplet })), vide: t('initiatives.filtreTousResponsables') },
-    { name: 'priorite', options: referentiels.priorites.map((p) => ({ value: p.idPriorite, label: ref.priorite(p.libelle) })), vide: t('initiatives.filtreToutesPriorites') }
+    { name: 'statut', aria: t('initiatives.ariaStatut'), options: referentiels.statuts.map((s) => ({ value: s.idStatut, label: ref.statut(s.libelle) })), vide: t('initiatives.filtreTousStatuts') },
+    { name: 'entite', aria: t('initiatives.ariaEntite'), options: referentiels.entites.map((e) => ({ value: e.idEntite, label: e.nom })), vide: t('initiatives.filtreToutesEntites') },
+    { name: 'responsable', aria: t('initiatives.ariaResponsable'), options: referentiels.responsables.map((r) => ({ value: r.idUser, label: r.nomComplet })), vide: t('initiatives.filtreTousResponsables') },
+    { name: 'priorite', aria: t('initiatives.ariaPriorite'), options: referentiels.priorites.map((p) => ({ value: p.idPriorite, label: ref.priorite(p.libelle) })), vide: t('initiatives.filtreToutesPriorites') }
   ].map((s) => champ([s])[0]);
 
   return (
@@ -166,8 +167,8 @@ export default function InitiativesPage() {
         )}
       </header>
 
-      {info && <div className="alerte alerte-succes">{info}</div>}
-      {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
+      {info && <div className="alerte alerte-succes">{afficherMessage(t, info)}</div>}
+      {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
 
       <form className="carte filtre-bar" onSubmit={appliquerFiltres}>
         <div className="filtre-ligne">
@@ -178,7 +179,7 @@ export default function InitiativesPage() {
             onChange={(e) => setFiltres((f) => ({ ...f, recherche: e.target.value }))}
           />
           {selects.map((sel) => (
-            <select key={sel.name} value={sel.value} onChange={sel.onChange}>
+            <select key={sel.name} aria-label={sel.aria} value={sel.value} onChange={sel.onChange}>
               <option value="">{sel.vide}</option>
               {sel.options.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>

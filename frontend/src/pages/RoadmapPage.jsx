@@ -125,15 +125,18 @@ export default function RoadmapPage() {
 
       <form className="carte filtre-bar" onSubmit={(e) => e.preventDefault()}>
         <div className="filtre-ligne">
-          <select value={filtres.statut} onChange={(e) => setFiltres((f) => ({ ...f, statut: e.target.value }))}>
+          <select aria-label={t('roadmap.ariaStatut')}
+            value={filtres.statut} onChange={(e) => setFiltres((f) => ({ ...f, statut: e.target.value }))}>
             <option value="">{t('roadmap.filtreTousStatuts')}</option>
             {statuts.map((s) => <option key={s.idStatut} value={s.idStatut}>{ref.statut(s.libelle)}</option>)}
           </select>
-          <select value={filtres.entite} onChange={(e) => setFiltres((f) => ({ ...f, entite: e.target.value }))}>
+          <select aria-label={t('roadmap.ariaEntite')}
+            value={filtres.entite} onChange={(e) => setFiltres((f) => ({ ...f, entite: e.target.value }))}>
             <option value="">{t('roadmap.filtreToutesEntites')}</option>
             {entites.map((en) => <option key={en.idEntite} value={en.idEntite}>{en.nom}</option>)}
           </select>
-          <select value={filtres.objectif} onChange={(e) => setFiltres((f) => ({ ...f, objectif: e.target.value }))}>
+          <select aria-label={t('roadmap.ariaObjectif')}
+            value={filtres.objectif} onChange={(e) => setFiltres((f) => ({ ...f, objectif: e.target.value }))}>
             <option value="">{t('roadmap.filtreTousObjectifs')}</option>
             {objectifs.map((o) => <option key={o.idObjectif} value={o.idObjectif}>{o.libelle}</option>)}
           </select>

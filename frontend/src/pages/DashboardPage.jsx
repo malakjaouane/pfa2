@@ -304,19 +304,22 @@ export default function DashboardPage() {
       {/* Filtres du portefeuille : les KPI et les graphiques suivent la sélection */}
       <form className="carte filtre-bar" onSubmit={appliquerFiltres} aria-label={t('dashboard.filtre.titre')}>
         <div className="filtre-ligne">
-          <select value={filtres.statut} onChange={(e) => setFiltres((f) => ({ ...f, statut: e.target.value }))}>
+          <select aria-label={t('dashboard.filtre.ariaStatut')}
+            value={filtres.statut} onChange={(e) => setFiltres((f) => ({ ...f, statut: e.target.value }))}>
             <option value="">{t('dashboard.filtre.tousStatuts')}</option>
             {referentiels.statuts.map((s) => (
               <option key={s.idStatut} value={s.idStatut}>{ref.statut(s.libelle)}</option>
             ))}
           </select>
-          <select value={filtres.entite} onChange={(e) => setFiltres((f) => ({ ...f, entite: e.target.value }))}>
+          <select aria-label={t('dashboard.filtre.ariaEntite')}
+            value={filtres.entite} onChange={(e) => setFiltres((f) => ({ ...f, entite: e.target.value }))}>
             <option value="">{t('dashboard.filtre.toutesEntites')}</option>
             {referentiels.entites.map((en) => (
               <option key={en.idEntite} value={en.idEntite}>{en.nom}</option>
             ))}
           </select>
-          <select value={filtres.responsable} onChange={(e) => setFiltres((f) => ({ ...f, responsable: e.target.value }))}>
+          <select aria-label={t('dashboard.filtre.ariaResponsable')}
+            value={filtres.responsable} onChange={(e) => setFiltres((f) => ({ ...f, responsable: e.target.value }))}>
             <option value="">{t('dashboard.filtre.tousResponsables')}</option>
             {referentiels.responsables.map((r) => (
               <option key={r.idUser} value={r.idUser}>{r.nomComplet}</option>

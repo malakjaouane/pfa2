@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api, { messageErreur } from '../api';
 import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
+import { afficherMessage } from '../i18n/message';
 
 const formVide = { code: '', libelle: '', description: '' };
 
@@ -60,10 +61,10 @@ export default function ObjectifsPage() {
     try {
       if (edition) {
         await api.put(`/objectifs/${edition}`, form);
-        setInfo(t('objectifs.info.misAJour'));
+        setInfo({ cle: 'objectifs.info.misAJour' });
       } else {
         await api.post('/objectifs', form);
-        setInfo(t('objectifs.info.cree'));
+        setInfo({ cle: 'objectifs.info.cree' });
       }
       setForm(formVide);
       setNouveau(false);
@@ -90,8 +91,8 @@ export default function ObjectifsPage() {
         )}
       </header>
 
-      {info && <div className="alerte alerte-succes">{info}</div>}
-      {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
+      {info && <div className="alerte alerte-succes">{afficherMessage(t, info)}</div>}
+      {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
 
       {nouveau && peutGerer && (
         <form className="carte formulaire" onSubmit={enregistrer}>

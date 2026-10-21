@@ -6,6 +6,9 @@ export default {
     'roadmap.sousTitre':
       "Échéancier des initiatives sur la période (données réelles de la base)",
     'roadmap.filtreTousStatuts': 'Tous les statuts',
+    'roadmap.ariaStatut': 'Filtrer par statut',
+    'roadmap.ariaEntite': 'Filtrer par entité',
+    'roadmap.ariaObjectif': "Filtrer par objectif stratégique",
     'roadmap.filtreToutesEntites': 'Toutes les entités',
     'roadmap.filtreTousObjectifs': 'Tous les objectifs',
     'roadmap.reinitialiser': 'Réinitialiser',
@@ -36,6 +39,9 @@ export default {
     'roadmap.sousTitre':
       'Schedule of initiatives over the period (real data from the database)',
     'roadmap.filtreTousStatuts': 'All statuses',
+    'roadmap.ariaStatut': 'Filter by status',
+    'roadmap.ariaEntite': 'Filter by entity',
+    'roadmap.ariaObjectif': 'Filter by strategic objective',
     'roadmap.filtreToutesEntites': 'All entities',
     'roadmap.filtreTousObjectifs': 'All objectives',
     'roadmap.reinitialiser': 'Reset',
@@ -65,6 +71,9 @@ export default {
     'roadmap.sousTitre':
       'الجدول الزمني للمبادرات خلال الفترة (بيانات حقيقية من قاعدة البيانات)',
     'roadmap.filtreTousStatuts': 'كل الحالات',
+    'roadmap.ariaStatut': 'تصفية حسب الحالة',
+    'roadmap.ariaEntite': 'تصفية حسب الكيانة',
+    'roadmap.ariaObjectif': 'تصفية حسب الهدف الاستراتيجي',
     'roadmap.filtreToutesEntites': 'كل الجهات',
     'roadmap.filtreTousObjectifs': 'كل الأهداف',
     'roadmap.reinitialiser': 'إعادة تعيين',
@@ -94,6 +103,9 @@ export default {
     'roadmap.sousTitre':
       'Calendario de las iniciativas durante el período (datos reales de la base)',
     'roadmap.filtreTousStatuts': 'Todos los estados',
+    'roadmap.ariaStatut': 'Filtrar por estado',
+    'roadmap.ariaEntite': 'Filtrar por entidad',
+    'roadmap.ariaObjectif': 'Filtrar por objetivo estratégico',
     'roadmap.filtreToutesEntites': 'Todas las entidades',
     'roadmap.filtreTousObjectifs': 'Todos los objetivos',
     'roadmap.reinitialiser': 'Restablecer',

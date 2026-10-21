@@ -5,6 +5,7 @@ import ma.it6.portefeuille.controller.AuthController;
 import ma.it6.portefeuille.controller.BudgetController;
 import ma.it6.portefeuille.controller.DashboardController;
 import ma.it6.portefeuille.controller.EtapeController;
+import ma.it6.portefeuille.controller.HistoriqueStatutController;
 import ma.it6.portefeuille.controller.InitiativeController;
 import ma.it6.portefeuille.controller.UtilisateurController;
 import ma.it6.portefeuille.entity.Permission;
@@ -43,11 +44,14 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -70,6 +74,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(controllers = {
         InitiativeController.class,
+        HistoriqueStatutController.class,
         EtapeController.class,
         UtilisateurController.class,
         DashboardController.class,
@@ -235,6 +240,42 @@ class SecuriteApiTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("[1,2]"))
                     .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("journal des statuts : lecture avec INITIATIVE_CONSULTER, aucune écriture exposée")
+        void journalDesStatuts() throws Exception {
+            when(historiqueStatutService.lister(any(), anyInt(), anyInt(), anyBoolean()))
+                    .thenReturn(List.of());
+            when(historiqueStatutService.compter(any())).thenReturn(0L);
+            when(historiqueStatutService.auteurs()).thenReturn(List.of());
+
+            // Sans jeton : le journal est une ressource protégée.
+            mockMvc.perform(get("/api/historique-statuts"))
+                    .andExpect(status().isUnauthorized());
+
+            // Lecture ouverte à qui consulte les initiatives : aucun nouveau
+            // droit n'est créé pour la page « Historique des statuts ».
+            mockMvc.perform(get("/api/historique-statuts")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("X-Total-Count", "0"));
+
+            mockMvc.perform(get("/api/historique-statuts/auteurs")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isOk());
+
+            // Une permission qui n'est PAS la consultation ne suffit pas.
+            mockMvc.perform(get("/api/historique-statuts")
+                            .with(auth("DEMANDE_SOUMETTRE")))
+                    .andExpect(status().isForbidden());
+
+            // Lecture seule : aucun POST/PUT n'est déclaré sur le journal.
+            mockMvc.perform(post("/api/historique-statuts")
+                            .with(auth("INITIATIVE_CONSULTER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isMethodNotAllowed());
         }
     }
 

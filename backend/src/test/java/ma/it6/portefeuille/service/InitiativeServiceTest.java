@@ -3,8 +3,10 @@ package ma.it6.portefeuille.service;
 import ma.it6.portefeuille.dto.InitiativeRequest;
 import ma.it6.portefeuille.dto.InitiativeResponse;
 import ma.it6.portefeuille.entity.Entite;
+import ma.it6.portefeuille.entity.Etape;
 import ma.it6.portefeuille.entity.Initiative;
 import ma.it6.portefeuille.entity.Priorite;
+import ma.it6.portefeuille.entity.StatutEtape;
 import ma.it6.portefeuille.entity.StatutInitiative;
 import ma.it6.portefeuille.entity.Utilisateur;
 import ma.it6.portefeuille.exception.BadRequestException;
@@ -29,12 +31,16 @@ import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -130,6 +136,16 @@ class InitiativeServiceTest {
                 .statut(statut)
                 .priorite(priorite)
                 .build();
+    }
+
+    /** Étape « À faire » : progression 0 dans le calcul d'avancement. */
+    private static Etape etapeAFaire() {
+        StatutEtape statutEtape = new StatutEtape();
+        statutEtape.setLibelle("À faire");
+        Etape etape = new Etape();
+        etape.setStatutEtape(statutEtape);
+        etape.setAvancement(0);
+        return etape;
     }
 
     // ------------------------------------------------------------------
@@ -337,6 +353,74 @@ class InitiativeServiceTest {
 
             assertThat(response.statut().libelle()).isEqualTo(InitiativeService.STATUT_TERMINEE);
             assertThat(response.avancement()).isEqualTo(100);
+        }
+
+        @Test
+        @DisplayName("force « Terminée » depuis « À planifier » à 100 % (RM07-auto, sans étapes)")
+        void modifier_aPlanifier_avancement100_forceTerminee() {
+            Initiative existante = initiativeExistante(aPlanifier, 0, false);
+            when(initiativeRepository.findById(1L)).thenReturn(Optional.of(existante));
+            when(initiativeRepository.existsByCodeAndIdInitiativeNot("INIT-1", 1L)).thenReturn(false);
+            when(statutInitiativeRepository.findById(aPlanifier.getIdStatut()))
+                    .thenReturn(Optional.of(aPlanifier));
+
+            InitiativeResponse response = service.modifier(1L,
+                    request("INIT-1", 100, aPlanifier.getIdStatut(), BigDecimal.TEN, null, null, null));
+
+            assertThat(response.statut().libelle()).isEqualTo(InitiativeService.STATUT_TERMINEE);
+            assertThat(response.avancement()).isEqualTo(100);
+        }
+
+        @Test
+        @DisplayName("force « Terminée » depuis « En pause » à 100 % (RM07-auto)")
+        void modifier_enPause_avancement100_forceTerminee() {
+            Initiative existante = initiativeExistante(enPause, 40, false);
+            when(initiativeRepository.findById(1L)).thenReturn(Optional.of(existante));
+            when(initiativeRepository.existsByCodeAndIdInitiativeNot("INIT-1", 1L)).thenReturn(false);
+            when(statutInitiativeRepository.findById(enPause.getIdStatut()))
+                    .thenReturn(Optional.of(enPause));
+
+            InitiativeResponse response = service.modifier(1L,
+                    request("INIT-1", 100, enPause.getIdStatut(), BigDecimal.TEN, null, null, null));
+
+            assertThat(response.statut().libelle()).isEqualTo(InitiativeService.STATUT_TERMINEE);
+            assertThat(response.avancement()).isEqualTo(100);
+        }
+
+        @Test
+        @DisplayName("conserve « Annulée » même à 100 % d'avancement")
+        void modifier_annulee_resteAnnulee() {
+            Initiative existante = initiativeExistante(annulee, 50, false);
+            when(initiativeRepository.findById(1L)).thenReturn(Optional.of(existante));
+            when(initiativeRepository.existsByCodeAndIdInitiativeNot("INIT-1", 1L)).thenReturn(false);
+            when(statutInitiativeRepository.findById(annulee.getIdStatut()))
+                    .thenReturn(Optional.of(annulee));
+
+            InitiativeResponse response = service.modifier(1L,
+                    request("INIT-1", 100, annulee.getIdStatut(), BigDecimal.TEN, null, null, null));
+
+            assertThat(response.statut().libelle()).isEqualTo(InitiativeService.STATUT_ANNULEE);
+        }
+
+        @Test
+        @DisplayName("étapes à 0 % : le choix manuel « En cours » du formulaire est respecté (RM17 : recalcul auto seulement)")
+        void modifier_enCours0Etapes_promotionManuelleRespectee() {
+            Initiative existante = initiativeExistante(aPlanifier, 0, false);
+            when(initiativeRepository.findById(1L)).thenReturn(Optional.of(existante));
+            when(initiativeRepository.existsByCodeAndIdInitiativeNot("INIT-1", 1L)).thenReturn(false);
+            when(statutInitiativeRepository.findById(enCours.getIdStatut()))
+                    .thenReturn(Optional.of(enCours));
+            when(etapeRepository.findByInitiativeIdInitiativeOrderByOrdreAsc(1L))
+                    .thenReturn(List.of(etapeAFaire()));
+
+            InitiativeResponse response = service.modifier(1L,
+                    request("INIT-1", 50, enCours.getIdStatut(), BigDecimal.TEN, null, null, null));
+
+            assertThat(response.statut().libelle()).isEqualTo(InitiativeService.STATUT_EN_COURS);
+            assertThat(response.avancement()).isEqualTo(0);
+            verify(historiqueStatutService).enregistrer(
+                    any(Initiative.class), anyString(), anyString(),
+                    contains("Modification de l'initiative"), any(), eq(false));
         }
     }
 

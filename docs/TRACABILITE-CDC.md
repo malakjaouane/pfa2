@@ -17,7 +17,8 @@ test fonctionnel `tests-api.ps1`).
 | RM04 | La **date de fin prévue** ≥ **date de début**. | `InitiativeService.validerReglesMetier` + `CHECK` en `schema.sql` | JUnit `creer_dateFinAvantDebut` — API `Fin < début → 400` |
 | RM05 | Le **budget** ≥ 0. | `@DecimalMin("0.0")` + contrôle service | JUnit `creer_budgetNegatif` — API `Budget négatif → 400` |
 | RM06 | L'**avancement** ∈ [0, 100]. | `@Min/@Max` + contrôle service + `CHECK` SQL | JUnit `creer_avancementHorsBornes` — API `Avancement > 100 → 400` |
-| RM07 | Une initiative « Terminée » a un avancement de **100 %** (+ auto-bascule à 100 %). | `InitiativeService.modifier` (RM07-auto), `creer` (dérivation) | JUnit `modifier_avancement100_forceTerminee`, `modifier_termineeSans100`, `creer_avancement100_terminee` — API section 4/6 |
+| RM07 | Une initiative « Terminée » a un avancement de **100 %** ; inversement, atteindre 100 % la clôt **automatiquement depuis n'importe quel état actif** (« À planifier », « En cours », « En pause »), saisie manuelle comme calcul par les étapes — l'« Annulée » reste figée. La clôture n'est **pas un état figé** : rouverrir une étape (ou en ajouter une) fait retomber l'avancement sous 100 % et **réouvre automatiquement** l'initiative, avec l'avancement recalculé (« À planifier » si l'on retombe à 0 %, « En cours » sinon), transition tracée au journal. Toute donnée héritée bloquée à 100 % sous un statut actif est réalignée au démarrage du backend. | `InitiativeService.modifier` (RM07-auto, transition automatique admise hors diagramme), `EtapeService.recalculerAvancement` (RM07-auto et réouverture-auto), `creer` (dérivation), `DataInitializer.alignerAvancements` (alignement au démarrage) — passages journalisés dans l'historique | JUnit `modifier_avancement100_forceTerminee`, `modifier_aPlanifier/…_enPause/…_annulee…`, `EtapeServiceTest` (En pause / À planifier → Terminée + journal, **Réouverture** : étape rouverte → En cours si partiel / À planifier si 0 % + journal, toutes terminées → figé), `creer_avancement100_terminee` — API section 4/6 (`RM07-auto : …`, `RM07 : étape rouverte à 0 % …`) |
+| RM17 | Sous pilotage des étapes, une initiative à **0 % n'a pas encore commencé** : son statut est **« À planifier »**, jamais « En cours ». Le retour est automatique lors d'un **recalcul déclenché par les étapes** (création, modification, suppression, réouverture) ou de l'**alignement au démarrage**, et il est journalisé ; un choix manuel explicite (formulaire ou Kanban) reste respecté, de même que l'arrêt délibéré « En pause » et les initiatives sans étapes (statut piloté à la main). | `EtapeService.recalculerAvancement` (retour-auto 0 %), `DataInitializer.alignerAvancements` (alignement au démarrage) | JUnit `EtapeServiceTest.RetourAZero` (En cours → À planifier + journal / En pause conservé / référentiel absent), `modifier_enCours0Etapes_promotionManuelleRespectee` (limite documentée) — API section 6 (`RM17 : « En cours » à 0 % …`) |
 | RM08 | Une **étape** appartient à une seule initiative. | `Etape.initiative` (`@ManyToOne`), FK `etape.id_initiative` | API (création d'étape sur initiative) |
 | RM09 | Un **jalon** appartient à une seule initiative. | `Jalon.initiative` (`@ManyToOne`), FK `jalon.id_initiative` | API (création de jalon) |
 | RM10 | Seuls les utilisateurs **autorisés** peuvent modifier les données. | `SecurityConfig` + permissions (`INITIATIVE_*`, `ETAPE_GERER`, `JALON_GERER`, `UTILISATEUR_GERER`, `ROLE_GERER`) | API section 7 (403/401) |
@@ -27,6 +28,7 @@ test fonctionnel `tests-api.ps1`).
 | RM14 | L'**archivage n'est pas un statut** et ne supprime pas l'initiative. | Champ `archive` (booléen), `InitiativeService.archiver` (réservé à Terminée/Annulée), pas de statut « Archivée » dans le référentiel | JUnit `Archivage` — API `Ré-archivage idempotent`, `Modification après archivage → 400` |
 | RM15 | La **date de réalisation** d'un jalon est vide tant qu'il n'est pas **atteint**. | `JalonService` (RM15) → `dateRealisation` auto/vide selon le statut | API `Jalon non atteint → date réalisation vide` |
 | RM16 | Une initiative est rattachée à **une seule entité**. | `initiative.id_entite` (`@NotNull` + FK) | API création/lecture |
+| RM18 | Statut et avancement d'une étape **se déduisent mutuellement** (double sens) : le **statut choisit sa valeur par défaut** (« À faire » 0 %, « En cours » 50 %, « Terminée » 100 % — applicable lorsque le champ n'est pas renseigné, absent ou à 0) ; **inversement, un nombre clairement saisi prime sur le statut** : 1-99 → statut « En cours » avec la valeur conservée, 100 → statut « Terminée ». L'initiative pilotée recalcule (pondération par la durée), et les étapes héritées incohérentes (À faire ≠ 0, Terminée ≠ 100, En cours à 0) sont réalignées au démarrage. | `EtapeService.harmoniser` (création/modification), `CalculeurAvancement.progression` (calcul), `DataInitializer.avancementCoherent` (alignement au démarrage) ; IHM : `changerStatutEtape` (statut → valeur) **et** `changerAvancementEtape` (valeur → statut) tiennent les deux sens à l'écran | JUnit `EtapeServiceTest.CoherenceStatutAvancement` (défauts 0/50/100, 87 → « En cours », 100 → « Terminée ») — API section 6 (`RM18 : …`) |
 
 ## 2. Suivi de l'avancement et « en retard »
 
@@ -71,6 +73,16 @@ test fonctionnel `tests-api.ps1`).
 | **Transformation en initiative sans doublon** : code auto `DEM-%06d`, statut « À planifier », budget/avancement 0, `id_initiative_liee` UNIQUE | `DemandeService.transformer` + `InitiativeService.creerEnEntite` | JUnit `Transformation en initiative` (3 tests) + API (`seconde transformation → 400`) |
 | **Permissions** : `DEMANDE_SOUMETTRE` (soumettre) et `DEMANDE_EVALUER` (évaluer/accepter/refuser/transformer) ; lister exige l'une des deux | `SecurityConfig`, `data.sql` (permissions 14/15, role_permission) | API (`visiteur → 403`, responsable autorisé → 200) |
 
+## 4quater. P3 — Historique des statuts (journal global)
+
+| Fonctionnalité (CDC) | Mise en œuvre | Validation |
+|---|---|---|
+| **Journal des transitions** : tout changement de statut inscrit dans l'historique (CDC §7.2), écrit dans la même transaction que la modification | `HistoriqueStatutService.enregistrer` (appelé par `InitiativeService`, `EtapeService`, `DataInitializer`), table `historique_statut` | JUnit `HistoriqueStatutServiceTest` + API section 12 (création → transition manuelle → passage RM07-auto : 3 lignes) |
+| **Origine du changement** : colonne `historique_statut.automatique` (manuel / moteur de règles : RM07-auto, réouverture, RM17, alignement de démarrage) ; migration douce idempotente + re-classement rétroactif depuis le motif enregistré | Entité `HistoriqueStatut.automatique`, surcharge `enregistrer(..., boolean)`, `database/schema.sql` (ALTER gardé par `information_schema`) | JUnit (origine manuelle/automatique) + API (`automatique = false` sur création/transition choisie, `= true` sur RM07) |
+| **Page dédiée** `/historique` : table (code, nom, ancien/nouveau statut, utilisateur, date-heure, origine), recherche code/nom (insensible casse/accents), filtres statut/utilisateur/période, tri, pagination, export CSV | `HistoriquePage.jsx`, `GET /api/historique-statuts` (`HistoriqueStatutController` + `HistoriqueStatutRepository.rechercher/compter`, en-tête `X-Total-Count`), route/menu gated `INITIATIVE_CONSULTER` | API section 12 (recherche, filtres, pagination, tri, 400 paramètres) + build Vite |
+| **Résumé sur la fiche** : 5 derniers changements + bouton « Voir tout l'historique » ouvrant la page filtrée (`?initiative=id`, pastille débrayable) | `InitiativeDetailPage.jsx` (`slice(0, 5)`), lien `Link`, pastille `filtre-pastille` | Build Vite + API (champ `initiative` sur chaque ligne) |
+| **Lecture seule + permissions existantes** : aucune écriture publique sur le journal, aucun nouveau droit | `SecurityConfig` : `GET /api/historique-statuts/**` → `INITIATIVE_CONSULTER` uniquement ; aucun `@PostMapping/@DeleteMapping` | JUnit `SecuriteApiTest` (401/403/200, POST → 405) + API (anonyme 401, visiteur 200, POST/DELETE → 4xx) |
+
 ## 5. Acteurs et permissions
 
 | Rôle (CDC) | Permissions (15 / 12 / 3) | Mise en œuvre |
@@ -85,6 +97,10 @@ test fonctionnel `tests-api.ps1`).
 - **P1/P2** : 15 scénarios fonctionnels supplémentaires (sections 10 et 11 de
   `tests-api.ps1`) : référentiel objectifs, filtre, workflow complet des demandes,
   refus avec/sans motif, transformation sans doublon, permissions.
+- **P3 (historique des statuts)** : 27 scénarios supplémentaires (section 12 de
+  `tests-api.ps1`) : origine manuelle/automatique des lignes, page globale,
+  recherche, filtres statut/utilisateur/période, pagination, tri, validation des
+  paramètres, permissions et lecture seule.
 - Les règles structurales (RM02/08/09/12/13/16) sont garanties par le schéma
   (clés étrangères, contraintes de non-null) et exercées par les tests de l'API.
 - Les KPI du CDC sont tous calculés par l'API (aucune valeur codée en dur),

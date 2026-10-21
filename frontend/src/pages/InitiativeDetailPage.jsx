@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import api, { messageErreur } from '../api';
 import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
+import { afficherMessage } from '../i18n/message';
 import { useReferentiels } from '../i18n/referentiels';
 import StatutBadge from '../components/StatutBadge';
 import ProgressBar from '../components/ProgressBar';
@@ -74,7 +75,7 @@ export default function InitiativeDetailPage() {
     if (!window.confirm(t('initiativeDetail.confirmArchiver', { nom: initiative.nom }))) return;
     try {
       await api.patch(`/initiatives/${initiative.idInitiative}/archive`);
-      setInfo(t('initiativeDetail.archivee'));
+      setInfo({ cle: 'initiativeDetail.archivee' });
       charger();
     } catch (err) {
       setErreur(messageErreur(err));
@@ -172,16 +173,37 @@ export default function InitiativeDetailPage() {
   };
 
   /**
-   * Cohérence avancement / statut : « Terminée » vaut 100 %, « À faire » 0 %
-   * (le serveur applique la même règle).
+   * Valeur par défaut selon le statut (RM18) : « Terminée » 100 %,
+   * « À faire » 0 %, « En cours » 50 % — ce dernier reste modifiable
+   * librement (0-100) après avoir choisi le statut.
    */
   const changerStatutEtape = (e, form, setForm) => {
     const id = Number(e.target.value);
     const libelle = statutsEtape.find((s) => s.idStatutEtape === id)?.libelle;
     let avancement = form.avancement;
     if (libelle === 'Terminée') avancement = 100;
+    else if (libelle === 'En cours') avancement = 50;
     else if (libelle === 'À faire') avancement = 0;
     setForm({ ...form, idStatutEtape: e.target.value, avancement });
+  };
+
+  /**
+   * RM18 (double sens) : un nombre clairement saisi détermine le statut —
+   * 1-99 -> « En cours », 100 -> « Terminée », 0 -> « À faire ». Le champ
+   * vidé ne change rien : c'est la valeur par défaut du statut qui
+   * s'applique à l'enregistrement (0 / 50 / 100).
+   */
+  const changerAvancementEtape = (e, form, setForm) => {
+    const brut = e.target.value;
+    let idStatutEtape = form.idStatutEtape;
+    if (brut !== '') {
+      const valeur = Number(brut);
+      if (!Number.isNaN(valeur)) {
+        const libelle = valeur === 0 ? 'À faire' : valeur === 100 ? 'Terminée' : 'En cours';
+        idStatutEtape = statutsEtape.find((s) => s.libelle === libelle)?.idStatutEtape ?? idStatutEtape;
+      }
+    }
+    setForm({ ...form, avancement: brut, idStatutEtape });
   };
 
   const etapesTerminees = etapes.filter((e) => e.statutEtape?.libelle === 'Terminée').length;
@@ -192,7 +214,7 @@ export default function InitiativeDetailPage() {
 
   return (
     <div className="page">
-      {info && <div className="alerte alerte-succes">{info}</div>}
+      {info && <div className="alerte alerte-succes">{afficherMessage(t, info)}</div>}
 
       <header className="page-entete">
         <div>
@@ -274,8 +296,8 @@ export default function InitiativeDetailPage() {
                 <form className="formulaire-inline" onSubmit={soumettreEtape}>
                   <input value={editionEtape.nom} onChange={(e) => setEditionEtape({ ...editionEtape, nom: e.target.value })} required placeholder={t('initiativeDetail.nom')} />
                   <input type="number" min="0" max="100" value={editionEtape.avancement}
-                    onChange={(e) => setEditionEtape({ ...editionEtape, avancement: e.target.value })} placeholder="%" />
-                  <select value={editionEtape.idStatutEtape}
+                    onChange={(e) => changerAvancementEtape(e, editionEtape, setEditionEtape)} placeholder="%" />
+                  <select aria-label={t('initiativeDetail.ariaStatutEtape')} value={editionEtape.idStatutEtape}
                     onChange={(e) => changerStatutEtape(e, editionEtape, setEditionEtape)}>
                     {statutsEtape.map((s) => <option key={s.idStatutEtape} value={s.idStatutEtape}>{ref.statutEtape(s.libelle)}</option>)}
                   </select>
@@ -294,7 +316,7 @@ export default function InitiativeDetailPage() {
                   <ProgressBar valeur={etape.avancement} />
                   {peutEtapes && (
                     <div className="etape-actions">
-                      <button className="btn btn-petit btn-secondaire" onClick={() => setEditionEtape({ idEtape: etape.idEtape, ...etape })}>{t('initiativeDetail.editer')}</button>
+                      <button className="btn btn-petit btn-secondaire" onClick={() => setEditionEtape({ idEtape: etape.idEtape, ...etape, idStatutEtape: etape.statutEtape?.idStatutEtape ?? '' })}>{t('initiativeDetail.editer')}</button>
                       <button className="btn btn-petit btn-danger" onClick={() => supprimerEtape(etape)}>{t('initiativeDetail.supprimer')}</button>
                       <button className="btn btn-petit btn-secondaire" onClick={() => deplacerEtape(index, -1)} disabled={index === 0} title={t('initiativeDetail.monter')} aria-label={t('initiativeDetail.monter')}>↑</button>
                       <button className="btn btn-petit btn-secondaire" onClick={() => deplacerEtape(index, 1)} disabled={index === etapes.length - 1} title={t('initiativeDetail.descendre')} aria-label={t('initiativeDetail.descendre')}>↓</button>
@@ -309,8 +331,8 @@ export default function InitiativeDetailPage() {
           <form className="formulaire-inline ajout" onSubmit={soumettreEtape}>
             <input value={nouvelleEtape.nom} onChange={(e) => setNouvelleEtape({ ...nouvelleEtape, nom: e.target.value })} required placeholder={t('initiativeDetail.nouvelleEtape')} />
             <input type="number" min="0" max="100" value={nouvelleEtape.avancement}
-              onChange={(e) => setNouvelleEtape({ ...nouvelleEtape, avancement: e.target.value })} placeholder="%" />
-            <select value={nouvelleEtape.idStatutEtape} onChange={(e) => changerStatutEtape(e, nouvelleEtape, setNouvelleEtape)}>
+              onChange={(e) => changerAvancementEtape(e, nouvelleEtape, setNouvelleEtape)} placeholder="%" />
+            <select aria-label={t('initiativeDetail.ariaStatutEtape')} value={nouvelleEtape.idStatutEtape} onChange={(e) => changerStatutEtape(e, nouvelleEtape, setNouvelleEtape)}>
               <option value="">{t('initiativeDetail.statut')}</option>
               {statutsEtape.map((s) => <option key={s.idStatutEtape} value={s.idStatutEtape}>{ref.statutEtape(s.libelle)}</option>)}
             </select>
@@ -335,8 +357,8 @@ export default function InitiativeDetailPage() {
               {editionJalon?.idJalon === jalon.idJalon ? (
                 <form className="formulaire-inline" onSubmit={soumettreJalon}>
                   <input value={editionJalon.nom} onChange={(e) => setEditionJalon({ ...editionJalon, nom: e.target.value })} required placeholder={t('initiativeDetail.nom')} />
-                  <input type="date" value={editionJalon.datePrevue} onChange={(e) => setEditionJalon({ ...editionJalon, datePrevue: e.target.value })} />
-                  <select value={editionJalon.idStatutJalon}
+                  <input type="date" aria-label={t('initiativeDetail.ariaDatePrevue')} value={editionJalon.datePrevue} onChange={(e) => setEditionJalon({ ...editionJalon, datePrevue: e.target.value })} />
+                  <select aria-label={t('initiativeDetail.ariaStatutJalon')} value={editionJalon.idStatutJalon}
                     onChange={(e) => setEditionJalon({ ...editionJalon, idStatutJalon: e.target.value })}>
                     {statutsJalon.map((s) => <option key={s.idStatutJalon} value={s.idStatutJalon}>{ref.statutJalon(s.libelle)}</option>)}
                   </select>
@@ -356,7 +378,7 @@ export default function InitiativeDetailPage() {
                   </div>
                   {peutJalons && (
                     <div className="etape-actions">
-                      <button className="btn btn-petit btn-secondaire" onClick={() => setEditionJalon({ idJalon: jalon.idJalon, ...jalon })}>{t('initiativeDetail.editer')}</button>
+                      <button className="btn btn-petit btn-secondaire" onClick={() => setEditionJalon({ idJalon: jalon.idJalon, ...jalon, idStatutJalon: jalon.statutJalon?.idStatutJalon ?? '' })}>{t('initiativeDetail.editer')}</button>
                       <button className="btn btn-petit btn-danger" onClick={() => supprimerJalon(jalon)}>{t('initiativeDetail.supprimer')}</button>
                     </div>
                   )}
@@ -368,8 +390,8 @@ export default function InitiativeDetailPage() {
         {peutJalons && (
           <form className="formulaire-inline ajout" onSubmit={soumettreJalon}>
             <input value={nouveauJalon.nom} onChange={(e) => setNouveauJalon({ ...nouveauJalon, nom: e.target.value })} required placeholder={t('initiativeDetail.nouveauJalon')} />
-            <input type="date" value={nouveauJalon.datePrevue} onChange={(e) => setNouveauJalon({ ...nouveauJalon, datePrevue: e.target.value })} />
-            <select value={nouveauJalon.idStatutJalon} onChange={(e) => setNouveauJalon({ ...nouveauJalon, idStatutJalon: e.target.value })}>
+            <input type="date" aria-label={t('initiativeDetail.ariaDatePrevue')} value={nouveauJalon.datePrevue} onChange={(e) => setNouveauJalon({ ...nouveauJalon, datePrevue: e.target.value })} />
+            <select aria-label={t('initiativeDetail.ariaStatutJalon')} value={nouveauJalon.idStatutJalon} onChange={(e) => setNouveauJalon({ ...nouveauJalon, idStatutJalon: e.target.value })}>
               <option value="">{t('initiativeDetail.statut')}</option>
               {statutsJalon.map((s) => <option key={s.idStatutJalon} value={s.idStatutJalon}>{ref.statutJalon(s.libelle)}</option>)}
             </select>
@@ -388,32 +410,46 @@ export default function InitiativeDetailPage() {
             <span className="badge badge-gris">{historique.length}</span>
           )}
         </div>
-        {historique.length === 0 && (
+        {historique.length === 0 ? (
           <p className="texte-muet">{t('initiativeDetail.aucunHistorique')}</p>
+        ) : (
+          <>
+            <div className="section-entete-actions">
+              <p className="texte-muet historique-resume">{t('initiativeDetail.historiqueResume')}</p>
+              {/* Le journal complet vit sur sa propre page : cette fiche ne
+                  garde qu'un résumé, avec un filtre déjà posé sur elle. */}
+              <Link
+                to={`/historique?initiative=${id}`}
+                className="btn btn-petit btn-secondaire"
+              >
+                {t('initiativeDetail.voirToutHistorique')}
+              </Link>
+            </div>
+            <ol className="historique">
+              {historique.slice(0, 5).map((ev) => (
+                <li key={ev.idHistorique} className="historique-item">
+                  <span className="historique-date">
+                    {new Date(ev.dateChangement).toLocaleString(langue, {
+                      day: '2-digit', month: 'short', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit'
+                    })}
+                  </span>
+                  <span className="historique-transition">
+                    {ev.ancienStatut
+                      ? t('initiativeDetail.transition', { de: ev.ancienStatut, vers: ev.nouveauStatut })
+                      : t('initiativeDetail.transitionCreation', { statut: ev.nouveauStatut })}
+                  </span>
+                  {ev.commentaire && (
+                    <span className="historique-commentaire">{ev.commentaire}</span>
+                  )}
+                  <span className="historique-auteur">
+                    {ev.utilisateur?.nomComplet ?? t('initiativeDetail.auteurInconnu')}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </>
         )}
-        <ol className="historique">
-          {historique.map((ev) => (
-            <li key={ev.idHistorique} className="historique-item">
-              <span className="historique-date">
-                {new Date(ev.dateChangement).toLocaleString(langue, {
-                  day: '2-digit', month: 'short', year: 'numeric',
-                  hour: '2-digit', minute: '2-digit'
-                })}
-              </span>
-              <span className="historique-transition">
-                {ev.ancienStatut
-                  ? t('initiativeDetail.transition', { de: ev.ancienStatut, vers: ev.nouveauStatut })
-                  : t('initiativeDetail.transitionCreation', { statut: ev.nouveauStatut })}
-              </span>
-              {ev.commentaire && (
-                <span className="historique-commentaire">{ev.commentaire}</span>
-              )}
-              <span className="historique-auteur">
-                {ev.utilisateur?.nomComplet ?? t('initiativeDetail.auteurInconnu')}
-              </span>
-            </li>
-          ))}
-        </ol>
       </section>
     </div>
   );

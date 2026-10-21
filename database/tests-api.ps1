@@ -34,7 +34,8 @@ function Invoke-Api {
     }
     try {
         $resp = Invoke-WebRequest @params
-        return @{ OK = $true; Status = [int]$resp.StatusCode; Body = (Convertir-Reponse $resp) }
+        # Headers conservés (ex. X-Total-Count : compte total hors pagination).
+        return @{ OK = $true; Status = [int]$resp.StatusCode; Body = (Convertir-Reponse $resp); Headers = $resp.Headers }
     } catch {
         # Le corps d'erreur porte souvent la règle métier violée : on le relit
         # également en UTF-8 pour pouvoir l'afficher sans mojibake.
@@ -179,10 +180,13 @@ $arch100 = Invoke-Api 'Patch' "$Base/initiatives/$($creation100.Body.idInitiativ
 Test-Check 'Nettoyage : initiative 100 % archivée' ($arch100.OK -and $arch100.Body.archive -eq $true)
 
 Write-Output '=== 5. Étapes et jalons (avant archivage) ==='
-$etape = Invoke-Api 'Post' "$Base/initiatives/$idTest/etapes" @{ nom = 'Analyse'; ordre = 1; avancement = 100; idStatutEtape = 3 } $adminToken
+# L'étape est créée à 0 % : RM07-auto clôturerait l'initiative dès qu'elle
+# atteint 100 % (cf. section 6 et les checks RM07-auto), ce qui interdirait
+# ensuite toute transition du diagramme d'état.
+$etape = Invoke-Api 'Post' "$Base/initiatives/$idTest/etapes" @{ nom = 'Analyse'; ordre = 1; avancement = 0; idStatutEtape = 2 } $adminToken
 Test-Check 'Création étape -> 201' ($etape.OK -and $etape.Body.idEtape -gt 0)
 $idEtape = $etape.Body.idEtape
-$modEtape = Invoke-Api 'Put' "$Base/etapes/$idEtape" @{ nom = 'Analyse approfondie'; ordre = 1; avancement = 100; idStatutEtape = 3 } $adminToken
+$modEtape = Invoke-Api 'Put' "$Base/etapes/$idEtape" @{ nom = 'Analyse approfondie'; ordre = 1; avancement = 0; idStatutEtape = 2 } $adminToken
 Test-Check 'Modification étape -> 200' ($modEtape.OK -and $modEtape.Body.nom -eq 'Analyse approfondie')
 $etapeDefaut = Invoke-Api 'Post' "$Base/initiatives/$idTest/etapes" @{ nom = 'Conception'; avancement = 0 } $adminToken
 Test-Check 'Étape ordre auto (max+1) + statut par défaut' ($etapeDefaut.OK -and $etapeDefaut.Body.ordre -eq 2 -and $etapeDefaut.Body.statutEtape.libelle -eq 'À faire') "($($etapeDefaut.Body.ordre))"
@@ -235,6 +239,66 @@ foreach ($etapeRM07 in @($etapesRM07.Body)) {
 }
 $txAuto = Invoke-Api 'Get' "$Base/initiatives/$idTest" $null $adminToken
 Test-Check 'Avancement 100 (étapes terminées) -> auto « Terminée »' ($txAuto.OK -and $txAuto.Body.statut.libelle -eq 'Terminée' -and $txAuto.Body.avancement -eq 100)
+
+# RM07-auto doit s'appliquer depuis TOUS les états actifs (« À planifier »,
+# « En cours », « En pause »), et pas seulement depuis « En cours ».
+# 1) Avancement saisi à la main (initiative sans étapes) depuis « À planifier ».
+$rm07A = Invoke-Api 'Post' "$Base/initiatives" @{ code = "TESTRM07A-$suffixe"; nom = 'RM07 depuis À planifier'; avancement = 0; idEntite = 1; idPriorite = 1 } $adminToken
+$rm07AMaj = Invoke-Api 'Put' "$Base/initiatives/$($rm07A.Body.idInitiative)" @{ code = "TESTRM07A-$suffixe"; nom = 'RM07 depuis À planifier'; avancement = 100; idEntite = 1; idStatut = 1; idPriorite = 1 } $adminToken
+Test-Check 'RM07-auto : 100 % saisi depuis « À planifier » -> « Terminée »' ($rm07A.OK -and $rm07AMaj.OK -and $rm07AMaj.Body.statut.libelle -eq 'Terminée' -and $rm07AMaj.Body.avancement -eq 100) "($($rm07AMaj.Status))"
+# 2) Même règle depuis « En pause ».
+$rm07B = Invoke-Api 'Post' "$Base/initiatives" @{ code = "TESTRM07B-$suffixe"; nom = 'RM07 depuis En pause'; avancement = 0; idEntite = 1; idPriorite = 1 } $adminToken
+$idRm07B = $rm07B.Body.idInitiative
+$null = Invoke-Api 'Put' "$Base/initiatives/$idRm07B" @{ code = "TESTRM07B-$suffixe"; nom = 'RM07 depuis En pause'; avancement = 0; idEntite = 1; idStatut = 2; idPriorite = 1 } $adminToken
+$null = Invoke-Api 'Put' "$Base/initiatives/$idRm07B" @{ code = "TESTRM07B-$suffixe"; nom = 'RM07 depuis En pause'; avancement = 0; idEntite = 1; idStatut = 3; idPriorite = 1 } $adminToken
+$rm07BMaj = Invoke-Api 'Put' "$Base/initiatives/$idRm07B" @{ code = "TESTRM07B-$suffixe"; nom = 'RM07 depuis En pause'; avancement = 100; idEntite = 1; idStatut = 3; idPriorite = 1 } $adminToken
+Test-Check 'RM07-auto : 100 % saisi depuis « En pause » -> « Terminée »' ($rm07B.OK -and $rm07BMaj.OK -and $rm07BMaj.Body.statut.libelle -eq 'Terminée') "($($rm07BMaj.Status))"
+# 3) Déclenché par les ÉTAPES depuis « À planifier » (parcours d'origine du
+#    correctif : toutes les étapes passées à « Terminée »).
+$rm07C = Invoke-Api 'Post' "$Base/initiatives" @{ code = "TESTRM07C-$suffixe"; nom = 'RM07 par les étapes'; avancement = 0; idEntite = 1; idPriorite = 1 } $adminToken
+$idRm07C = $rm07C.Body.idInitiative
+$etapeRm07C = Invoke-Api 'Post' "$Base/initiatives/$idRm07C/etapes" @{ nom = 'Étape RM07'; ordre = 1; avancement = 100; idStatutEtape = 3 } $adminToken
+$rm07CApres = Invoke-Api 'Get' "$Base/initiatives/$idRm07C" $null $adminToken
+Test-Check 'RM07-auto : étapes terminées depuis « À planifier » -> « Terminée »' ($etapeRm07C.OK -and $rm07CApres.OK -and $rm07CApres.Body.statut.libelle -eq 'Terminée' -and $rm07CApres.Body.avancement -eq 100)
+# La clôture n'est pas un état figé : rouverrir l'étape fait revenir
+# l'initiative à « En cours » avec l'avancement recalculé.
+$null = Invoke-Api 'Put' "$Base/etapes/$($etapeRm07C.Body.idEtape)" @{ nom = 'Étape RM07'; ordre = 1; avancement = 0; idStatutEtape = 1 } $adminToken
+$rm07CReouverte = Invoke-Api 'Get' "$Base/initiatives/$idRm07C" $null $adminToken
+Test-Check 'RM07 : étape rouverte à 0 % -> initiative « À planifier »' ($rm07CReouverte.OK -and $rm07CReouverte.Body.statut.libelle -eq 'À planifier' -and $rm07CReouverte.Body.avancement -eq 0) "($($rm07CReouverte.Body.statut.libelle)/$($rm07CReouverte.Body.avancement))"
+
+# RM17 : « En cours » retombé à 0 % par ses étapes -> retour automatique à
+# « À planifier » (l'initiative n'a pas commencé). On fait progresser
+# l'étape, on promeut l'initiative à « En cours », puis on la remet à 0 %.
+$null = Invoke-Api 'Put' "$Base/etapes/$($etapeRm07C.Body.idEtape)" @{ nom = 'Étape RM07'; ordre = 1; avancement = 50; idStatutEtape = 2 } $adminToken
+$null = Invoke-Api 'Put' "$Base/initiatives/$idRm07C" @{ code = "TESTRM07C-$suffixe"; nom = 'RM07 par les étapes'; avancement = 50; idEntite = 1; idStatut = 2; idPriorite = 1 } $adminToken
+$null = Invoke-Api 'Put' "$Base/etapes/$($etapeRm07C.Body.idEtape)" @{ nom = 'Étape RM07'; ordre = 1; avancement = 0; idStatutEtape = 1 } $adminToken
+$rm17 = Invoke-Api 'Get' "$Base/initiatives/$idRm07C" $null $adminToken
+Test-Check 'RM17 : « En cours » à 0 % (étapes réouvertes) -> retour « À planifier »' ($rm17.OK -and $rm17.Body.statut.libelle -eq 'À planifier' -and $rm17.Body.avancement -eq 0) "($($rm17.Body.statut.libelle)/$($rm17.Body.avancement))"
+
+# RM18 : statut et avancement d'une étape se déduisent mutuellement —
+# statut -> valeur par défaut (0 / 50 / 100) ; nombre saisi -> statut
+# (1-99 -> « En cours », 100 -> « Terminée »). L'initiative suit.
+$rm18 = Invoke-Api 'Post' "$Base/initiatives" @{ code = "TESTRM18-$suffixe"; nom = 'RM18 statut/avancement'; avancement = 0; idEntite = 1; idStatut = 1; idPriorite = 1 } $adminToken
+$idRm18 = $rm18.Body.idInitiative
+$etapeRm18 = Invoke-Api 'Post' "$Base/initiatives/$idRm18/etapes" @{ nom = 'Étape RM18'; ordre = 1; avancement = 80; idStatutEtape = 1 } $adminToken
+Test-Check 'RM18 : nombre saisi (80 %) -> statut « En cours » automatique' ($etapeRm18.OK -and $etapeRm18.Body.avancement -eq 80 -and $etapeRm18.Body.statutEtape.libelle -eq 'En cours') "($($etapeRm18.Body.avancement)/$($etapeRm18.Body.statutEtape.libelle))"
+$null = Invoke-Api 'Put' "$Base/etapes/$($etapeRm18.Body.idEtape)" @{ nom = 'Étape RM18'; ordre = 1; avancement = 40; idStatutEtape = 2 } $adminToken
+$etapeRm18B = Invoke-Api 'Get' "$Base/initiatives/$idRm18/etapes" $null $adminToken
+Test-Check 'RM18 : étape « En cours » saisi à 40 % -> conservé (40 %)' ($etapeRm18B.OK -and $etapeRm18B.Body[0].avancement -eq 40) "($($etapeRm18B.Body[0].avancement))"
+$etapeRm18D = Invoke-Api 'Post' "$Base/initiatives/$idRm18/etapes" @{ nom = 'Étape RM18 bis'; ordre = 2; idStatutEtape = 2 } $adminToken
+Test-Check 'RM18 : étape « En cours » sans valeur -> 50 % par défaut' ($etapeRm18D.OK -and $etapeRm18D.Body.avancement -eq 50) "($($etapeRm18D.Body.avancement))"
+$null = Invoke-Api 'Put' "$Base/etapes/$($etapeRm18D.Body.idEtape)" @{ nom = 'Étape RM18 bis'; ordre = 2; avancement = 0; idStatutEtape = 2 } $adminToken
+$etapeRm18E = Invoke-Api 'Get' "$Base/initiatives/$idRm18/etapes" $null $adminToken
+Test-Check 'RM18 : étape « En cours » champ non touché (0 %) -> 50 % par défaut' ($etapeRm18E.OK -and $etapeRm18E.Body[1].avancement -eq 50) "($($etapeRm18E.Body[1].avancement))"
+$etapeRm18F = Invoke-Api 'Put' "$Base/etapes/$($etapeRm18D.Body.idEtape)" @{ nom = 'Étape RM18 bis'; ordre = 2; avancement = 87; idStatutEtape = 1 } $adminToken
+Test-Check 'RM18 : 87 % saisi avec statut « À faire » -> « En cours » / 87 %' ($etapeRm18F.OK -and $etapeRm18F.Body.avancement -eq 87 -and $etapeRm18F.Body.statutEtape.libelle -eq 'En cours') "($($etapeRm18F.Body.avancement)/$($etapeRm18F.Body.statutEtape.libelle))"
+$etapeRm18G = Invoke-Api 'Put' "$Base/etapes/$($etapeRm18D.Body.idEtape)" @{ nom = 'Étape RM18 bis'; ordre = 2; avancement = 40; idStatutEtape = 3 } $adminToken
+Test-Check 'RM18 : 40 % saisi avec statut « Terminée » -> « En cours » / 40 %' ($etapeRm18G.OK -and $etapeRm18G.Body.avancement -eq 40 -and $etapeRm18G.Body.statutEtape.libelle -eq 'En cours') "($($etapeRm18G.Body.avancement)/$($etapeRm18G.Body.statutEtape.libelle))"
+$null = Invoke-Api 'Delete' "$Base/etapes/$($etapeRm18D.Body.idEtape)" $null $adminToken
+$etapeRm18C = Invoke-Api 'Put' "$Base/etapes/$($etapeRm18.Body.idEtape)" @{ nom = 'Étape RM18'; ordre = 1; avancement = 100; idStatutEtape = 3 } $adminToken
+Test-Check 'RM18 : étape « Terminée » avec 100 % -> « Terminée » / 100 %' ($etapeRm18C.OK -and $etapeRm18C.Body.avancement -eq 100 -and $etapeRm18C.Body.statutEtape.libelle -eq 'Terminée') "($($etapeRm18C.Body.avancement)/$($etapeRm18C.Body.statutEtape.libelle))"
+$rm18Init = Invoke-Api 'Get' "$Base/initiatives/$idRm18" $null $adminToken
+Test-Check 'RM18 : initiative pilotée suivie (100 % -> « Terminée » RM07-auto)' ($rm18Init.OK -and $rm18Init.Body.avancement -eq 100 -and $rm18Init.Body.statut.libelle -eq 'Terminée') "($($rm18Init.Body.avancement)/$($rm18Init.Body.statut.libelle))"
 
 $arch = Invoke-Api 'Patch' "$Base/initiatives/$idTest/archive" $null $adminToken
 Test-Check 'Archivage OK (archive = true)' ($arch.OK -and $arch.Body.archive -eq $true)
@@ -375,6 +439,104 @@ $detailDem = Invoke-Api 'Get' "$Base/demandes/$idDem3" $null $adminToken
 Test-Check 'Demande : détail OK' ($detailDem.OK -and $detailDem.Body.idDemande -eq $idDem3)
 $listeDem = Invoke-Api 'Get' "$Base/demandes" $null $adminToken
 Test-Check 'Demandes : liste contient les demandes de test' ($listeDem.OK -and @($listeDem.Body | Where-Object { $_.titre -like 'TEST-DEM*' }).Count -ge 3) "($(@($listeDem.Body | Where-Object { $_.titre -like 'TEST-DEM*' }).Count))"
+
+Write-Output '=== 12. Historique des statuts (journal global, lecture seule) ==='
+# Une initiative dédiée enchaîne les trois origines possibles : création
+# (manuelle), transition explicite (manuelle), puis passage RM07-auto
+# déclenché par les étapes (automatique). Chaque ligne du journal doit
+# porter sa colonne « automatique » — c'est ce qu'affiche la page dédiée.
+$histCorps = @{ code = "TESTHIST-$suffixe"; nom = 'Journal des statuts'; idEntite = 1; idStatut = 1; idPriorite = 1 }
+$histCree = Invoke-Api 'Post' "$Base/initiatives" $histCorps $adminToken
+Test-Check 'Historique : initiative de test créée' ($histCree.OK -and $histCree.Body.idInitiative -gt 0) "($($histCree.Status))"
+$idHist = $histCree.Body.idInitiative
+$codeHist = $histCree.Body.code
+
+$histBase = @{ code = $codeHist; nom = 'Journal des statuts'; description = ''; dateDebut = $null; dateFinPrevue = $null; budget = 0; idEntite = 1; idResponsable = $null; idPriorite = 1 }
+$histManuel = Invoke-Api 'Put' "$Base/initiatives/$idHist" (@{ idStatut = 2; avancement = 10 } + $histBase) $adminToken
+Test-Check 'Historique : transition manuelle « À planifier » -> « En cours »' ($histManuel.OK -and $histManuel.Body.statut.libelle -eq 'En cours') "($($histManuel.Body.statut.libelle))"
+
+# L'étape à 100 % déclenche le recalcule : RM07-auto porte l'initiative à
+# « Terminée ». La modification qui suit garantit le recalcul même si la
+# création ne le déclenchait pas (idempotent : aucun doublon de journal).
+$histEtape = Invoke-Api 'Post' "$Base/initiatives/$idHist/etapes" @{ nom = 'Livraison'; ordre = 1; avancement = 100; idStatutEtape = 3 } $adminToken
+Test-Check 'Historique : étape créée à 100 %' ($histEtape.OK -and $histEtape.Body.idEtape -gt 0) "($($histEtape.Status))"
+$null = Invoke-Api 'Put' "$Base/etapes/$($histEtape.Body.idEtape)" @{ nom = 'Livraison'; ordre = 1; avancement = 100; idStatutEtape = 3 } $adminToken
+$histAuto = Invoke-Api 'Get' "$Base/initiatives/$idHist" $null $adminToken
+Test-Check 'Historique : passage automatique « En cours » -> « Terminée » (RM07)' ($histAuto.OK -and $histAuto.Body.statut.libelle -eq 'Terminée') "($($histAuto.Body.statut.libelle))"
+
+# Journal de la fiche : origine de chaque ligne + rattachement à l'initiative.
+$histDetail = Invoke-Api 'Get' "$Base/initiatives/$idHist/historique-statuts" $null $adminToken
+$histLignes = @($histDetail.Body)
+$histCreation = @($histLignes | Where-Object { $null -eq $_.ancienStatut }) | Select-Object -First 1
+Test-Check 'Journal détail : création présente, origine manuelle' ($histDetail.OK -and $null -ne $histCreation -and $histCreation.automatique -eq $false) "($($histLignes.Count) lignes)"
+$histManLigne = @($histLignes | Where-Object { $_.nouveauStatut -eq 'En cours' }) | Select-Object -First 1
+Test-Check 'Journal détail : transition choisie, origine manuelle' ($null -ne $histManLigne -and $histManLigne.automatique -eq $false)
+$histAutoLigne = @($histLignes | Where-Object { $_.nouveauStatut -eq 'Terminée' }) | Select-Object -First 1
+Test-Check 'Journal détail : passage RM07, origine automatique' ($null -ne $histAutoLigne -and $histAutoLigne.automatique -eq $true)
+Test-Check 'Journal détail : chaque ligne porte le code de l''initiative' (@($histLignes | Where-Object { $_.initiative.code -eq $codeHist }).Count -eq $histLignes.Count)
+$histDetailChamps = @($histLignes[0].PSObject.Properties.Name)
+Test-Check 'Journal détail : champs utilisateur + initiative + origine' (($histDetailChamps -contains 'utilisateur') -and ($histDetailChamps -contains 'initiative') -and ($histDetailChamps -contains 'automatique'))
+
+# Page globale : colonnes, compte total (X-Total-Count) et pagination.
+$histGlobal = Invoke-Api 'Get' "$Base/historique-statuts" $null $adminToken
+$histTotal = 0
+if ($histGlobal.OK) { $histTotal = [int](@($histGlobal.Headers['X-Total-Count'])[0]) }
+Test-Check 'Page globale : 200 + X-Total-Count ≥ lignes' ($histGlobal.OK -and $histTotal -ge @($histGlobal.Body).Count -and @($histGlobal.Body).Count -gt 0) "($($histGlobal.Status)/$histTotal)"
+Test-Check 'Page globale : lignes avec code, nom et origine' (@($histGlobal.Body | Where-Object { $_.initiative.code -and $_.initiative.nom -and $null -ne $_.automatique }).Count -eq @($histGlobal.Body).Count)
+
+$histPage = Invoke-Api 'Get' "$Base/historique-statuts?page=0&size=2" $null $adminToken
+$histPageTotal = 0
+if ($histPage.OK) { $histPageTotal = [int](@($histPage.Headers['X-Total-Count'])[0]) }
+Test-Check 'Pagination : taille 2 respectée, total hors page' ($histPage.OK -and @($histPage.Body).Count -le 2 -and $histPageTotal -gt @($histPage.Body).Count) "($(@($histPage.Body).Count)/$histPageTotal)"
+
+# Recherche par code ou nom, et filtres combinés.
+$histRech = Invoke-Api 'Get' "$Base/historique-statuts?recherche=$codeHist" $null $adminToken
+Test-Check 'Recherche par code : au moins les 3 lignes du test, rien d''autre' (@($histRech.Body).Count -ge 3 -and @($histRech.Body | Where-Object { $_.initiative.code -like 'TESTHIST-*' }).Count -eq @($histRech.Body).Count) "($(@($histRech.Body).Count))"
+
+$histInit = Invoke-Api 'Get' "$Base/historique-statuts?initiative=$idHist" $null $adminToken
+Test-Check 'Filtre initiative (lien « Voir tout ») : 3 événements' (@($histInit.Body).Count -eq 3) "($(@($histInit.Body).Count))"
+
+$histStatut = Invoke-Api 'Get' "$Base/historique-statuts?statut=Terminée" $null $adminToken
+Test-Check 'Filtre statut « Terminée » : que des lignes « Terminée »' (@($histStatut.Body).Count -gt 0 -and @($histStatut.Body | Where-Object { $_.nouveauStatut -eq 'Terminée' }).Count -eq @($histStatut.Body).Count) "($(@($histStatut.Body).Count))"
+
+$auteursHist = Invoke-Api 'Get' "$Base/historique-statuts/auteurs" $null $adminToken
+Test-Check 'Auteurs du journal : liste non vide' ($auteursHist.OK -and @($auteursHist.Body).Count -ge 1)
+$idAuteurHist = 0
+if ($auteursHist.OK -and @($auteursHist.Body).Count -ge 1) { $idAuteurHist = @($auteursHist.Body)[0].idUser }
+$histParUtil = Invoke-Api 'Get' "$Base/historique-statuts?utilisateur=$idAuteurHist" $null $adminToken
+Test-Check 'Filtre utilisateur : lignes toutes du même auteur' (@($histParUtil.Body).Count -gt 0 -and @($histParUtil.Body | Where-Object { $_.utilisateur.idUser -eq $idAuteurHist }).Count -eq @($histParUtil.Body).Count) "($(@($histParUtil.Body).Count))"
+
+$jour = Get-Date -Format 'yyyy-MM-dd'
+$histJour = Invoke-Api 'Get' "$Base/historique-statuts?du=$jour&au=$jour" $null $adminToken
+Test-Check 'Filtre période du/au = aujourd''hui : événements du jour' (@($histJour.Body).Count -ge 3 -and @($histJour.Body | Where-Object { $_.dateChangement -like "$jour*" }).Count -eq @($histJour.Body).Count) "($(@($histJour.Body).Count))"
+$histFutur = Invoke-Api 'Get' "$Base/historique-statuts?du=2099-01-01&au=2099-01-02" $null $adminToken
+Test-Check 'Filtre période future : aucune ligne' ($histFutur.OK -and @($histFutur.Body).Count -eq 0) "($(@($histFutur.Body).Count))"
+
+# Tri et validation des paramètres.
+$histAsc = Invoke-Api 'Get' "$Base/historique-statuts?initiative=$idHist&direction=asc" $null $adminToken
+$ascPremier = @($histAsc.Body)[0]
+$ascDernier = @($histAsc.Body)[-1]
+Test-Check 'Tri « plus ancien d''abord » : première ligne ≤ dernière' ($histAsc.OK -and @($histAsc.Body).Count -eq 3 -and ([datetime]$ascPremier.dateChangement) -le ([datetime]$ascDernier.dateChangement))
+$histSensBad = Invoke-Api 'Get' "$Base/historique-statuts?direction=sens-interdit" $null $adminToken
+Test-Check 'Direction de tri inconnue -> 400' ($histSensBad.OK -eq $false -and $histSensBad.Status -eq 400) "($($histSensBad.Status))"
+$histPeriodeBad = Invoke-Api 'Get' "$Base/historique-statuts?du=$jour&au=2020-01-01" $null $adminToken
+Test-Check 'Période inversée (du > au) -> 400' ($histPeriodeBad.OK -eq $false -and $histPeriodeBad.Status -eq 400) "($($histPeriodeBad.Status))"
+
+# Permissions : INITIATIVE_CONSULTER suffit, rien n'est ouvert en plus.
+$histAnonyme = Invoke-Api 'Get' "$Base/historique-statuts" $null $null
+Test-Check 'Anonyme : journal global interdit -> 401' ($histAnonyme.OK -eq $false -and $histAnonyme.Status -eq 401) "($($histAnonyme.Status))"
+$histVisiteur = Invoke-Api 'Get' "$Base/historique-statuts" $null $visiteurToken
+Test-Check 'Visiteur : lecture du journal autorisée -> 200' ($histVisiteur.OK -and $histVisiteur.Status -eq 200) "($($histVisiteur.Status))"
+
+# Lecture seule : aucune écriture n'existe sur le journal (CDC et spécification).
+$histEcriture = Invoke-Api 'Post' "$Base/historique-statuts" @{ nouveauStatut = 'Terminée' } $adminToken
+Test-Check 'Écriture sur le journal refusée (POST -> 4xx)' ($histEcriture.OK -eq $false -and $histEcriture.Status -ge 400 -and $histEcriture.Status -lt 500) "($($histEcriture.Status))"
+$histSuppr = Invoke-Api 'Delete' "$Base/historique-statuts/1" $null $adminToken
+Test-Check 'Suppression d''une entrée refusée (DELETE -> 4xx)' ($histSuppr.OK -eq $false -and $histSuppr.Status -ge 400 -and $histSuppr.Status -lt 500) "($($histSuppr.Status))"
+
+# Nettoyage : « Terminée » -> archivée (exclue des KPI des exécutions suivantes).
+$histArch = Invoke-Api 'Patch' "$Base/initiatives/$idHist/archive" $null $adminToken
+Test-Check 'Nettoyage : initiative du journal archivée' ($histArch.OK -and $histArch.Body.archive -eq $true)
 
 Write-Output ''
 Write-Output '------------------------------------------------------------'

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api, { messageErreur } from '../api';
 import { useI18n } from '../i18n/I18nContext';
+import { afficherMessage } from '../i18n/message';
 import { useReferentiels } from '../i18n/referentiels';
 
 const vide = { nom: '', prenom: '', email: '', motDePasse: '', telephone: '', actif: true, idRole: '', idEntite: '' };
@@ -68,7 +69,9 @@ export default function UsersPage() {
         await api.post('/users', corps);
       }
       setModal(false);
-      setInfo(editionId ? t('users.utilisateurModifie') : t('users.utilisateurCree'));
+      setInfo(editionId
+        ? { cle: 'users.utilisateurModifie' }
+        : { cle: 'users.utilisateurCree' });
       charger();
     } catch (err) {
       setErreur(messageErreur(err));
@@ -87,8 +90,8 @@ export default function UsersPage() {
         <button className="btn btn-primaire" onClick={ouvrirCreation}>{t('users.nouvelUtilisateur')}</button>
       </header>
 
-      {info && <div className="alerte alerte-succes">{info}</div>}
-      {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
+      {info && <div className="alerte alerte-succes">{afficherMessage(t, info)}</div>}
+      {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
 
       <div className="carte">
         <div className="table-enveloppe">
@@ -150,22 +153,22 @@ export default function UsersPage() {
                   <input value={form.telephone} onChange={set('telephone')} />
                 </div>
                 <div className="champ">
-                  <label>{t('users.champRole')}</label>
-                  <select value={form.idRole} onChange={set('idRole')} required>
+                  <label htmlFor="user-role">{t('users.champRole')}</label>
+                  <select id="user-role" value={form.idRole} onChange={set('idRole')} required>
                     <option value="">{t('users.aucun')}</option>
                     {roles.map((r) => <option key={r.idRole} value={r.idRole}>{ref.role(r.code, r.libelle)}</option>)}
                   </select>
                 </div>
                 <div className="champ">
-                  <label>{t('users.champEntite')}</label>
-                  <select value={form.idEntite} onChange={set('idEntite')}>
+                  <label htmlFor="user-entite">{t('users.champEntite')}</label>
+                  <select id="user-entite" value={form.idEntite} onChange={set('idEntite')}>
                     <option value="">{t('users.aucun')}</option>
                     {entites.map((e) => <option key={e.idEntite} value={e.idEntite}>{e.nom}</option>)}
                   </select>
                 </div>
                 <div className="champ">
-                  <label>{t('users.champCompteActif')}</label>
-                  <select value={form.actif ? 'true' : 'false'} onChange={(e) => setForm((f) => ({ ...f, actif: e.target.value === 'true' }))}>
+                  <label htmlFor="user-actif">{t('users.champCompteActif')}</label>
+                  <select id="user-actif" value={form.actif ? 'true' : 'false'} onChange={(e) => setForm((f) => ({ ...f, actif: e.target.value === 'true' }))}>
                     <option value="true">{t('users.oui')}</option>
                     <option value="false">{t('users.non')}</option>
                   </select>

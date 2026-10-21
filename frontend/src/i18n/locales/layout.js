@@ -9,6 +9,7 @@ export default {
     'layout.nav.demandes': 'Demandes',
     'layout.nav.objectifs': 'Objectifs',
     'layout.nav.archives': 'Archives',
+    'layout.nav.historique': 'Historique des statuts',
     'layout.nav.utilisateurs': 'Utilisateurs',
     'layout.nav.roles': 'Rôles & permissions',
 
@@ -35,6 +36,7 @@ export default {
     'layout.nav.demandes': 'Requests',
     'layout.nav.objectifs': 'Objectives',
     'layout.nav.archives': 'Archives',
+    'layout.nav.historique': 'Status history',
     'layout.nav.utilisateurs': 'Users',
     'layout.nav.roles': 'Roles & permissions',
 
@@ -61,6 +63,7 @@ export default {
     'layout.nav.demandes': 'الطلبات',
     'layout.nav.objectifs': 'الأهداف',
     'layout.nav.archives': 'الأرشيف',
+    'layout.nav.historique': 'تاريخ الحالات',
     'layout.nav.utilisateurs': 'المستخدمون',
     'layout.nav.roles': 'الأدوار والأذونات',
 
@@ -87,6 +90,7 @@ export default {
     'layout.nav.demandes': 'Solicitudes',
     'layout.nav.objectifs': 'Objetivos',
     'layout.nav.archives': 'Archivo',
+    'layout.nav.historique': 'Historial de estados',
     'layout.nav.utilisateurs': 'Usuarios',
     'layout.nav.roles': 'Roles y permisos',
 

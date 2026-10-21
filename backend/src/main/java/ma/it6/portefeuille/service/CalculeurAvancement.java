@@ -8,11 +8,14 @@ import java.util.List;
 /**
  * Calcule l'avancement d'une initiative à partir de ses étapes.
  *
- * <p>Règle de progression d'une étape :</p>
+ * <p>Règle de progression d'une étape (RM18, valeur automatique selon le
+ * statut) :</p>
  * <ul>
  *   <li>« Terminée » = 100 % ;</li>
+ *   <li>« En cours » = la valeur saisie (1-100), 50 % par défaut si elle
+ *   est absente ou à 0 (champ non renseigné) ;</li>
  *   <li>« À faire » = 0 % ;</li>
- *   <li>sinon l'avancement saisi (0-100).</li>
+ *   <li>statut inconnu : l'avancement saisi (0-100), par sécurité.</li>
  * </ul>
  *
  * <p>L'avancement de l'initiative est la <strong>moyenne pondérée par la
@@ -26,6 +29,7 @@ public final class CalculeurAvancement {
     /** Statuts de l'étape (référentiel {@code statut_etape}). */
     public static final String ETAPE_TERMINEE = "Terminée";
     public static final String ETAPE_A_FAIRE = "À faire";
+    public static final String ETAPE_EN_COURS = "En cours";
 
     private CalculeurAvancement() {
     }
@@ -62,7 +66,7 @@ public final class CalculeurAvancement {
         return (int) Math.round(totalPondere / poidsTotal);
     }
 
-    /** Progression d'une étape déduite de son statut et de son avancement. */
+    /** Progression d'une étape déduite de son statut (RM18). */
     public static int progression(Etape etape) {
         String statut = etape.getStatutEtape() == null ? null : etape.getStatutEtape().getLibelle();
         if (ETAPE_TERMINEE.equals(statut)) {
@@ -72,8 +76,9 @@ public final class CalculeurAvancement {
             return 0;
         }
         Integer avancement = etape.getAvancement();
-        if (avancement == null) {
-            return 0;
+        if (avancement == null || (ETAPE_EN_COURS.equals(statut) && avancement == 0)) {
+            // « En cours » sans valeur (ou à 0) : 50 % par défaut.
+            return ETAPE_EN_COURS.equals(statut) ? 50 : 0;
         }
         return Math.max(0, Math.min(100, avancement));
     }

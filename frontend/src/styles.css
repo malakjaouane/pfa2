@@ -554,7 +554,9 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 
 .progress-vert { background: var(--green); }
 .progress-bleu { background: var(--jira-blue); }
-.progress-ambre { background: var(--yellow); }
+/* Le jaune est clair : le libellé doit être foncé pour rester lisible
+   (contraste 8.7:1 contre 1.9:1 en blanc — exigence WCAG AA). */
+.progress-ambre { background: var(--yellow); color: var(--n900); }
 
 /* ============================================================
    Boutons
@@ -650,6 +652,23 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 }
 
 .champ-plein { grid-column: 1 / -1; }
+
+/* Petit texte d'explication sous un champ de formulaire (ex. avancement
+   piloté par les étapes). Contraste conforme (5,3:1 sur fond carte). */
+.aide-champ {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--texte-muet);
+  margin: 1px 0 0;
+}
+
+/* Champ grisé = lecture seule pilotée par le serveur. */
+.champ input:disabled,
+.champ select:disabled {
+  background: var(--n20);
+  color: var(--n700);
+  cursor: not-allowed;
+}
 
 .champ label {
   font-size: 12px;
@@ -1238,7 +1257,8 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 .historique-date {
   grid-column: 1;
   font-size: 11.5px;
-  color: var(--n200);
+  /* --n200 (4.1:1) est sous le seuil WCAG AA pour ce corps : --texte-muet (5.3:1). */
+  color: var(--texte-muet);
   white-space: nowrap;
 }
 
@@ -1259,7 +1279,88 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 .historique-auteur {
   grid-column: 2;
   font-size: 11.5px;
-  color: var(--n200);
+  color: var(--texte-muet);
+}
+
+/* Résumé du journal sur la fiche : phrase d'accroche + lien vers la page
+   complète de l'historique (filtre déjà posé sur l'initiative). */
+.section-entete-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.historique-resume {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+/* ---------- Page « Historique des statuts » (journal global) ---------- */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding-top: 14px;
+}
+
+/* Action rendue comme un lien texte (« Réinitialiser » du compteur). */
+.lien-bouton {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--jira-blue);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.lien-bouton:hover { color: var(--jira-blue-hover); }
+
+/* Pastille « filtré sur cette initiative » (venue de la fiche détaillée). */
+.filtre-pastille {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 4px 9px;
+  background: var(--jira-blue-bg);
+  color: var(--jira-blue-dark);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.filtre-pastille a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.filtre-pastille a:hover { text-decoration: underline; }
+
+.pastille-fermer {
+  background: none;
+  border: 0;
+  padding: 0 2px;
+  font-size: 16px;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Surlignage des résultats de recherche : la casse et les accents sont
+   neutralisés côté MySQL (collation) et côté client (composant Surligner). */
+mark {
+  background: var(--yellow-bg);
+  color: inherit;
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+/* Colonne code de la table du journal : lien vers la fiche initiative. */
+.table-lien-code {
+  font-weight: 600;
 }
 
 .kanban-meta {

@@ -2,6 +2,9 @@
 export default {
   fr: {
     'initiativeDetail.chargement': 'Chargement…',
+    'initiativeDetail.ariaStatutEtape': "Statut de l'étape",
+    'initiativeDetail.ariaStatutJalon': 'Statut du jalon',
+    'initiativeDetail.ariaDatePrevue': 'Date prévue du jalon',
     'initiativeDetail.confirmArchiver': "Archiver l'initiative « {nom} » ?",
     'initiativeDetail.archivee': 'Initiative archivée.',
     'initiativeDetail.retourListe': 'Retour à la liste',
@@ -31,6 +34,8 @@ export default {
     'initiativeDetail.jalonsTitre': 'Jalons ({nombre})',
     'initiativeDetail.aucunJalon': 'Aucun jalon défini.',
     'initiativeDetail.historiqueTitre': 'Historique des statuts',
+    'initiativeDetail.historiqueResume': 'Résumé des derniers changements de statut.',
+    'initiativeDetail.voirToutHistorique': 'Voir tout l’historique',
     'initiativeDetail.aucunHistorique': 'Aucun changement de statut enregistré.',
     'initiativeDetail.transition': '{de} → {vers}',
     'initiativeDetail.transitionCreation': 'Création → {statut}',
@@ -51,6 +56,9 @@ export default {
 
   en: {
     'initiativeDetail.chargement': 'Loading…',
+    'initiativeDetail.ariaStatutEtape': 'Step status',
+    'initiativeDetail.ariaStatutJalon': 'Milestone status',
+    'initiativeDetail.ariaDatePrevue': 'Planned milestone date',
     'initiativeDetail.confirmArchiver': 'Archive the initiative "{nom}"?',
     'initiativeDetail.archivee': 'Initiative archived.',
     'initiativeDetail.retourListe': 'Back to the list',
@@ -80,6 +88,8 @@ export default {
     'initiativeDetail.jalonsTitre': 'Milestones ({nombre})',
     'initiativeDetail.aucunJalon': 'No milestone defined.',
     'initiativeDetail.historiqueTitre': 'Status history',
+    'initiativeDetail.historiqueResume': 'Summary of the latest status changes.',
+    'initiativeDetail.voirToutHistorique': 'View full history',
     'initiativeDetail.aucunHistorique': 'No status change recorded.',
     'initiativeDetail.transition': '{de} → {vers}',
     'initiativeDetail.transitionCreation': 'Creation → {statut}',
@@ -100,6 +110,9 @@ export default {
 
   ar: {
     'initiativeDetail.chargement': 'جارٍ التحميل…',
+    'initiativeDetail.ariaStatutEtape': 'حالة الخطوة',
+    'initiativeDetail.ariaStatutJalon': 'حالة المعلم',
+    'initiativeDetail.ariaDatePrevue': 'التاريخ المتوقع للمعلم',
     'initiativeDetail.confirmArchiver': 'أرشفة المبادرة «{nom}»؟',
     'initiativeDetail.archivee': 'تمت أرشفة المبادرة.',
     'initiativeDetail.retourListe': 'العودة إلى القائمة',
@@ -129,6 +142,8 @@ export default {
     'initiativeDetail.jalonsTitre': 'المعالم ({nombre})',
     'initiativeDetail.aucunJalon': 'لم يتم تحديد أي معلم.',
     'initiativeDetail.historiqueTitre': 'تاريخ الحالات',
+    'initiativeDetail.historiqueResume': 'ملخص آخر تغييرات الحالة.',
+    'initiativeDetail.voirToutHistorique': 'عرض التاريخ كاملاً',
     'initiativeDetail.aucunHistorique': 'لا يوجد تغيير مسجّل للحالة.',
     'initiativeDetail.transition': '{de} ← {vers}',
     'initiativeDetail.transitionCreation': 'إنشاء ← {statut}',
@@ -149,6 +164,9 @@ export default {
 
   es: {
     'initiativeDetail.chargement': 'Cargando…',
+    'initiativeDetail.ariaStatutEtape': 'Estado del paso',
+    'initiativeDetail.ariaStatutJalon': 'Estado del hito',
+    'initiativeDetail.ariaDatePrevue': 'Fecha prevista del hito',
     'initiativeDetail.confirmArchiver': '¿Archivar la iniciativa «{nom}»?',
     'initiativeDetail.archivee': 'Iniciativa archivada.',
     'initiativeDetail.retourListe': 'Volver a la lista',
@@ -178,6 +196,8 @@ export default {
     'initiativeDetail.jalonsTitre': 'Hitos ({nombre})',
     'initiativeDetail.aucunJalon': 'Ningún hito definido.',
     'initiativeDetail.historiqueTitre': 'Historial de estados',
+    'initiativeDetail.historiqueResume': 'Resumen de los últimos cambios de estado.',
+    'initiativeDetail.voirToutHistorique': 'Ver historial completo',
     'initiativeDetail.aucunHistorique': 'Ningún cambio de estado registrado.',
     'initiativeDetail.transition': '{de} → {vers}',
     'initiativeDetail.transitionCreation': 'Creación → {statut}',

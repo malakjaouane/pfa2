@@ -12,6 +12,7 @@ import initiativeForm from './initiativeForm';
 import roadmap from './roadmap';
 import objectifs from './objectifs';
 import demandes from './demandes';
+import historique from './historique';
 import users from './users';
 import roles from './roles';
 import motdepasse from './motdepasse';
@@ -34,6 +35,7 @@ const FRAGMENTS = [
   roadmap,
   objectifs,
   demandes,
+  historique,
   users,
   roles,
   motdepasse

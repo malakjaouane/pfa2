@@ -14,6 +14,7 @@ import {
   IconShield,
   IconLogout,
   IconArchive,
+  IconClock,
   IconSearch,
   IconChevronDown,
   IconMenu,
@@ -35,6 +36,7 @@ function filAriane(pathname, search) {
   if (pathname.startsWith('/roadmap')) return ['layout.fil.portefeuille', 'layout.nav.roadmap'];
   if (pathname.startsWith('/demandes')) return ['layout.fil.portefeuille', 'layout.nav.demandes'];
   if (pathname.startsWith('/objectifs')) return ['layout.fil.portefeuille', 'layout.fil.objectifs'];
+  if (pathname.startsWith('/historique')) return ['layout.fil.portefeuille', 'layout.nav.historique'];
   if (pathname.startsWith('/utilisateurs')) return ['layout.fil.portefeuille', 'layout.nav.utilisateurs'];
   if (pathname.startsWith('/roles')) return ['layout.fil.portefeuille', 'layout.nav.roles'];
   if (pathname.startsWith('/mot-de-passe')) return ['layout.fil.portefeuille', 'layout.menu.motDePasse'];
@@ -111,6 +113,9 @@ export default function Layout() {
   if (hasPermission('INITIATIVE_CONSULTER')) {
     liens.push({ to: '/objectifs', cle: 'layout.nav.objectifs', Icone: IconTarget, actif: pathname.startsWith('/objectifs') });
     liens.push({ to: '/initiatives?archive=1', cle: 'layout.nav.archives', Icone: IconArchive, actif: dansArchives });
+    // Journal global : même permission que la lecture des initiatives —
+    // aucun nouveau droit ouvert par la page.
+    liens.push({ to: '/historique', cle: 'layout.nav.historique', Icone: IconClock, actif: pathname.startsWith('/historique') });
   }
   if (hasPermission('UTILISATEUR_GERER')) {
     liens.push({ to: '/utilisateurs', cle: 'layout.nav.utilisateurs', Icone: IconUsers, actif: pathname.startsWith('/utilisateurs') });
