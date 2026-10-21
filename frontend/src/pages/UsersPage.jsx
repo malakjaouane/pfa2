@@ -20,6 +20,7 @@ export default function UsersPage() {
   const [modal, setModal] = useState(false);
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
+  const [critere, setCritere] = useState({ recherche: '', role: '', entite: '' });
 
   const charger = () => {
     api.get('/users').then((res) => setUtilisateurs(res.data)).catch((err) => setErreur(messageErreur(err)));
@@ -31,6 +32,40 @@ export default function UsersPage() {
     api.get('/referentiels/entites').then((res) => setEntites(res.data)).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Normalisation d'une recherche : insensible à la casse et aux accents. */
+  const normaliser = (v) => (v ?? '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  /** Forme purement numérique (pour comparer des téléphones saisies formatés). */
+  const chiffresSeuls = (v) => (v ?? '').toString().replace(/\D/g, '');
+
+  /**
+   * Filtre combiné (ET) appliqué sur TOUS les utilisateurs renvoyés par l'API :
+   * `GET /users` retourne la liste complète (`findAllByOrderByIdUserAsc`),
+   * sans pagination ni troncature — la recherche porte donc sur l'ensemble
+   * des comptes accessibles, pas seulement sur des lignes affichées.
+   * Trois critères : nom complet, e-mail ou téléphone / rôle / entité.
+   */
+  const utilisateursFiltres = utilisateurs.filter((u) => {
+    const q = normaliser(critere.recherche).trim();
+    if (q) {
+      const trouveNom = normaliser(`${u.prenom} ${u.nom}`).includes(q);
+      const trouveEmail = normaliser(u.email).includes(q);
+      // Comparaison par chiffres uniquement si la requête est formatée comme
+      // un téléphone ("06 22", "+212…") : sinon « it6 » d'un e-mail déclencherait
+      // une fausse correspondance sur les numéros (tous commencent par 06).
+      const requeteTelephone = /^[+\d\s().\-/]+$/.test(q);
+      const trouveTel = requeteTelephone
+        ? chiffresSeuls(u.telephone).includes(chiffresSeuls(q))
+        : normaliser(u.telephone).includes(q);
+      if (!trouveNom && !trouveEmail && !trouveTel) return false;
+    }
+    if (critere.role && String(u.role?.idRole) !== critere.role) return false;
+    if (critere.entite && String(u.entite?.idEntite) !== critere.entite) return false;
+    return true;
+  });
+
+  const champCritere = (champ) => (e) => setCritere((c) => ({ ...c, [champ]: e.target.value }));
+  const reinitialiser = () => setCritere({ recherche: '', role: '', entite: '' });
 
   const ouvrirCreation = () => {
     setEditionId(null);
@@ -93,7 +128,36 @@ export default function UsersPage() {
       {info && <div className="alerte alerte-succes">{afficherMessage(t, info)}</div>}
       {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
 
+      {/* Recherche + filtres (rôle, entité) sur l'ensemble des utilisateurs. */}
+      <div className="carte filtre-bar" role="search">
+        <div className="filtre-ligne">
+          <input
+            type="search"
+            placeholder={t('users.recherchePlaceholder')}
+            aria-label={t('users.recherchePlaceholder')}
+            value={critere.recherche}
+            onChange={champCritere('recherche')}
+          />
+          <select aria-label={t('users.ariaFiltreRole')} value={critere.role} onChange={champCritere('role')}>
+            <option value="">{t('users.tousRoles')}</option>
+            {roles.map((r) => (
+              <option key={r.idRole} value={r.idRole}>{ref.role(r.code, r.libelle)}</option>
+            ))}
+          </select>
+          <select aria-label={t('users.ariaFiltreEntite')} value={critere.entite} onChange={champCritere('entite')}>
+            <option value="">{t('users.tousEntites')}</option>
+            {entites.map((e) => (
+              <option key={e.idEntite} value={e.idEntite}>{e.nom}</option>
+            ))}
+          </select>
+          <button type="button" className="btn btn-secondaire" onClick={reinitialiser}>{t('users.reinitialiser')}</button>
+        </div>
+      </div>
+
       <div className="carte">
+        {utilisateursFiltres.length === 0 ? (
+          <p className="texte-muet">{t('users.aucunResultat')}</p>
+        ) : (
         <div className="table-enveloppe">
           <table className="table">
             <thead>
@@ -108,7 +172,7 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {utilisateurs.map((u) => (
+              {utilisateursFiltres.map((u) => (
                 <tr key={u.idUser}>
                   <td>{u.prenom} {u.nom}</td>
                   <td>{u.email}</td>
@@ -122,6 +186,7 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {modal && (

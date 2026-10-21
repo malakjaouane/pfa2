@@ -30,7 +30,14 @@ export default {
     'users.optionnel': '(optionnel)',
     'users.motDePassePlaceholder': 'Laisser vide pour conserver',
     'users.annuler': 'Annuler',
-    'users.enregistrer': 'Enregistrer'
+    'users.enregistrer': 'Enregistrer',
+    'users.recherchePlaceholder': 'Rechercher par nom, e-mail ou téléphone…',
+    'users.tousRoles': 'Tous les rôles',
+    'users.tousEntites': 'Toutes les entités',
+    'users.ariaFiltreRole': 'Filtrer par rôle',
+    'users.ariaFiltreEntite': 'Filtrer par entité',
+    'users.reinitialiser': 'Réinitialiser',
+    'users.aucunResultat': 'Aucun utilisateur ne correspond aux critères.'
   },
 
   en: {
@@ -63,7 +70,14 @@ export default {
     'users.optionnel': '(optional)',
     'users.motDePassePlaceholder': 'Leave blank to keep current',
     'users.annuler': 'Cancel',
-    'users.enregistrer': 'Save'
+    'users.enregistrer': 'Save',
+    'users.recherchePlaceholder': 'Search by name, email or phone…',
+    'users.tousRoles': 'All roles',
+    'users.tousEntites': 'All entities',
+    'users.ariaFiltreRole': 'Filter by role',
+    'users.ariaFiltreEntite': 'Filter by entity',
+    'users.reinitialiser': 'Reset',
+    'users.aucunResultat': 'No user matches the criteria.'
   },
 
   ar: {
@@ -96,7 +110,14 @@ export default {
     'users.optionnel': '(اختياري)',
     'users.motDePassePlaceholder': 'اتركه فارغًا للإبقاء عليه',
     'users.annuler': 'إلغاء',
-    'users.enregistrer': 'حفظ'
+    'users.enregistrer': 'حفظ',
+    'users.recherchePlaceholder': 'ابحث بالاسم أو البريد الإلكتروني أو الهاتف…',
+    'users.tousRoles': 'جميع الأدوار',
+    'users.tousEntites': 'جميع الجهات',
+    'users.ariaFiltreRole': 'تصفية حسب الدور',
+    'users.ariaFiltreEntite': 'تصفية حسب الجهة',
+    'users.reinitialiser': 'إعادة تعيين',
+    'users.aucunResultat': 'لا يوجد مستخدم مطابق للمعايير.'
   },
 
   es: {
@@ -129,6 +150,13 @@ export default {
     'users.optionnel': '(opcional)',
     'users.motDePassePlaceholder': 'Dejar vacío para conservar',
     'users.annuler': 'Cancelar',
-    'users.enregistrer': 'Guardar'
+    'users.enregistrer': 'Guardar',
+    'users.recherchePlaceholder': 'Buscar por nombre, correo electrónico o teléfono…',
+    'users.tousRoles': 'Todos los roles',
+    'users.tousEntites': 'Todas las entidades',
+    'users.ariaFiltreRole': 'Filtrar por rol',
+    'users.ariaFiltreEntite': 'Filtrar por entidad',
+    'users.reinitialiser': 'Restablecer',
+    'users.aucunResultat': 'Ningún usuario coincide con los criterios.'
   }
 };
