@@ -123,6 +123,38 @@ if ($dash.OK -and $listeRef.OK) {
     Test-Check 'Liste en retard = KPI en retard' ($dash.Body.initiativesEnRetard.Count -eq $expEnRetard) "($($dash.Body.initiativesEnRetard.Count) / $expEnRetard)"
     Test-Check 'MOB-SUI-003 figure parmi les initiatives en retard' (@($dash.Body.initiativesEnRetard | Where-Object { $_.code -eq 'MOB-SUI-003' }).Count -eq 1)
     Test-Check 'Répartition par objectif = total' ((($dash.Body.parObjectif | Measure-Object -Property count -Sum).Sum) -eq $expTotal) "($($dash.Body.parObjectif.Count) groupes)"
+
+    # Message d'accueil : « N initiatives à risque » = lignes ORANGE ou ROUGE,
+    # recalculé sur la même liste ; « N jalons cette semaine » = jalons non
+    # atteints du jour courant au dimanche (fenêtre recalculée via l'API des
+    # jalons). La fenêtre est calculée à la fois sur la date locale et sur la
+    # date UTC du serveur : le test accepte l'une ou l'autre pour rester
+    # robuste au décalage horaire autour de minuit.
+    $expRisque = @($ref | Where-Object { $_.sante -and ($_.sante.niveau -eq 'ORANGE' -or $_.sante.niveau -eq 'ROUGE') }).Count
+    Test-Check 'Initiatives à risque = nb de lignes ORANGE/ROUGE' ($dash.Body.initiativesARisque -eq $expRisque) "($($dash.Body.initiativesARisque) / $expRisque)"
+
+    function Get-FenetreSemaine {
+        param([datetime]$Debut)
+        $Dimanche = $Debut.Date.AddDays(7 - [int]$Debut.DayOfWeek)
+        if ([int]$Debut.DayOfWeek -eq 0) { $Dimanche = $Debut.Date }
+        return @($Debut.Date.ToString('yyyy-MM-dd'), $Dimanche.ToString('yyyy-MM-dd'))
+    }
+    $expJalons = @{ }
+    foreach ($fen in @((Get-FenetreSemaine ([DateTime]::UtcNow)), (Get-FenetreSemaine (Get-Date)))) {
+        $n = 0
+        foreach ($i in $ref) {
+            $jal = Invoke-Api 'Get' "$Base/initiatives/$($i.idInitiative)/jalons" $null $adminToken
+            if ($jal.OK) {
+                $n += @($jal.Body | Where-Object {
+                    $_.datePrevue -and $_.datePrevue -ge $fen[0] -and $_.datePrevue -le $fen[1] -and
+                    ($null -eq $_.statutJalon -or $_.statutJalon.libelle -ne 'Atteint')
+                }).Count
+            }
+        }
+        $expJalons[$fen[0] + '/' + $fen[1]] = $n
+    }
+    Test-Check 'Jalons de la semaine = recalcul (fenêtre locale ou UTC)' (
+        @($expJalons.Values | Where-Object { $_ -eq $dash.Body.jalonsSemaine }).Count -ge 1) "($($dash.Body.jalonsSemaine) / $($expJalons.Values -join ' ou '))"
 } else {
     Test-Check 'Dashboard -> 200' $false "($($dash.Status))"
 }

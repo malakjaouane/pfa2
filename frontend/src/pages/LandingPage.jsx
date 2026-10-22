@@ -3,8 +3,14 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import MotifZellige from '../components/MotifZellige';
+import HeroPortefeuille from '../components/vitrine/HeroPortefeuille';
+import DemoKanban from '../components/vitrine/DemoKanban';
+import DemoIA from '../components/vitrine/DemoIA';
+import ChoixProfil from '../components/vitrine/ChoixProfil';
+import AvantApres from '../components/vitrine/AvantApres';
+import useReducedMotion from '../components/vitrine/useReducedMotion';
 import {
-  IconDashboard,
   IconKanban,
   IconRoadmap,
   IconInbox,
@@ -31,20 +37,6 @@ const CHIFFRES = [
   { valeur: '01', cleLibelle: 'landing.chiffre.source' }
 ];
 
-/** Colonnes de la section « problème / solution ». */
-const CONTRASTE = {
-  probleme: [
-    'landing.contraste.probleme.i1',
-    'landing.contraste.probleme.i2',
-    'landing.contraste.probleme.i3'
-  ],
-  solution: [
-    'landing.contraste.solution.i1',
-    'landing.contraste.solution.i2',
-    'landing.contraste.solution.i3'
-  ]
-};
-
 /**
  * Cartes de fonctionnalités. `sujet` indique la page /decouvrir/:sujet
  * ouverte quand on clique sur la carte.
@@ -61,34 +53,6 @@ const FONCTIONNALITES = [
 ];
 
 /**
- * Captures d'écran réelles de l'application (dossier public/images/screens).
- * `sujet` : page /decouvrir/:sujet atteinte en cliquant sur la capture.
- */
-const APERCU = [
-  {
-    img: '/images/screens/dashboard.webp',
-    cleAlt: 'landing.apercu.dashboard.alt',
-    cleTitre: 'landing.apercu.dashboard.titre',
-    cleTexte: 'landing.apercu.dashboard.texte',
-    sujet: 'dashboard'
-  },
-  {
-    img: '/images/screens/kanban.webp',
-    cleAlt: 'landing.apercu.kanban.alt',
-    cleTitre: 'landing.apercu.kanban.titre',
-    cleTexte: 'landing.apercu.kanban.texte',
-    sujet: 'initiatives'
-  },
-  {
-    img: '/images/screens/fiche.webp',
-    cleAlt: 'landing.apercu.fiche.alt',
-    cleTitre: 'landing.apercu.fiche.titre',
-    cleTexte: 'landing.apercu.fiche.texte',
-    sujet: 'etapes-jalons'
-  }
-];
-
-/**
  * Mots importants soulignés en pointillés dans les textes : chaque entrée
  * relie la clé i18n d'un texte à la liste des mots à rendre cliquables
  * (clé i18n du mot → sujet /decouvrir/:sujet).
@@ -100,15 +64,6 @@ const LIENS_TEXTES = {
   ],
   'landing.contraste.solution.i3': [
     { motCle: 'landing.mot.kpi', sujet: 'dashboard' }
-  ],
-  'landing.apercu.dashboard.texte': [
-    { motCle: 'landing.mot.avancement', sujet: 'avancement' },
-    { motCle: 'landing.mot.budget', sujet: 'budget' }
-  ],
-  'landing.apercu.fiche.texte': [
-    { motCle: 'landing.mot.jalons', sujet: 'etapes-jalons' },
-    { motCle: 'landing.mot.avancement', sujet: 'avancement' },
-    { motCle: 'landing.mot.budget', sujet: 'budget' }
   ],
   'landing.etape.piloter.texte': [
     { motCle: 'landing.mot.avancement', sujet: 'avancement' }
@@ -122,8 +77,15 @@ const ETAPES = [
   { n: '04', cleTitre: 'landing.etape.piloter.titre', cleTexte: 'landing.etape.piloter.texte' }
 ];
 
+/** Cartes de la section « Confiance ». */
+const CONFIANCE = [
+  { Icone: IconShield, cleTitre: 'landing.confiance.roles.titre', cleTexte: 'landing.confiance.roles.texte' },
+  { Icone: IconClock, cleTitre: 'landing.confiance.audit.titre', cleTexte: 'landing.confiance.audit.texte' },
+  { Icone: IconLayers, cleTitre: 'landing.confiance.hebergement.titre', cleTexte: 'landing.confiance.hebergement.texte' }
+];
+
 /** Ancres suivies pour le lien « en cours » de la barre de navigation. */
-const SECTIONS_NAV = ['probleme', 'fonctionnalites', 'apercu', 'etapes', 'contact'];
+const SECTIONS_NAV = ['demo', 'profils', 'confiance', 'fonctionnalites', 'contact'];
 
 /**
  * Durée (ms) de l'animation des chiffres clés, une fois la bande visible.
@@ -137,16 +99,19 @@ const DUREE_COMPTEUR = 900;
 
 /**
  * Page d'accueil publique (vitrine), présentée avant la connexion.
- * Sept sections : navigation, hero, chiffres, problème/solution,
- * fonctionnalités, aperçu de l'application, étapes, appel à l'action,
- * puis pied de page.
  *
- * Toutes les images sont locales (frontend/public/images) : la page
- * reste affichée sans connexion Internet.
+ * Sections : navigation, hero avec démo vivante du portefeuille, chiffres,
+ * avant/après (curseur), démo Kanban manipulable, assistant IA (aperçu
+ * animé), choix de profil, fonctionnalités, confiance, étapes, appel à
+ * l'action, contact, pied de page.
+ *
+ * Toutes les animations respectent `prefers-reduced-motion` (règle CSS
+ * globale + garde JS via useReducedMotion).
  */
 export default function LandingPage() {
   const { user } = useAuth();
   const { t } = useI18n();
+  const reduit = useReducedMotion();
   const [menuOuvert, setMenuOuvert] = useState(false);
   // Effets de défilement : barre compacte, section en cours, retour en haut.
   const [navCompacte, setNavCompacte] = useState(false);
@@ -159,68 +124,15 @@ export default function LandingPage() {
 
   /* Effets de défilement (CSS + IntersectionObserver, sans librairie).
      Progressif : sans JS — ou avec animations réduites demandées — la page
-     reste entièrement visible et les chiffres affichent leur valeur finale. */
+     reste entièrement lisible (les animations sont des compléments). */
   useEffect(() => {
-    const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    // 1) Apparitions en fondu : la classe posée ici débloque les styles de
-    //    masquage ; chaque cible révélée est ensuite suivie une seule fois.
-    let obsApparait = null;
     const page = document.querySelector('.sn-page');
-    if (!reduit && 'IntersectionObserver' in window) {
-      page?.classList.add('sn-defilement');
-      obsApparait = new IntersectionObserver((entrees) => {
-        entrees.forEach((e) => {
-          if (!e.isIntersecting) return;
-          e.target.classList.add('est-visible');
-          obsApparait.unobserve(e.target);
-        });
-      }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-      document.querySelectorAll('[data-apparait]').forEach((el) => obsApparait.observe(el));
-    }
+    if (!page) return undefined;
+    page.classList.add('sn-defilement');
 
-    // 2) Chiffres animés : une seule boucle rAF, lancée quand la bande entre
-    //    dans le champ, avec décélération (ease-out) sur ~0,9 s.
-    let obsChiffres = null;
-    let rafChiffres = 0;
-    const bandeau = document.querySelector('.sn-stats');
-    if (!reduit && bandeau && 'IntersectionObserver' in window) {
-      obsChiffres = new IntersectionObserver((entrees) => {
-        if (!entrees.some((e) => e.isIntersecting)) return;
-        obsChiffres.disconnect();
-        const valeurs = CHIFFRES.map((c) => parseInt(c.valeur, 10));
-        const depart = performance.now();
-        const pas = (maintenant) => {
-          const progression = Math.min(1, (maintenant - depart) / DUREE_COMPTEUR);
-          const adouci = 1 - Math.pow(1 - progression, 3);
-          setCompteurs(valeurs.map((v) => String(Math.round(v * adouci)).padStart(2, '0')));
-          if (progression < 1) rafChiffres = requestAnimationFrame(pas);
-        };
-        setCompteurs(valeurs.map(() => '00'));
-        rafChiffres = requestAnimationFrame(pas);
-      }, { threshold: 0.4 });
-      obsChiffres.observe(bandeau);
-    }
-
-    // 3) Section en cours : bande d'observation fine (milieu d'écran), la
-    //    section qui la traverse devient le lien actif de la navigation.
-    let obsSections = null;
-    if ('IntersectionObserver' in window) {
-      obsSections = new IntersectionObserver((entrees) => {
-        entrees.forEach((e) => {
-          if (e.isIntersecting) setSectionActive(e.target.id);
-        });
-      }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
-      SECTIONS_NAV.forEach((id) => {
-        const el = document.getElementById(id);
-        if (el) obsSections.observe(el);
-      });
-    }
-
-    // 4) Un seul écouteur de défilement, throttlé via requestAnimationFrame.
     let rafScroll = 0;
+    let rafChiffres = 0;
     const majScroll = () => {
-      rafScroll = 0;
       const y = window.scrollY;
       setNavCompacte(y > 16);
       setHautPageVisible(y > 640);
@@ -231,6 +143,54 @@ export default function LandingPage() {
     window.addEventListener('scroll', surScroll, { passive: true });
     majScroll();
 
+    // Apparitions au défilement.
+    const obsApparait = new IntersectionObserver(
+      (entrees) => {
+        entrees.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('est-visible');
+            obsApparait.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.12 }
+    );
+    document.querySelectorAll('[data-apparait]').forEach((el) => obsApparait.observe(el));
+
+    // Compteurs animés (uniquement si l'utilisateur accepte les animations).
+    const obsChiffres = new IntersectionObserver(
+      (entrees) => {
+        if (!entrees.some((e) => e.isIntersecting) || reduit) return;
+        const cible2 = CHIFFRES.map((c) => parseInt(c.valeur, 10));
+        const debut = performance.now();
+        const animer = (now) => {
+          const p = Math.min(1, (now - debut) / DUREE_COMPTEUR);
+          const doux = 1 - Math.pow(1 - p, 3);
+          setCompteurs(cible2.map((v) => String(Math.round(v * doux)).padStart(2, '0')));
+          if (p < 1) rafChiffres = requestAnimationFrame(animer);
+        };
+        rafChiffres = requestAnimationFrame(animer);
+        obsChiffres.disconnect();
+      },
+      { threshold: 0.4 }
+    );
+    const bande = document.querySelector('.sn-stats');
+    if (bande) obsChiffres.observe(bande);
+
+    // Section courante (barre de navigation).
+    const obsSections = new IntersectionObserver(
+      (entrees) => {
+        entrees.forEach((e) => {
+          if (e.isIntersecting) setSectionActive(e.target.id);
+        });
+      },
+      { rootMargin: '-45% 0px -50% 0px' }
+    );
+    SECTIONS_NAV.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) obsSections.observe(el);
+    });
+
     return () => {
       window.removeEventListener('scroll', surScroll);
       cancelAnimationFrame(rafScroll);
@@ -240,10 +200,9 @@ export default function LandingPage() {
       obsSections?.disconnect();
       page?.classList.remove('sn-defilement');
     };
-  }, []);
+  }, [reduit]);
 
   const allerEnHaut = () => {
-    const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     window.scrollTo({ top: 0, behavior: reduit ? 'auto' : 'smooth' });
   };
 
@@ -273,6 +232,15 @@ export default function LandingPage() {
     });
   };
 
+  /** Libellés de navigation (même liste dans la barre et le menu mobile). */
+  const liensNav = [
+    { ancre: 'demo', cle: 'landing.nav.demo' },
+    { ancre: 'profils', cle: 'landing.nav.profils' },
+    { ancre: 'confiance', cle: 'landing.nav.confiance' },
+    { ancre: 'fonctionnalites', cle: 'landing.nav.fonctionnalites' },
+    { ancre: 'contact', cle: 'landing.nav.contact' }
+  ];
+
   return (
     <div className="sn-page">
       {/* ---------------------------------------------------------- */}
@@ -294,24 +262,19 @@ export default function LandingPage() {
             </span>
           </a>
           <nav className="sn-nav-links">
-            <a href="#probleme" className={sectionActive === 'probleme' ? 'est-courant' : undefined}>
-              {t('landing.nav.probleme')}
-            </a>
-            <a href="#fonctionnalites" className={sectionActive === 'fonctionnalites' ? 'est-courant' : undefined}>
-              {t('landing.nav.fonctionnalites')}
-            </a>
-            <a href="#apercu" className={sectionActive === 'apercu' ? 'est-courant' : undefined}>
-              {t('landing.nav.apercu')}
-            </a>
-            <a href="#etapes" className={sectionActive === 'etapes' ? 'est-courant' : undefined}>
-              {t('landing.nav.etapes')}
-            </a>
-            <a href="#contact" className={sectionActive === 'contact' ? 'est-courant' : undefined}>
-              {t('landing.nav.contact')}
-            </a>
+            {liensNav.map(({ ancre, cle }) => (
+              <a
+                key={ancre}
+                href={`#${ancre}`}
+                className={sectionActive === ancre ? 'est-courant' : undefined}
+              >
+                {t(cle)}
+              </a>
+            ))}
           </nav>
           <div className="sn-nav-actions">
-            <LanguageSwitcher variante="vitrine" />
+            {/* Bascule de langue visible : un clic et la page part en RTL. */}
+            <LanguageSwitcher variante="segmente" />
             <Link to={cible} className="sn-btn sn-btn-green sn-btn-sm sn-nav-cta">
               {libelleCta}
               <IconArrowRight size={15} />
@@ -331,11 +294,17 @@ export default function LandingPage() {
 
         {menuOuvert && (
           <nav className="sn-menu-mobile" id="sn-menu-mobile" aria-label={t('landing.menu.navigationPrincipale')}>
-            <a href="#probleme" className={sectionActive === 'probleme' ? 'est-courant' : undefined} onClick={() => setMenuOuvert(false)}>{t('landing.nav.probleme')}</a>
-            <a href="#fonctionnalites" className={sectionActive === 'fonctionnalites' ? 'est-courant' : undefined} onClick={() => setMenuOuvert(false)}>{t('landing.nav.fonctionnalites')}</a>
-            <a href="#apercu" className={sectionActive === 'apercu' ? 'est-courant' : undefined} onClick={() => setMenuOuvert(false)}>{t('landing.nav.apercu')}</a>
-            <a href="#etapes" className={sectionActive === 'etapes' ? 'est-courant' : undefined} onClick={() => setMenuOuvert(false)}>{t('landing.nav.etapes')}</a>
-            <a href="#contact" className={sectionActive === 'contact' ? 'est-courant' : undefined} onClick={() => setMenuOuvert(false)}>{t('landing.nav.contact')}</a>
+            {liensNav.map(({ ancre, cle }) => (
+              <a
+                key={ancre}
+                href={`#${ancre}`}
+                className={sectionActive === ancre ? 'est-courant' : undefined}
+                onClick={() => setMenuOuvert(false)}
+              >
+                {t(cle)}
+              </a>
+            ))}
+            <LanguageSwitcher variante="segmente" className="sn-menu-langue" />
             <Link to={cible} className="sn-menu-cta" onClick={() => setMenuOuvert(false)}>
               {libelleCta}
               <IconArrowRight size={16} />
@@ -345,9 +314,10 @@ export default function LandingPage() {
       </header>
 
       {/* ---------------------------------------------------------- */}
-      {/* 2. Hero                                                    */}
+      {/* 2. Hero + démo vivante du portefeuille                      */}
       {/* ---------------------------------------------------------- */}
       <section className="sn-hero" id="top">
+        <MotifZellige className="sn-motif-hero" />
         <span className="sn-hero-glow sn-hero-glow-a" aria-hidden="true" />
         <span className="sn-hero-glow sn-hero-glow-b" aria-hidden="true" />
         <div className="sn-hero-inner">
@@ -380,21 +350,7 @@ export default function LandingPage() {
 
           <div className="sn-hero-visual">
             <span className="sn-shot-glow" aria-hidden="true" />
-            <figure className="sn-shot">
-              <span className="sn-shot-bar" aria-hidden="true">
-                <span className="sn-shot-dot" />
-                <span className="sn-shot-dot" />
-                <span className="sn-shot-dot" />
-                <span className="sn-shot-url">app.it6.ma / dashboard</span>
-              </span>
-              <img
-                src="/images/screens/dashboard.webp"
-                alt={t('landing.hero.altCapture')}
-                width="1600"
-                height="1000"
-                loading="eager"
-              />
-            </figure>
+            <HeroPortefeuille />
           </div>
         </div>
       </section>
@@ -414,7 +370,7 @@ export default function LandingPage() {
       </section>
 
       {/* ---------------------------------------------------------- */}
-      {/* 4. Problème / solution                                     */}
+      {/* 4. Avant / après : le curseur raconte le constat           */}
       {/* ---------------------------------------------------------- */}
       <section className="sn-section" id="probleme">
         <div className="sn-section-head" data-apparait>
@@ -422,48 +378,58 @@ export default function LandingPage() {
           <h2>{t('landing.contraste.titre')}</h2>
           <p>{t('landing.contraste.texte')}</p>
         </div>
-
-        <div className="sn-duo">
-          <article className="sn-duo-carte sn-duo-carte-sombre" data-apparait>
-            <h3>{t('landing.contraste.probleme.titre')}</h3>
-            <ul>
-              {CONTRASTE.probleme.map((cle) => (
-                <li key={cle}>
-                  <span className="sn-duo-marque sn-duo-marque-k-o" aria-hidden="true">×</span>
-                  {t(cle)}
-                </li>
-              ))}
-            </ul>
-          </article>
-
-          <div className="sn-duo-photo" data-apparait>
-            <img
-              src="/images/probleme.webp"
-              alt={t('landing.contraste.photoAlt')}
-              width="1200"
-              height="800"
-              loading="lazy"
-            />
-          </div>
-
-          <article className="sn-duo-carte sn-duo-carte-clair" data-apparait>
-            <h3>{t('landing.contraste.solution.titre')}</h3>
-            <ul>
-              {CONTRASTE.solution.map((cle) => (
-                <li key={cle}>
-                  <span className="sn-duo-marque sn-duo-marque-v-ok"><IconCheck size={12} /></span>
-                  {avecLiens(cle)}
-                </li>
-              ))}
-            </ul>
-          </article>
+        <div data-apparait>
+          <AvantApres />
         </div>
       </section>
 
       {/* ---------------------------------------------------------- */}
-      {/* 5. Fonctionnalités                                         */}
+      {/* 5. Démo Kanban interactive                                 */}
       {/* ---------------------------------------------------------- */}
-      <section className="sn-section sn-section-calme" id="fonctionnalites">
+      <section className="sn-section sn-section-calme" id="demo">
+        <div className="sn-section-head" data-apparait>
+          <span className="sn-eyebrow sn-eyebrow-dark">{t('landing.demo.eyebrow')}</span>
+          <h2>{t('landing.demo.titre')}</h2>
+          <p>{t('landing.demo.texte')}</p>
+        </div>
+        <div data-apparait>
+          <DemoKanban />
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------------- */}
+      {/* 6. Assistant IA (aperçu animé)                             */}
+      {/* ---------------------------------------------------------- */}
+      <section className="sn-section" id="ia">
+        <div className="sn-ia-grille" data-apparait>
+          <div className="sn-section-head sn-ia-texte">
+            <span className="sn-eyebrow sn-eyebrow-dark">{t('landing.ia.eyebrow')}</span>
+            <h2>{t('landing.ia.titre')}</h2>
+            <p>{avecLiens('landing.ia.texte')}</p>
+            <p className="sn-ia-legal">{t('landing.ia.legal')}</p>
+          </div>
+          <DemoIA />
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------------- */}
+      {/* 7. Choix de profil                                          */}
+      {/* ---------------------------------------------------------- */}
+      <section className="sn-section sn-section-calme" id="profils">
+        <div className="sn-section-head" data-apparait>
+          <span className="sn-eyebrow sn-eyebrow-dark">{t('landing.profils.eyebrow')}</span>
+          <h2>{t('landing.profils.titre')}</h2>
+          <p>{t('landing.profils.texte')}</p>
+        </div>
+        <div data-apparait>
+          <ChoixProfil />
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------------- */}
+      {/* 8. Fonctionnalités                                         */}
+      {/* ---------------------------------------------------------- */}
+      <section className="sn-section" id="fonctionnalites">
         <div className="sn-section-head" data-apparait>
           <span className="sn-eyebrow sn-eyebrow-dark">{t('landing.fonctionnalites.eyebrow')}</span>
           <h2>{t('landing.fonctionnalites.titre')}</h2>
@@ -489,38 +455,29 @@ export default function LandingPage() {
       </section>
 
       {/* ---------------------------------------------------------- */}
-      {/* 6. Aperçu de l'application (captures réelles)              */}
+      {/* 9. Confiance : rôles, audit, hébergement                    */}
       {/* ---------------------------------------------------------- */}
-      <section className="sn-section" id="apercu">
+      <section className="sn-section sn-section-calme" id="confiance">
         <div className="sn-section-head" data-apparait>
-          <span className="sn-eyebrow sn-eyebrow-dark">{t('landing.apercu.eyebrow')}</span>
-          <h2>{t('landing.apercu.titre')}</h2>
-          <p>{t('landing.apercu.texte')}</p>
+          <span className="sn-eyebrow sn-eyebrow-dark">{t('landing.confiance.eyebrow')}</span>
+          <h2>{t('landing.confiance.titre')}</h2>
+          <p>{t('landing.confiance.texte')}</p>
         </div>
-        <div className="sn-apercu">
-          {APERCU.map((capture) => (
-            <article key={capture.img} className="sn-apercu-carte" data-apparait>
-              <Link
-                to={`/decouvrir/${capture.sujet}`}
-                className="sn-apercu-image sn-apercu-lien"
-                aria-label={`${t(capture.cleTitre)} — ${t('landing.enSavoirPlus')}`}
-              >
-                <img src={capture.img} alt={t(capture.cleAlt)} loading="lazy" />
-                <span className="sn-lien-badge sn-lien-badge-img">{t('landing.enSavoirPlus')}</span>
-              </Link>
-              <div className="sn-apercu-corps">
-                <h3>{t(capture.cleTitre)}</h3>
-                <p>{avecLiens(capture.cleTexte)}</p>
-              </div>
+        <div className="sn-confiance">
+          {CONFIANCE.map(({ Icone, cleTitre, cleTexte }) => (
+            <article key={cleTitre} className="sn-confiance-carte" data-apparait>
+              <span className="sn-confiance-ic"><Icone size={19} /></span>
+              <h3>{t(cleTitre)}</h3>
+              <p>{t(cleTexte)}</p>
             </article>
           ))}
         </div>
       </section>
 
       {/* ---------------------------------------------------------- */}
-      {/* 7. Comment ça marche                                       */}
+      {/* 10. Comment ça marche                                      */}
       {/* ---------------------------------------------------------- */}
-      <section className="sn-section sn-section-calme" id="etapes">
+      <section className="sn-section" id="etapes">
         <div className="sn-etapes-boite">
           <div className="sn-etapes-photo" data-apparait>
             <img
@@ -553,7 +510,7 @@ export default function LandingPage() {
       </section>
 
       {/* ---------------------------------------------------------- */}
-      {/* 8. Appel à l'action                                        */}
+      {/* 11. Appel à l'action                                       */}
       {/* ---------------------------------------------------------- */}
       <section className="sn-band" id="demarrer">
         <img
@@ -582,7 +539,7 @@ export default function LandingPage() {
       </section>
 
       {/* ---------------------------------------------------------- */}
-      {/* 9. Contact                                                 */}
+      {/* 12. Contact                                                */}
       {/* ---------------------------------------------------------- */}
       <section className="sn-section sn-section-calme" id="contact">
         <div className="sn-contact" data-apparait>
@@ -628,9 +585,9 @@ export default function LandingPage() {
           <div className="sn-footer-cols">
             <div className="sn-footer-col">
               <h4>{t('landing.footer.colPlateforme')}</h4>
-              <a href="#probleme">{t('landing.nav.probleme')}</a>
-              <a href="#fonctionnalites">{t('landing.nav.fonctionnalites')}</a>
-              <a href="#apercu">{t('landing.nav.apercu')}</a>
+              <a href="#demo">{t('landing.nav.demo')}</a>
+              <a href="#profils">{t('landing.nav.profils')}</a>
+              <a href="#confiance">{t('landing.nav.confiance')}</a>
               <a href="#etapes">{t('landing.nav.etapes')}</a>
             </div>
             <div className="sn-footer-col">

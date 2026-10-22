@@ -4,6 +4,11 @@ import java.util.List;
 
 /**
  * Données du dashboard et des KPI.
+ *
+ * @param jalonsSemaine      jalons non atteints dont la date prévue tombe dans
+ *                           la semaine en cours (message d'accueil)
+ * @param initiativesARisque initiatives dont le score de santé est ORANGE ou
+ *                           ROUGE (message d'accueil « N initiatives à risque »)
  */
 public record DashboardResponse(
         long totalInitiatives,
@@ -12,6 +17,8 @@ public record DashboardResponse(
         long enPause,
         long enRetard,
         long jalonsEnRetard,
+        long jalonsSemaine,
+        long initiativesARisque,
         java.math.BigDecimal budgetTotal,
         double avancementMoyen,
         List<ChartDatum> parStatut,

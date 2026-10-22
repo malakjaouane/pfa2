@@ -21,6 +21,28 @@ export default function LanguageSwitcher({ variante = 'app', className = '' }) {
 
   const courante = langues.find((l) => l.code === langue) ?? langues[0];
 
+  /* Variante « segmente » (vitrine) : les langues sont affichées côte à
+     côte, un clic bascule la page (et le RTL pour l'arabe) sans menu. */
+  if (variante === 'segmente') {
+    return (
+      <div className={`langue-switcher langue-segmente ${className}`.trim()} role="group"
+           aria-label={t('common.langue.liste')}>
+        {langues.map((l) => (
+          <button
+            key={l.code}
+            type="button"
+            className={`langue-segment${l.code === langue ? ' actif' : ''}`}
+            aria-pressed={l.code === langue}
+            onClick={() => setLangue(l.code)}
+            title={l.libelle}
+          >
+            {l.code.toUpperCase()}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className={`langue-switcher langue-${variante} ${className}`.trim()} ref={ref}>
       <button

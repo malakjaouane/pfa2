@@ -29,7 +29,9 @@ import {
   IconArrowRight,
   IconSearch,
   IconClock,
-  IconChevronDown
+  IconChevronDown,
+  IconRoadmap,
+  IconInbox
 } from '../components/Icons';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
@@ -143,6 +145,9 @@ export default function DashboardPage() {
   const [rechercheRecente, setRechercheRecente] = useState('');
 
   const peutConsulterInitiatives = hasPermission('INITIATIVE_CONSULTER');
+  const peutConsulterDemandes = user?.permissions?.some((p) =>
+    ['DEMANDE_SOUMETTRE', 'DEMANDE_EVALUER'].includes(p)
+  );
   const filtresActifs = Object.values(filtres).some((v) => v !== '');
 
   useEffect(() => {
@@ -287,19 +292,49 @@ export default function DashboardPage() {
 
   return (
     <div className="page">
-      {/* En-tête principal */}
+      {/* En-tête principal — accueil personnalisé */}
       <header className="dashboard-hero">
         <div className="dashboard-hero-texte">
           <span className="dashboard-hero-eyebrow">{t('dashboard.hero.eyebrow')}</span>
           <h1>{t('dashboard.hero.bienvenue', { prenom: user?.prenom ?? '' })}</h1>
           <p>{t('dashboard.hero.sousTitre')}</p>
+          <div className="dashboard-hero-chips">
+            <Link to="/roadmap" className="hero-chip hero-chip-ambre">
+              <IconFlag size={14} />
+              {kpis.jalonsSemaine === 1
+                ? t('dashboard.hero.jalonSemaine', { n: kpis.jalonsSemaine })
+                : t('dashboard.hero.jalonsSemaine', { n: kpis.jalonsSemaine ?? 0 })}
+              <IconArrowRight size={13} className="hero-chip-fleche" />
+            </Link>
+            <a href="#surveillance" className="hero-chip hero-chip-rouge">
+              <IconAlert size={14} />
+              {kpis.initiativesARisque === 1
+                ? t('dashboard.hero.initiativeARisque', { n: kpis.initiativesARisque })
+                : t('dashboard.hero.initiativesARisque', { n: kpis.initiativesARisque ?? 0 })}
+              <IconArrowRight size={13} className="hero-chip-fleche" />
+            </a>
+          </div>
         </div>
-        {hasPermission('INITIATIVE_CREER') && (
-          <Link to="/initiatives/nouvelle" className="btn btn-primaire btn-grand">
-            <IconPlus size={18} />
-            {t('dashboard.hero.nouvelleInitiative')}
-          </Link>
-        )}
+        <div className="dashboard-hero-actions">
+          {hasPermission('INITIATIVE_CREER') && (
+            <Link to="/initiatives/nouvelle" className="btn btn-primaire btn-grand">
+              <IconPlus size={18} />
+              {t('dashboard.hero.nouvelleInitiative')}
+            </Link>
+          )}
+          {peutConsulterInitiatives && (
+            <Link to="/roadmap" className="btn btn-secondaire">
+              <IconRoadmap size={17} />
+              {t('dashboard.hero.raccourciRoadmap')}
+            </Link>
+          )}
+          {peutConsulterDemandes && (
+            <Link to="/demandes" className="btn btn-secondaire">
+              <IconInbox size={17} />
+              {t('dashboard.hero.raccourciDemandes')}
+            </Link>
+          )}
+        </div>
       </header>
 
       {/* Filtres du portefeuille : les KPI et les graphiques suivent la sélection */}
@@ -517,7 +552,7 @@ export default function DashboardPage() {
           )}
 
           {/* À surveiller */}
-          <section className="section-dashboard">
+          <section className="section-dashboard" id="surveillance">
             <div className="section-dashboard-entete">
               <div className="section-titre-icone">
                 <h3>{t('dashboard.surveiller.titre')}</h3>

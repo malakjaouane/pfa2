@@ -28,6 +28,21 @@ public interface JalonRepository extends JpaRepository<Jalon, Long> {
                                      @Param("ids") Collection<Long> ids);
 
     /**
+     * KPI « jalons cette semaine » (message d'accueil) : jalons non atteints
+     * dont la date prévue tombe dans l'intervalle fourni, restreints aux
+     * initiatives sélectionnées — mêmes filtres que les autres KPI.
+     */
+    @Query("""
+            select count(j) from Jalon j
+            where j.datePrevue >= :du and j.datePrevue <= :au
+              and (j.statutJalon is null or j.statutJalon.libelle <> 'Atteint')
+              and j.initiative.idInitiative in :ids
+            """)
+    long countEntreDatesParInitiatives(@Param("du") LocalDate du,
+                                       @Param("au") LocalDate au,
+                                       @Param("ids") Collection<Long> ids);
+
+    /**
      * Score de santé : jalons (et statut) de toute une page d'initiatives
      * chargés en une seule requête — évite le N+1 du calcul par ligne.
      */

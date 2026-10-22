@@ -250,8 +250,9 @@ lignes du journal, filtres/tri/pagination de la lecture globale, suppression
 d'une entrée avec 404 si elle n'existe pas),
 `SecuriteApiTest` (règles d'URL et filtrage JWT, dont lecture et suppression du
 journal) et
-`ApiErreurHttpTest` (codes HTTP d'erreur : 405 / 400 / 415 / 406 au lieu de 500).
-**124 tests, 0 échec.**
+`ApiErreurHttpTest` (codes HTTP d'erreur : 405 / 400 / 415 / 406 au lieu de 500)
+et `DashboardServiceTest` (dont l'accueil personnalisé : jalons de la semaine
+et initiatives à risque). **125 tests, 0 échec.**
 
 ### Tests fonctionnels de l'API
 
@@ -271,7 +272,9 @@ suppression administrative 401/403/404/204) et le **score de santé** (niveau et
 motif sur chaque ligne de la liste, de la fiche et de la surveillance du
 dashboard, rouge sur une initiative en retard, absent des écritures). Les KPI
 sont comparés à un recalcul indépendant issu de la liste réelle des initiatives
-(aucune valeur codée en dur). **150 scénarios, 0 échec.**
+(aucune valeur codée en dur) ; deux contrôles vérifient enfin les KPI d'accueil
+`jalonsSemaine` (fenêtre du jour au dimanche courant) et `initiativesARisque`
+(santé ORANGE ou ROUGE recalculée depuis la liste). **152 scénarios, 0 échec.**
 
 Après une campagne de tests, purgez les résidus (initiatives `TEST*` archivées,
 initiatives issues de demandes de test `DEM-*`, demandes `TEST-DEM*`, objectifs

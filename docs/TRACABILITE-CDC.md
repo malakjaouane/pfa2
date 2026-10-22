@@ -116,8 +116,11 @@ test fonctionnel `tests-api.ps1`).
 - **Score de santé** : 5 scénarios fonctionnels (section 3 de `tests-api.ps1`) et
   13 tests JUnit (`CalculeurSanteTest`) : niveau + motif sur liste/fiche/surveillance,
   rouge sur initiative en retard, `null` sur les écritures.
-- **Bilan chiffré** : **124 tests JUnit** et **150 scénarios fonctionnels**,
-  0 échec (dernière campagne).
+- **Bilan chiffré** : **125 tests JUnit** et **152 scénarios fonctionnels**,
+  0 échec (dernière campagne). Deux scénarios contrôlent les KPI d'accueil
+  personnalisé : `jalonsSemaine` (jalons non atteints du jour au dimanche
+  courant) et `initiativesARisque` (santé ORANGE ou ROUGE recalculée depuis la
+  liste des initiatives).
 - Les règles structurales (RM02/08/09/12/13/16) sont garanties par le schéma
   (clés étrangères, contraintes de non-null) et exercées par les tests de l'API.
 - Les KPI du CDC sont tous calculés par l'API (aucune valeur codée en dur),

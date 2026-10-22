@@ -144,6 +144,8 @@ class DashboardServiceTest {
         assertThat(reponse.totalInitiatives()).isZero();
         assertThat(reponse.enRetard()).isZero();
         assertThat(reponse.jalonsEnRetard()).isZero();
+        assertThat(reponse.jalonsSemaine()).isZero();
+        assertThat(reponse.initiativesARisque()).isZero();
         assertThat(reponse.budgetTotal()).isEqualByComparingTo("0.00");
         assertThat(reponse.avancementMoyen()).isZero();
         assertThat(reponse.parStatut()).isEmpty();
@@ -151,5 +153,31 @@ class DashboardServiceTest {
         assertThat(reponse.parEntite()).isEmpty();
         assertThat(reponse.parResponsable()).isEmpty();
         assertThat(reponse.parObjectif()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Message d'accueil : jalons de la semaine et initiatives à risque")
+    void messageAccueil() {
+        List<Initiative> selection = List.of(
+                initiative(1L, "En cours", 2, 40, null, "IT6", "Karim Alaoui", null),
+                initiative(2L, "En cours", 2, 60, null, "IT6", "Karim Alaoui", null),
+                initiative(3L, "Terminée", 3, 100, null, "IT6", null, null));
+        brancher(selection);
+        // Seul le lot renseigné compte : ORANGE et ROUGE = à risque, VERTE non.
+        when(calculeurSante.calculerTous(any())).thenReturn(Map.of(
+                1L, new ma.it6.portefeuille.dto.SanteDto(
+                        ma.it6.portefeuille.dto.SanteDto.ORANGE, "jalonRetard", Map.of("n", 1)),
+                2L, new ma.it6.portefeuille.dto.SanteDto(
+                        ma.it6.portefeuille.dto.SanteDto.ROUGE, "finDepassee", Map.of("n", 12)),
+                3L, new ma.it6.portefeuille.dto.SanteDto(
+                        ma.it6.portefeuille.dto.SanteDto.VERTE, "conforme", Map.of())));
+        when(jalonRepository.countEntreDatesParInitiatives(
+                any(LocalDate.class), any(LocalDate.class), anyCollection())).thenReturn(3L);
+
+        DashboardResponse reponse = service.calculer(new InitiativeFilterRequest(
+                null, null, null, null, null, null, null, null, null));
+
+        assertThat(reponse.jalonsSemaine()).isEqualTo(3);
+        assertThat(reponse.initiativesARisque()).isEqualTo(2);
     }
 }

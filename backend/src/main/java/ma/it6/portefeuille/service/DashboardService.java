@@ -86,6 +86,12 @@ public class DashboardService {
         long jalonsEnRetard = ids.isEmpty()
                 ? 0 : jalonRepository.countEnRetardParInitiatives(aujourdHui, ids);
 
+        // Message d'accueil : jalons à venir dans la semaine en cours
+        // (du jour courant au dimanche inclus), mêmes filtres que les KPI.
+        long jalonsSemaine = ids.isEmpty()
+                ? 0 : jalonRepository.countEntreDatesParInitiatives(
+                        aujourdHui, dimancheCourant(aujourdHui), ids);
+
         BigDecimal budgetTotal = initiatives.stream()
                 .map(Initiative::getBudget)
                 .filter(Objects::nonNull)
@@ -125,15 +131,25 @@ public class DashboardService {
 
         // Les initiatives à surveiller portent aussi leur score de santé
         // (calculé en lot) : la page d'accueil affiche le niveau et le motif.
-        Map<Long, SanteDto> santes =
-                calculeurSante.calculerTous(enRetardListe);
+        // Le même lot alimente le KPI « initiatives à risque » (ORANGE/ROUGE)
+        // du message d'accueil.
+        Map<Long, SanteDto> santes = calculeurSante.calculerTous(initiatives);
+        long initiativesARisque = santes.values().stream()
+                .filter(s -> s != null && !SanteDto.VERTE.equals(s.niveau()))
+                .count();
         List<InitiativeResponse> enRetardReponses = enRetardListe.stream()
                 .map(i -> InitiativeMapper.toResponse(i, santes.get(i.getIdInitiative())))
                 .toList();
 
         return new DashboardResponse(total, enCours, terminees, enPause, enRetard, jalonsEnRetard,
+                jalonsSemaine, initiativesARisque,
                 budgetTotal, avancementMoyen,
                 parStatut, parPriorite, parEntite, parResponsable, parObjectif, enRetardReponses);
+    }
+
+    /** Dimanche (inclus) de la semaine civile contenant {@code date}. */
+    private static LocalDate dimancheCourant(LocalDate date) {
+        return date.with(java.time.temporal.TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SUNDAY));
     }
 
     // ------------------------------------------------------------------
