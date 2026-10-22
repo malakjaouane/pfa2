@@ -157,8 +157,13 @@ variables d'environnement. Copiez `.env.example` en `.env` et adaptez au besoin.
 | `JWT_SECRET` | Clé de signature HS256 (≥ 32 octets) | clé de développement |
 | `JWT_EXPIRATION_MS` | Durée de validité du jeton | `28800000` (8 h) |
 | `SERVER_PORT` | Port HTTP du backend | `8080` |
+| `ANTHROPIC_API_KEY` | Clé API Anthropic de l'assistant IA — **absente** : la page `/assistant` affiche « indisponible » (503 explicite, jamais de panne) | *vide* |
+| `ANTHROPIC_MODELE` | Modèle Claude utilisé par l'assistant | `claude-haiku-4-5` |
+| `IA_ACTIF` | Kill switch global de l'assistant (`false` = désactivé même avec une clé) | `true` |
 
 **En production, remplacez impérativement `DB_PASSWORD` et `JWT_SECRET`.**
+La clé `ANTHROPIC_API_KEY` reste exclusive à `.env` (ignoré par git) : elle
+n'est ni versionnée ni journalisée côté serveur.
 
 ---
 
@@ -209,6 +214,18 @@ variables d'environnement. Copiez `.env.example` en `.env` et adaptez au besoin.
   droit existant) peuvent supprimer une entrée erronée via la colonne
   « Actions » (confirmation systématique, `DELETE` refusée aux autres
   profils) — aucune autre écriture n'est exposée.
+- **Assistant IA** (« Demande à ton portefeuille », permission dédiée
+  `IA_UTILISER` — 17ᵉ, ADMIN + RESPONSABLE) : chat et résumé d'initiative
+  (`/assistant`, bouton « Résumé IA » sur la fiche) branchés sur l'API
+  Anthropic. Le modèle reçoit à chaque requête un **contexte reconstruit
+  depuis la base** (initiatives non archivées, statut, avancement, santé,
+  budget, responsable) et le prompt système lui interdit d'inventer —
+  réponses sourcées, jamais hallucinées (loi 09-08 / CNDP). **Kill switch**
+  `IA_ACTIF=false` (désactivation immédiate sans redéploiement), clé absente
+  → état « indisponible » explicite (503 + message, jamais d'erreur muette),
+  et **journalisation intégrale** de chaque requête (`journal_ia` : auteur,
+  demande, réponse, statut OK / ERREUR / NON_DISPONIBLE, durée — consultable
+  par les administrateurs).
 - **Administration** : utilisateurs, rôles, permissions.
 
 ---
@@ -252,7 +269,7 @@ d'une entrée avec 404 si elle n'existe pas),
 journal) et
 `ApiErreurHttpTest` (codes HTTP d'erreur : 405 / 400 / 415 / 406 au lieu de 500)
 et `DashboardServiceTest` (dont l'accueil personnalisé : jalons de la semaine
-et initiatives à risque). **125 tests, 0 échec.**
+et initiatives à risque). **137 tests, 0 échec.**
 
 ### Tests fonctionnels de l'API
 
@@ -274,7 +291,11 @@ dashboard, rouge sur une initiative en retard, absent des écritures). Les KPI
 sont comparés à un recalcul indépendant issu de la liste réelle des initiatives
 (aucune valeur codée en dur) ; deux contrôles vérifient enfin les KPI d'accueil
 `jalonsSemaine` (fenêtre du jour au dimanche courant) et `initiativesARisque`
-(santé ORANGE ou ROUGE recalculée depuis la liste). **152 scénarios, 0 échec.**
+(santé ORANGE ou ROUGE recalculée depuis la liste). La section 13 couvre
+l'**assistant IA** : `IA_UTILISER` exigée (403 visiteur), statut de
+disponibilité, question réelle (200 + réponse, ou 503 explicite si non
+configuré), résumé d'inconnu → 404, journal accessible aux seuls
+administrateurs. **161 scénarios, 0 échec.**
 
 Après une campagne de tests, purgez les résidus (initiatives `TEST*` archivées,
 initiatives issues de demandes de test `DEM-*`, demandes `TEST-DEM*`, objectifs

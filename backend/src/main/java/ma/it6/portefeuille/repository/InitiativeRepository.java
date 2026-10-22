@@ -30,6 +30,23 @@ public interface InitiativeRepository extends JpaRepository<Initiative, Long>, J
     Optional<Initiative> findByIdInitiative(Long idInitiative);
 
     /**
+     * Fiche « étapes » pour le résumé IA : une seule collection fetchée
+     * (interdiction JPA de fetcher deux List bag d'un coup — les jalons
+     * sont chargés à part via {@code JalonRepository.chercherParInitiatives}).
+     */
+    @Query("""
+            select distinct i from Initiative i
+            left join fetch i.entite
+            left join fetch i.responsable
+            left join fetch i.statut
+            left join fetch i.priorite
+            left join fetch i.etapes e
+            left join fetch e.statutEtape
+            where i.idInitiative = :id
+            """)
+    Optional<Initiative> findByIdInitiativeAvecEtapes(@Param("id") Long idInitiative);
+
+    /**
      * Initiatives potentiellement en retard : non archivées, date de fin
      * prévue dépassée, statut != Terminée et avancement &lt; 100 %.
      */

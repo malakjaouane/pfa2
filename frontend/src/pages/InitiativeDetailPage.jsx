@@ -8,7 +8,7 @@ import { useReferentiels } from '../i18n/referentiels';
 import StatutBadge from '../components/StatutBadge';
 import SanteBadge from '../components/SanteBadge';
 import ProgressBar from '../components/ProgressBar';
-import { IconTarget, IconAlert } from '../components/Icons';
+import { IconTarget, IconAlert, IconAssistant } from '../components/Icons';
 
 const etapeVide = { nom: '', description: '', ordre: '', dateDebut: '', dateFinPrevue: '', avancement: 0, idStatutEtape: '' };
 const jalonVide = { nom: '', description: '', datePrevue: '', dateRealisation: '', idStatutJalon: '' };
@@ -26,6 +26,7 @@ export default function InitiativeDetailPage() {
   const peutJalons = hasPermission('JALON_GERER');
   const peutModifier = hasPermission('INITIATIVE_MODIFIER');
   const peutArchiver = hasPermission('INITIATIVE_ARCHIVER');
+  const peutIa = hasPermission('IA_UTILISER');
 
   const [initiative, setInitiative] = useState(null);
   const [etapes, setEtapes] = useState([]);
@@ -41,6 +42,23 @@ export default function InitiativeDetailPage() {
   const [editionEtape, setEditionEtape] = useState(null); // { idEtape, ... }
   const [nouveauJalon, setNouveauJalon] = useState(jalonVide);
   const [editionJalon, setEditionJalon] = useState(null);
+
+  // Résumé IA (permission IA_UTILISER) — POST /api/ia/resume/{id}
+  const [resumeIa, setResumeIa] = useState('');
+  const [resumeEnCours, setResumeEnCours] = useState(false);
+
+  const genererResume = async () => {
+    setErreur('');
+    setResumeEnCours(true);
+    try {
+      const { data } = await api.post(`/ia/resume/${id}`, { langue });
+      setResumeIa(data.reponse);
+    } catch (err) {
+      setErreur(messageErreur(err));
+    } finally {
+      setResumeEnCours(false);
+    }
+  };
 
   const charger = () => {
     api
@@ -228,6 +246,17 @@ export default function InitiativeDetailPage() {
           </p>
         </div>
         <div className="actions">
+          {peutIa && !initiative.archive && (
+            <button
+              type="button"
+              className="btn btn-secondaire"
+              onClick={genererResume}
+              disabled={resumeEnCours}
+            >
+              <IconAssistant size={16} />
+              {resumeEnCours ? t('initiativeDetail.resumeEnCours') : t('initiativeDetail.resumeIa')}
+            </button>
+          )}
           {peutModifier && !initiative.archive && (
             <Link to={`/initiatives/${initiative.idInitiative}/modifier`} className="btn btn-primaire">{t('initiativeDetail.modifier')}</Link>
           )}
@@ -236,6 +265,17 @@ export default function InitiativeDetailPage() {
           )}
         </div>
       </header>
+
+      {resumeIa && (
+        <section className="carte carte-resume-ia">
+          <h3>
+            <IconAssistant size={18} />
+            {t('initiativeDetail.resumeTitre')}
+          </h3>
+          <p>{resumeIa}</p>
+          <p className="texte-muet">{t('assistant.legal')}</p>
+        </section>
+      )}
 
       <section className="carte">
         <div className="fiche-grille">

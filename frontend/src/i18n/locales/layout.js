@@ -12,6 +12,7 @@ export default {
     'layout.nav.historique': 'Historique des statuts',
     'layout.nav.utilisateurs': 'Utilisateurs',
     'layout.nav.roles': 'Rôles & permissions',
+    'layout.nav.assistant': 'Assistant IA',
 
     'layout.fil.portefeuille': 'Portefeuille',
     'layout.fil.nouvelleInitiative': 'Nouvelle initiative',
@@ -39,6 +40,7 @@ export default {
     'layout.nav.historique': 'Status history',
     'layout.nav.utilisateurs': 'Users',
     'layout.nav.roles': 'Roles & permissions',
+    'layout.nav.assistant': 'AI assistant',
 
     'layout.fil.portefeuille': 'Portfolio',
     'layout.fil.nouvelleInitiative': 'New initiative',
@@ -66,6 +68,7 @@ export default {
     'layout.nav.historique': 'تاريخ الحالات',
     'layout.nav.utilisateurs': 'المستخدمون',
     'layout.nav.roles': 'الأدوار والأذونات',
+    'layout.nav.assistant': 'المساعد الذكاء الاصطناعي',
 
     'layout.fil.portefeuille': 'الحافظة',
     'layout.fil.nouvelleInitiative': 'مبادرة جديدة',
@@ -93,6 +96,7 @@ export default {
     'layout.nav.historique': 'Historial de estados',
     'layout.nav.utilisateurs': 'Usuarios',
     'layout.nav.roles': 'Roles y permisos',
+    'layout.nav.assistant': 'Asistente de IA',
 
     'layout.fil.portefeuille': 'Portafolio',
     'layout.fil.nouvelleInitiative': 'Nueva iniciativa',

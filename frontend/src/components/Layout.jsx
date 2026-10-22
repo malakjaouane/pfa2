@@ -20,7 +20,8 @@ import {
   IconChevronDown,
   IconMenu,
   IconClose,
-  IconSettings
+  IconSettings,
+  IconAssistant
 } from './Icons';
 
 /** Fil d'Ariane (clés de traduction) déduit de la route courante. */
@@ -40,6 +41,7 @@ function filAriane(pathname, search) {
   if (pathname.startsWith('/historique')) return ['layout.fil.portefeuille', 'layout.nav.historique'];
   if (pathname.startsWith('/utilisateurs')) return ['layout.fil.portefeuille', 'layout.nav.utilisateurs'];
   if (pathname.startsWith('/roles')) return ['layout.fil.portefeuille', 'layout.nav.roles'];
+  if (pathname.startsWith('/assistant')) return ['layout.fil.portefeuille', 'layout.nav.assistant'];
   if (pathname.startsWith('/mot-de-passe')) return ['layout.fil.portefeuille', 'layout.menu.motDePasse'];
   return ['layout.fil.portefeuille'];
 }
@@ -123,6 +125,9 @@ export default function Layout() {
   }
   if (user?.permissions?.some((p) => ['ROLE_GERER', 'PERMISSION_GERER'].includes(p))) {
     liens.push({ to: '/roles', cle: 'layout.nav.roles', Icone: IconShield, actif: pathname.startsWith('/roles') });
+  }
+  if (hasPermission('IA_UTILISER')) {
+    liens.push({ to: '/assistant', cle: 'layout.nav.assistant', Icone: IconAssistant, actif: pathname.startsWith('/assistant') });
   }
 
   const miettes = filAriane(pathname, search);

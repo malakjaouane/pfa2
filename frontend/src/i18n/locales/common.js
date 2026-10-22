@@ -42,6 +42,7 @@ export default {
     'common.permission.DEMANDE_SOUMETTRE': "Soumettre une demande d'initiative",
     'common.permission.DEMANDE_EVALUER': 'Évaluer, accepter ou refuser une demande',
     'common.permission.BUDGET_CONSULTER': 'Consulter les budgets et les écarts',
+    'common.permission.IA_UTILISER': 'Utiliser l\'assistant IA du portefeuille',
 
     'common.chargement': 'Chargement…',
     'common.nonAffecte': 'Non affecté',
@@ -100,6 +101,7 @@ export default {
     'common.permission.DEMANDE_SOUMETTRE': 'Submit an initiative request',
     'common.permission.DEMANDE_EVALUER': 'Evaluate, accept or reject a request',
     'common.permission.BUDGET_CONSULTER': 'View budgets and variances',
+    'common.permission.IA_UTILISER': 'Use the portfolio AI assistant',
 
     'common.chargement': 'Loading…',
     'common.nonAffecte': 'Unassigned',
@@ -158,6 +160,7 @@ export default {
     'common.permission.DEMANDE_SOUMETTRE': 'تقديم طلب مبادرة',
     'common.permission.DEMANDE_EVALUER': 'تقييم الطلب أو قبوله أو رفضه',
     'common.permission.BUDGET_CONSULTER': 'عرض الميزانيات والفجوات',
+    'common.permission.IA_UTILISER': 'استخدام مساعد الذكاء الاصطناعي للمحفظة',
 
     'common.chargement': 'جارٍ التحميل…',
     'common.nonAffecte': 'غير معيّن',
@@ -216,6 +219,7 @@ export default {
     'common.permission.DEMANDE_SOUMETTRE': 'Enviar una solicitud de iniciativa',
     'common.permission.DEMANDE_EVALUER': 'Evaluar, aceptar o rechazar una solicitud',
     'common.permission.BUDGET_CONSULTER': 'Ver presupuestos y desviaciones',
+    'common.permission.IA_UTILISER': 'Usar el asistente de IA del portafolio',
 
     'common.chargement': 'Cargando…',
     'common.nonAffecte': 'Sin asignar',

@@ -168,6 +168,7 @@ export default {
 
     // Assistant IA — aperçu animé (composant DemoIA)
     'landing.ia.eyebrow': 'Assistant IA',
+    'landing.ia.cta': 'Essayer l\'assistant',
     'landing.ia.titre': 'Demandez à votre portefeuille',
     'landing.ia.texte':
       "Un assistant conversationnel interroge vos données pour préparer résumés et analyses : des réponses sourcées sur le portefeuille réel, jamais inventées.",
@@ -382,6 +383,7 @@ export default {
 
     // AI assistant — animated preview (DemoIA)
     'landing.ia.eyebrow': 'AI assistant',
+    'landing.ia.cta': 'Try the assistant',
     'landing.ia.titre': 'Ask your portfolio',
     'landing.ia.texte':
       "A conversational assistant queries your data to draft summaries and analysis: answers grounded in the real portfolio, never invented.",
@@ -594,6 +596,7 @@ export default {
 
     // مساعد الذكاء الاصطناعي — معاينة متحركة (DemoIA)
     'landing.ia.eyebrow': 'مساعد الذكاء الاصطناعي',
+    'landing.ia.cta': 'جرّب المساعد',
     'landing.ia.titre': 'اسأل محفظتك',
     'landing.ia.texte': 'مساعد حواري يستعلم عن بياناتك لتحضير ملخصات وتحليلات: إجابات مستندة إلى المحفظة الحقيقية وليست مخترعة.',
     'landing.ia.legal': 'يجيب المساعد انطلاقًا من بيانات محفظتك فقط؛ وكل إجراء حساس يبقى خاضعًا للأذونات وموافقتك الخاصة (قانون 09-08 / CNDC).',
@@ -798,6 +801,7 @@ export default {
 
     // Asistente de IA — vista animada (DemoIA)
     'landing.ia.eyebrow': 'Asistente de IA',
+    'landing.ia.cta': 'Probar el asistente',
     'landing.ia.titre': 'Pregúntale a tu portafolio',
     'landing.ia.texte':
       'Un asistente conversacional consulta tus datos para preparar resúmenes y análisis: respuestas basadas en el portafolio real, nunca inventadas.',

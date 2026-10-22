@@ -407,6 +407,13 @@ export default function LandingPage() {
             <h2>{t('landing.ia.titre')}</h2>
             <p>{avecLiens('landing.ia.texte')}</p>
             <p className="sn-ia-legal">{t('landing.ia.legal')}</p>
+            {/* L'aperçu ci-contre est une animation ; ce bouton ouvre le
+                VRAI assistant de l'application (permission IA_UTILISER). */}
+            <p>
+              <Link to="/assistant" className="btn btn-primaire sn-ia-cta">
+                {t('landing.ia.cta')} →
+              </Link>
+            </p>
           </div>
           <DemoIA />
         </div>

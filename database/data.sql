@@ -33,21 +33,23 @@ INSERT IGNORE INTO permission (id_permission, code, libelle) VALUES
     (13, 'PERMISSION_GERER',       'Gérer les permissions'),
     (14, 'DEMANDE_SOUMETTRE',      'Soumettre une demande d''initiative'),
     (15, 'DEMANDE_EVALUER',        'Évaluer, accepter ou refuser une demande'),
-    (16, 'BUDGET_CONSULTER',       'Consulter les budgets et les écarts');
+    (16, 'BUDGET_CONSULTER',       'Consulter les budgets et les écarts'),
+    (17, 'IA_UTILISER',            'Utiliser l''assistant IA du portefeuille');
 
 -- ------------------------------------------------------------------
 -- RÔLE <-> PERMISSION
 -- ------------------------------------------------------------------
--- ADMINISTRATEUR : toutes les permissions (1 à 16)
+-- ADMINISTRATEUR : toutes les permissions (1 à 17)
 INSERT IGNORE INTO role_permission (id_role, id_permission) VALUES
-    (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10), (1, 11), (1, 12), (1, 13), (1, 14), (1, 15), (1, 16);
+    (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10), (1, 11), (1, 12), (1, 13), (1, 14), (1, 15), (1, 16), (1, 17);
 
 -- RESPONSABLE : gestion des initiatives, étapes, jalons, dashboard, filtres,
 -- budgets + soumission et évaluation des demandes (workflow SPM)
+-- + assistant IA (17)
 INSERT IGNORE INTO role_permission (id_role, id_permission) VALUES
-    (2, 1), (2, 2), (2, 3), (2, 4), (2, 5), (2, 6), (2, 7), (2, 8), (2, 9), (2, 10), (2, 14), (2, 15), (2, 16);
+    (2, 1), (2, 2), (2, 3), (2, 4), (2, 5), (2, 6), (2, 7), (2, 8), (2, 9), (2, 10), (2, 14), (2, 15), (2, 16), (2, 17);
 
--- VISITEUR : consultation, dashboard, filtres
+-- VISITEUR : consultation, dashboard, filtres (pas d'assistant IA)
 INSERT IGNORE INTO role_permission (id_role, id_permission) VALUES
     (3, 1), (3, 9), (3, 10);
 

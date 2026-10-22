@@ -282,3 +282,43 @@ RÃ¨gles contrÃ´lÃ©es par le service :
 - chaque transition n'accepte que le statut prÃ©cÃ©dent exact (sinon **400**) ;
 - la transformation d'une demande **non acceptÃ©e** ou **dÃ©jÃ  transformÃ©e** renvoie **400** ;
 - le code `DEM-%06d` est dÃ©rivÃ© de l'identifiant de la demande (unicitÃ© garantie).
+
+## 12. Assistant IA (« Demande à ton portefeuille »)
+
+L'assistant répond **uniquement** à partir d'un contexte reconstruit à chaque requête
+(initiatives non archivées : statut, avancement, santé, budget, responsable) — le
+modèle n'a jamais d'accès libre, et le prompt système lui interdit d'inventer
+(la loi 09-08 / CNDP). **Chaque requête est journalisée** (`journal_ia` : auteur,
+demande, réponse, statut, durée).
+
+| Endpoint | Permission | Rôle |
+|---|---|---|
+| `GET /ia/statut` | connecté | Disponibilité (`actif`, `cleRenseignee`, `disponible`, `modele`) — permet à l'interface d'afficher « indisponible » explicitement |
+| `POST /ia/assistant` | `IA_UTILISER` (17) | Question conversationnelle |
+| `POST /ia/resume/{idInitiative}` | `IA_UTILISER` (17) | Résumé d'une initiative (fiche + étapes + jalons) |
+| `GET /ia/journal` | `UTILISATEUR_GERER` | Journal des requêtes (administrateurs) |
+
+Corps de `POST /ia/assistant` (`AssistantIaRequest`) :
+
+```json
+{ "question": "Quelles initiatives risquent de dépasser leur budget ?", "langue": "fr" }
+```
+
+Réponse (`AssistantIaResponse`) :
+
+```json
+{ "reponse": "…", "modele": "claude-haiku-4-5", "dureeMs": 842 }
+```
+
+Comportement selon la configuration (`application.yml` ? `app.ia.*`, variables
+`ANTHROPIC_API_KEY`, `IA_ACTIF`, `ANTHROPIC_MODELE`) :
+
+- **configuré** : appel Anthropic (`POST {url}/v1/messages`), réponse 200 ;
+- **clé absente ou `IA_ACTIF=false`** : **503** avec message actionnable
+  (« renseignez ANTHROPIC_API_KEY » / « désactivé par l'administrateur ») +
+  ligne `NON_DISPONIBLE` au journal ;
+- **échec du service (429, réseau…)** : **503** avec message traduit +
+  ligne `ERREUR` au journal.
+
+Le journal (`GET /ia/journal`) renvoie les 100 dernières lignes :
+`{ id, dateRequete, type: QUESTION|RESUME, demande, reponse, statut: OK|ERREUR|NON_DISPONIBLE, modele, dureeMs, initiativeCode, utilisateurEmail }`.

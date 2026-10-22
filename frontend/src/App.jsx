@@ -16,6 +16,7 @@ import DemandesPage from './pages/DemandesPage';
 import HistoriquePage from './pages/HistoriquePage';
 import ObjectifsPage from './pages/ObjectifsPage';
 import MotDePassePage from './pages/MotDePassePage';
+import AssistantPage from './pages/AssistantPage';
 
 export default function App() {
   return (
@@ -57,6 +58,14 @@ export default function App() {
             }
           />
           <Route path="/mot-de-passe" element={<MotDePassePage />} />
+          <Route
+            path="/assistant"
+            element={
+              <RequireAuth permissions={['IA_UTILISER']}>
+                <AssistantPage />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/utilisateurs"
             element={

@@ -17,6 +17,7 @@ import sante from './sante';
 import users from './users';
 import roles from './roles';
 import motdepasse from './motdepasse';
+import assistant from './assistant';
 
 /**
  * Chaque fichier de ce dossier exporte un « fragment » :
@@ -40,7 +41,8 @@ const FRAGMENTS = [
   sante,
   users,
   roles,
-  motdepasse
+  motdepasse,
+  assistant
 ];
 
 const dictionnaires = {};

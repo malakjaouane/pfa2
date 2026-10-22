@@ -15,6 +15,11 @@
 --   mysql -u pfa_user -p portefeuille_initiatives < database/cleanup-test-data.sql
 -- ============================================================
 
+-- Encodage de la connexion : sans cela, le client mysql interprète les
+-- motifs accentués du fichier (« Résumé… ») en latin1 et ils ne matchent
+-- plus rien en base (utf8mb4).
+SET NAMES utf8mb4;
+
 -- Les étapes et jalons liés sont supprimés en cascade (ON DELETE CASCADE).
 --
 -- On ne requiert PAS archive = 1 : une exécution interrompue (ex. refus
@@ -36,6 +41,13 @@ WHERE titre LIKE 'TEST-DEM%';
 
 DELETE FROM objectif_strategique
 WHERE code LIKE 'TEST-OBJ%';
+
+-- Requêtes IA de la suite de tests (journal de l'assistant) : la question
+-- envoyée est préfixée TEST, et un résumé ne peut référencer qu'une
+-- initiative TEST (déjà supprimée ci-dessus → id_initiative = NULL).
+DELETE FROM journal_ia
+WHERE demande LIKE 'TEST%'
+   OR demande LIKE 'Résumé de l''initiative TEST%';
 
 DELETE FROM utilisateur
 WHERE email LIKE 'test%@it6.ma';

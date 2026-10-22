@@ -1,6 +1,7 @@
 package ma.it6.portefeuille.security;
 
 import ma.it6.portefeuille.config.SecurityConfig;
+import ma.it6.portefeuille.controller.AssistantIaController;
 import ma.it6.portefeuille.controller.AuthController;
 import ma.it6.portefeuille.controller.BudgetController;
 import ma.it6.portefeuille.controller.DashboardController;
@@ -8,12 +9,15 @@ import ma.it6.portefeuille.controller.EtapeController;
 import ma.it6.portefeuille.controller.HistoriqueStatutController;
 import ma.it6.portefeuille.controller.InitiativeController;
 import ma.it6.portefeuille.controller.UtilisateurController;
+import ma.it6.portefeuille.dto.AssistantIaResponse;
+import ma.it6.portefeuille.dto.StatutIaResponse;
 import ma.it6.portefeuille.entity.Permission;
 import ma.it6.portefeuille.entity.Role;
 import ma.it6.portefeuille.entity.RolePermission;
 import ma.it6.portefeuille.entity.RolePermissionId;
 import ma.it6.portefeuille.entity.Utilisateur;
 import ma.it6.portefeuille.exception.BadRequestException;
+import ma.it6.portefeuille.service.AssistantIaService;
 import ma.it6.portefeuille.service.BudgetService;
 import ma.it6.portefeuille.service.DashboardService;
 import ma.it6.portefeuille.service.EtapeService;
@@ -47,6 +51,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -80,7 +85,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         UtilisateurController.class,
         DashboardController.class,
         BudgetController.class,
-        AuthController.class
+        AuthController.class,
+        AssistantIaController.class
 })
 @Import({SecurityConfig.class, JwtService.class})
 class SecuriteApiTest {
@@ -116,6 +122,90 @@ class SecuriteApiTest {
     private SessionsService sessionsService;
     @MockitoBean
     private ProtectionConnexions protectionConnexions;
+    @MockitoBean
+    private AssistantIaService assistantIaService;
+
+    // =================================================================
+    // 0. Assistant IA : permission dédiée IA_UTILISER + journal admin
+    // =================================================================
+    @Nested
+    @DisplayName("Assistant IA (règles d'URL, permission IA_UTILISER)")
+    class AssistantIa {
+
+        @Test
+        @DisplayName("statut : 401 sans jeton, 200 pour tout utilisateur connecté")
+        void statut() throws Exception {
+            when(assistantIaService.statut())
+                    .thenReturn(new StatutIaResponse(true, true, true, "claude-haiku-4-5"));
+
+            mockMvc.perform(get("/api/ia/statut"))
+                    .andExpect(status().isUnauthorized());
+
+            mockMvc.perform(get("/api/ia/statut")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.disponible").value(true))
+                    .andExpect(jsonPath("$.modele").value("claude-haiku-4-5"));
+        }
+
+        @Test
+        @DisplayName("question : 403 sans IA_UTILISER, 200 avec")
+        void question() throws Exception {
+            when(userDetailsService.chargerParEmail(anyString()))
+                    .thenReturn(principal("test@it6.ma", "ADMIN", "IA_UTILISER"));
+            when(assistantIaService.poserQuestion(anyString(), anyString(), any()))
+                    .thenReturn(new AssistantIaResponse("Réponse sourcée.", "claude-haiku-4-5", 42L));
+
+            // Simple lecture des initiatives : ne donne PAS le droit de poser des questions.
+            mockMvc.perform(post("/api/ia/assistant")
+                            .with(auth("INITIATIVE_CONSULTER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"question\":\"Combien d'initiatives ?\",\"langue\":\"fr\"}"))
+                    .andExpect(status().isForbidden());
+
+            mockMvc.perform(post("/api/ia/assistant")
+                            .with(auth("IA_UTILISER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"question\":\"Combien d'initiatives ?\",\"langue\":\"fr\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.reponse").value("Réponse sourcée."));
+        }
+
+        @Test
+        @DisplayName("résumé : 403 sans IA_UTILISER, 200 avec")
+        void resume() throws Exception {
+            when(userDetailsService.chargerParEmail(anyString()))
+                    .thenReturn(principal("test@it6.ma", "ADMIN", "IA_UTILISER"));
+            when(assistantIaService.resumerInitiative(eq(1L), anyString(), any()))
+                    .thenReturn(new AssistantIaResponse("Résumé.", "claude-haiku-4-5", 30L));
+
+            mockMvc.perform(post("/api/ia/resume/1")
+                            .with(auth("INITIATIVE_CONSULTER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"langue\":\"fr\"}"))
+                    .andExpect(status().isForbidden());
+
+            mockMvc.perform(post("/api/ia/resume/1")
+                            .with(auth("IA_UTILISER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"langue\":\"fr\"}"))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("journal : réservé aux administrateurs (UTILISATEUR_GERER)")
+        void journal() throws Exception {
+            when(assistantIaService.journal()).thenReturn(List.of());
+
+            mockMvc.perform(get("/api/ia/journal")
+                            .with(auth("IA_UTILISER")))
+                    .andExpect(status().isForbidden());
+
+            mockMvc.perform(get("/api/ia/journal")
+                            .with(auth("UTILISATEUR_GERER")))
+                    .andExpect(status().isOk());
+        }
+    }
 
     // =================================================================
     // 1. Règles d'URL : chaque endpoint exige la bonne permission

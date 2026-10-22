@@ -6,14 +6,14 @@ import { IconShield, IconLayers, IconUser } from '../Icons';
  * Choix de profil : « Je suis Directeur / Responsable / Visiteur ».
  * Sélectionner un profil déplie ce que ce rôle voit dans l'application
  * (modules, périmètre, exemples de décisions) — en s'appuyant sur les
- * vrais noms de rôles et les vrais nombres de permissions (16/13/3).
+ * vrais noms de rôles et les vrais nombres de permissions (17/14/3).
  */
 
 const PROFILS = [
   {
     cle: 'admin',
     Icone: IconShield,
-    permissions: 16,
+    permissions: 17,
     modules: [
       'landing.profils.admin.m1',
       'landing.profils.admin.m2',
@@ -24,7 +24,7 @@ const PROFILS = [
   {
     cle: 'resp',
     Icone: IconLayers,
-    permissions: 13,
+    permissions: 14,
     modules: [
       'landing.profils.resp.m1',
       'landing.profils.resp.m2',

@@ -4388,3 +4388,194 @@ a:hover { color: #00566D; }
     radial-gradient(900px 520px at 12% 112%, rgba(233, 168, 180, 0.32), transparent 60%),
     linear-gradient(150deg, #032D42, #0A5670 68%, #032D42);
 }
+
+
+/* ============================================================ */
+/* ---------- Page « Assistant IA » (chat réel) ---------------- */
+/* Conversation « Demande à ton portefeuille » + résumé IA de   */
+/* la fiche initiative. Bubbles alignées en flex : le mode RTL  */
+/* (ar) est respecté automatiquement via direction: rtl.        */
+/* ============================================================ */
+.ia-page {
+  max-width: 880px;
+}
+
+.ia-conversation {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 280px;
+  max-height: 55vh;
+  overflow-y: auto;
+  padding: 18px;
+}
+
+.ia-vide {
+  text-align: center;
+  margin: auto;
+}
+
+.ia-message {
+  display: flex;
+}
+
+.ia-message.utilisateur {
+  justify-content: flex-end;
+}
+
+.ia-bulle {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 82%;
+  padding: 10px 14px;
+  border-radius: var(--radius-card);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ia-message.assistant .ia-bulle {
+  background: var(--accent-pale);
+  border: 1px solid rgba(140, 33, 54, 0.14);
+  color: var(--n900);
+}
+
+.ia-message.utilisateur .ia-bulle {
+  background: var(--accent);
+  color: #fff;
+}
+
+.ia-message.assistant .ia-bulle svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--accent);
+}
+
+/* Indicateur « l'assistant rédige… » (trois points). */
+.ia-attente {
+  align-items: center;
+  color: var(--n700);
+}
+
+.ia-points {
+  display: inline-flex;
+  gap: 4px;
+  margin-right: 6px;
+}
+
+.ia-points i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+  animation: ia-clignotement 1.2s infinite;
+}
+
+.ia-points i:nth-child(2) { animation-delay: 0.2s; }
+.ia-points i:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes ia-clignotement {
+  0%, 100% { opacity: 0.25; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-2px); }
+}
+
+.ia-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.ia-suggestion {
+  border: 1px solid rgba(140, 33, 54, 0.25);
+  background: #fff;
+  color: var(--n900);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.ia-suggestion:hover:not(:disabled) {
+  background: var(--accent-pale);
+  border-color: var(--accent);
+}
+
+.ia-suggestion:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ia-saisie {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.ia-saisie input {
+  flex: 1;
+}
+
+.ia-legal {
+  margin-top: 14px;
+  font-size: 0.82rem;
+}
+
+.ia-indispo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ia-indispo svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.ia-indispo p {
+  margin: 4px 0 0;
+}
+
+/* CTA « Essayer l'assistant » de la page d'accueil. */
+.sn-ia-cta {
+  margin-top: 6px;
+  display: inline-block;
+}
+
+/* Résumé IA sur la fiche initiative. */
+.carte-resume-ia {
+  border-inline-start: 3px solid var(--accent);
+}
+
+.carte-resume-ia h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+.carte-resume-ia p {
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 640px) {
+  .ia-bulle { max-width: 95%; }
+  .ia-saisie { flex-direction: column; align-items: stretch; }
+  .ia-suggestions { flex-direction: column; align-items: flex-start; }
+}
+
+/* Mouvement réduit : les points de l'indicateur restent visibles
+   (pleine opacité) mais ne bougent plus. */
+@media (prefers-reduced-motion: reduce) {
+  .ia-points i {
+    animation: none;
+    opacity: 0.8;
+  }
+}

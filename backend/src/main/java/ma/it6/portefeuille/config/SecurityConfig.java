@@ -111,6 +111,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/jalons/**", "/api/initiatives/*/jalons").hasAuthority("JALON_GERER")
                         // Gestion des permissions d'un rôle
                         .requestMatchers(HttpMethod.PUT, "/api/roles/*/permissions").hasAuthority("ROLE_GERER")
+                        // Assistant IA (« Demande à ton portefeuille ») —
+                        // permission dédiée (17). Le statut reste ouvert à
+                        // tout utilisateur connecté (affichage explicite de
+                        // l'indisponibilité) ; le journal des requêtes est
+                        // réservé aux administrateurs (loi 09-08 / CNDP).
+                        .requestMatchers(HttpMethod.GET, "/api/ia/statut").authenticated()
+                        .requestMatchers("/api/ia/assistant", "/api/ia/resume/**").hasAuthority("IA_UTILISER")
+                        .requestMatchers(HttpMethod.GET, "/api/ia/journal").hasAuthority("UTILISATEUR_GERER")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions

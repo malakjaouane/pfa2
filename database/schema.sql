@@ -443,3 +443,39 @@ SET @sql_date = IF(@col = 0,
 PREPARE stmt_date FROM @sql_date;
 EXECUTE stmt_date;
 DEALLOCATE PREPARE stmt_date;
+
+-- ------------------------------------------------------------------
+-- Journal des requêtes IA (assistant « Demande à ton portefeuille »).
+-- Traçabilité complète exigée par la loi 09-08 / CNDP : chaque question
+-- ou résumé généré est enregistré avec son auteur, son statut (OK,
+-- ERREUR, NON_DISPONIBLE), sa durée, et le cas échéant l'initiative
+-- concernée. Table ajoutée en fin de fichier : les deux clés étrangères
+-- (utilisateur, initiative) sont alors garanties créées.
+-- ------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS journal_ia (
+    id_ia           BIGINT        NOT NULL AUTO_INCREMENT,
+    id_utilisateur  BIGINT        NULL,
+    type_requete    VARCHAR(20)   NOT NULL,
+    demande         VARCHAR(2000) NOT NULL,
+    reponse         TEXT          NULL,
+    id_initiative   BIGINT        NULL,
+    modele          VARCHAR(50)   NULL,
+    statut          VARCHAR(20)   NOT NULL,
+    message_erreur  VARCHAR(300)  NULL,
+    duree_ms        BIGINT        NULL,
+    date_requete    DATETIME      NOT NULL,
+    PRIMARY KEY (id_ia),
+    CONSTRAINT fk_journalia_utilisateur FOREIGN KEY (id_utilisateur) REFERENCES utilisateur (id_user) ON DELETE SET NULL,
+    CONSTRAINT fk_journalia_initiative  FOREIGN KEY (id_initiative)  REFERENCES initiative (id_initiative) ON DELETE SET NULL
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Lecture administrative du journal (les 100 dernières, tri date).
+SET @col = (SELECT COUNT(*) FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'journal_ia'
+        AND INDEX_NAME = 'idx_journal_ia_date');
+SET @sql_date_ia = IF(@col = 0,
+        'CREATE INDEX idx_journal_ia_date ON journal_ia (date_requete)',
+        'SELECT 1');
+PREPARE stmt_date_ia FROM @sql_date_ia;
+EXECUTE stmt_date_ia;
+DEALLOCATE PREPARE stmt_date_ia;

@@ -39,6 +39,16 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Assistant IA indisponible (kill switch, clé absente, appel en
+     * échec) : 503 avec un message actionnable — jamais une erreur 500
+     * qui laisserait croire à une panne de l'application.
+     */
+    @ExceptionHandler(IaIndisponibleException.class)
+    public ResponseEntity<ApiError> handleIaIndisponible(IaIndisponibleException ex) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), List.of());
+    }
+
+    /**
      * Route ou ressource inexistante : renvoie un 404 JSON plutôt que la
      * page d'erreur par défaut de Spring Boot.
      */

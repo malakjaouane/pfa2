@@ -72,8 +72,9 @@ Write-Output "=== 1. Authentification ($emailTest) ==="
 
 $login = Invoke-Api 'Post' "$Base/auth/login" @{ email = 'admin@it6.ma'; motDePasse = 'Admin@123' }
 Test-Check 'Login admin (token présent)' ($login.OK -and $null -ne $login.Body.token)
-# 16 = les 15 permissions du cahier des charges + BUDGET_CONSULTER (cf. data.sql).
-Test-Check 'Permissions administrateur = 16 (dont ROLE_GERER + BUDGET_CONSULTER)' ($login.OK -and $login.Body.permissions.Count -eq 16) "($($login.Body.permissions.Count))"
+# 17 = les 15 permissions du cahier des charges + BUDGET_CONSULTER (16)
+# + IA_UTILISER (17, assistant IA) — cf. data.sql.
+Test-Check 'Permissions administrateur = 17 (dont ROLE_GERER + BUDGET_CONSULTER + IA_UTILISER)' ($login.OK -and $login.Body.permissions.Count -eq 17) "($($login.Body.permissions.Count))"
 Test-Check 'Permission ROLE_GERER présente' ($login.OK -and @($login.Body.permissions | Where-Object { $_ -eq 'ROLE_GERER' }).Count -eq 1)
 $adminToken = $login.Body.token
 
@@ -85,8 +86,12 @@ Test-Check 'Login visiteur, permissions = 3' ($loginV.OK -and $loginV.Body.permi
 $visiteurToken = $loginV.Body.token
 
 $loginR = Invoke-Api 'Post' "$Base/auth/login" @{ email = 'responsable@it6.ma'; motDePasse = 'Resp@123' }
-Test-Check 'Login responsable, permissions = 13' ($loginR.OK -and $loginR.Body.permissions.Count -eq 13) "($($loginR.Body.permissions.Count))"
+Test-Check 'Login responsable, permissions = 14 (dont IA_UTILISER)' ($loginR.OK -and $loginR.Body.permissions.Count -eq 14) "($($loginR.Body.permissions.Count))"
 $responsableToken = $loginR.Body.token
+Test-Check 'Permission IA_UTILISER : admin + responsable, jamais le visiteur' (
+    (@($login.Body.permissions | Where-Object { $_ -eq 'IA_UTILISER' }).Count -eq 1) -and
+    (@($loginR.Body.permissions | Where-Object { $_ -eq 'IA_UTILISER' }).Count -eq 1) -and
+    (@($loginV.Body.permissions | Where-Object { $_ -eq 'IA_UTILISER' }).Count -eq 0))
 Test-Check 'Permissions DEMANDE_* présentes (admin + responsable)' (
     (($login.Body.permissions | Where-Object { $_ -eq 'DEMANDE_SOUMETTRE' -or $_ -eq 'DEMANDE_EVALUER' }).Count -eq 2) -and
     (($loginR.Body.permissions | Where-Object { $_ -eq 'DEMANDE_SOUMETTRE' -or $_ -eq 'DEMANDE_EVALUER' }).Count -eq 2))
@@ -406,7 +411,7 @@ Write-Output '=== 9. Rôles et permissions ==='
 $roles = Invoke-Api 'Get' "$Base/roles" $null $adminToken
 Test-Check '3 rôles exposés' ($roles.OK -and $roles.Body.Count -eq 3) "($($roles.Body.Count))"
 $roleAdmin = Invoke-Api 'Get' "$Base/roles/1" $null $adminToken
-Test-Check 'ADMIN : 16 permissions' ($roleAdmin.OK -and $roleAdmin.Body.permissions.Count -eq 16) "($($roleAdmin.Body.permissions.Count))"
+Test-Check 'ADMIN : 17 permissions' ($roleAdmin.OK -and $roleAdmin.Body.permissions.Count -eq 17) "($($roleAdmin.Body.permissions.Count))"
 $roleVisiteur = Invoke-Api 'Get' "$Base/roles/3" $null $adminToken
 $idsOriginaux = @($roleVisiteur.Body.permissions | ForEach-Object { $_.idPermission })
 $roleUpdate = Invoke-Api 'Put' "$Base/roles/3/permissions" @{ idsPermissions = @($idsOriginaux[0]) } $adminToken
@@ -621,6 +626,48 @@ Test-Check 'Suppression journal : admin -> 204, total diminué de 1' ($histSuppr
 # Nettoyage : « Terminée » -> archivée (exclue des KPI des exécutions suivantes).
 $histArch = Invoke-Api 'Patch' "$Base/initiatives/$idHist/archive" $null $adminToken
 Test-Check 'Nettoyage : initiative du journal archivée' ($histArch.OK -and $histArch.Body.archive -eq $true)
+
+Write-Output '=== 13. Assistant IA (permission, disponibilité, journal) ==='
+# Le statut est ouvert à tout utilisateur connecté : l'interface doit
+# pouvoir afficher « indisponible » au lieu d'une erreur muette.
+$iaStatut = Invoke-Api 'Get' "$Base/ia/statut" $null $adminToken
+Test-Check 'Statut IA exposé (actif, clé, disponible, modèle)' (
+    $iaStatut.OK -and $null -ne $iaStatut.Body.actif -and $null -ne $iaStatut.Body.cleRenseignee -and
+    $null -ne $iaStatut.Body.disponible -and -not [string]::IsNullOrWhiteSpace($iaStatut.Body.modele))
+$iaStatutV = Invoke-Api 'Get' "$Base/ia/statut" $null $visiteurToken
+Test-Check 'Statut IA lisible par le visiteur (affichage explicite)' ($iaStatutV.OK)
+
+# Permission IA_UTILISER exigée pour poser des questions et résumer.
+$iaVisiteur = Invoke-Api 'Post' "$Base/ia/assistant" @{ question = 'Combien d''initiatives ?'; langue = 'fr' } $visiteurToken
+Test-Check 'Visiteur sans IA_UTILISER -> 403 sur /ia/assistant' ($iaVisiteur.OK -eq $false -and $iaVisiteur.Status -eq 403) "($($iaVisiteur.Status))"
+$iaResumeVisiteur = Invoke-Api 'Post' "$Base/ia/resume/1" @{ langue = 'fr' } $visiteurToken
+Test-Check 'Visiteur sans IA_UTILISER -> 403 sur /ia/resume' ($iaResumeVisiteur.OK -eq $false -and $iaResumeVisiteur.Status -eq 403) "($($iaResumeVisiteur.Status))"
+
+# Responsable : IA_UTILISER accordée (14e permission) — le 404 vient du service.
+$iaResumeResp = Invoke-Api 'Post' "$Base/ia/resume/999999" @{ langue = 'fr' } $responsableToken
+Test-Check 'Responsable : initiative inconnue -> 404 (pas de 403)' ($iaResumeResp.OK -eq $false -and $iaResumeResp.Status -eq 404) "($($iaResumeResp.Status))"
+
+# Question réelle : 200 + réponse sourcée si configuré, sinon 503 explicite.
+# Question préfixée TEST : si elle est journalisée (réussie ou non), la
+# purge de cleanup-test-data.sql pourra la retirer comme toute donnée TEST.
+$iaQuestion = Invoke-Api 'Post' "$Base/ia/assistant" @{ question = 'TEST — Quelles initiatives sont à risque ?'; langue = 'fr' } $adminToken
+if ($iaStatut.Body.disponible) {
+    Test-Check 'Assistant configuré -> 200 + réponse non vide + modèle' (
+        $iaQuestion.OK -and -not [string]::IsNullOrWhiteSpace($iaQuestion.Body.reponse) -and
+        -not [string]::IsNullOrWhiteSpace($iaQuestion.Body.modele)) "($($iaQuestion.Status))"
+} else {
+    Test-Check 'Assistant non configuré -> 503 avec message explicite' (
+        $iaQuestion.OK -eq $false -and $iaQuestion.Status -eq 503 -and
+        -not [string]::IsNullOrWhiteSpace($iaQuestion.Body.message)) "($($iaQuestion.Status))"
+}
+
+# Journal : chaque requête est tracée (réussie ou non), admin seulement.
+$iaJournal = Invoke-Api 'Get' "$Base/ia/journal" $null $adminToken
+Test-Check 'Journal IA : admin, ≥ 1 ligne tracée après appel' (
+    $iaJournal.OK -and @($iaJournal.Body).Count -ge 1 -and
+    @($iaJournal.Body | Where-Object { $_.statut -and $_.utilisateurEmail }).Count -ge 1) "($(@($iaJournal.Body).Count))"
+$iaJournalV = Invoke-Api 'Get' "$Base/ia/journal" $null $visiteurToken
+Test-Check 'Journal IA refusé au visiteur -> 403' ($iaJournalV.OK -eq $false -and $iaJournalV.Status -eq 403) "($($iaJournalV.Status))"
 
 Write-Output ''
 Write-Output '------------------------------------------------------------'
