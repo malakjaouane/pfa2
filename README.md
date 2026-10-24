@@ -158,7 +158,8 @@ variables d'environnement. Copiez `.env.example` en `.env` et adaptez au besoin.
 | `JWT_EXPIRATION_MS` | Durée de validité du jeton | `28800000` (8 h) |
 | `SERVER_PORT` | Port HTTP du backend | `8080` |
 | `ANTHROPIC_API_KEY` | Clé API Anthropic de l'assistant IA — **absente** : la page `/assistant` affiche « indisponible » (503 explicite, jamais de panne) | *vide* |
-| `ANTHROPIC_MODELE` | Modèle Claude utilisé par l'assistant | `claude-haiku-4-5` |
+| `IA_MODELE` / `ANTHROPIC_MODELE` | Modèle utilisé par l'assistant | `claude-haiku-4-5` |
+| `IA_FORMAT` | Format d'appel : `anthropic` (API Anthropic) ou `openai` compatible OpenAI — **Ollama local sans aucune clé** (`openai` + `IA_BASE_URL=http://host.docker.internal:11434`) | `anthropic` |
 | `IA_ACTIF` | Kill switch global de l'assistant (`false` = désactivé même avec une clé) | `true` |
 
 **En production, remplacez impérativement `DB_PASSWORD` et `JWT_SECRET`.**
@@ -269,7 +270,7 @@ d'une entrée avec 404 si elle n'existe pas),
 journal) et
 `ApiErreurHttpTest` (codes HTTP d'erreur : 405 / 400 / 415 / 406 au lieu de 500)
 et `DashboardServiceTest` (dont l'accueil personnalisé : jalons de la semaine
-et initiatives à risque). **137 tests, 0 échec.**
+et initiatives à risque). **138 tests, 0 échec.**
 
 ### Tests fonctionnels de l'API
 

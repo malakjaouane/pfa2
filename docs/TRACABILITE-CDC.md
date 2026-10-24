@@ -117,7 +117,7 @@ test fonctionnel `tests-api.ps1`).
 - **Score de santé** : 5 scénarios fonctionnels (section 3 de `tests-api.ps1`) et
   13 tests JUnit (`CalculeurSanteTest`) : niveau + motif sur liste/fiche/surveillance,
   rouge sur initiative en retard, `null` sur les écritures.
-- **Bilan chiffré** : **137 tests JUnit** et **161 scénarios fonctionnels**,
+- **Bilan chiffré** : **138 tests JUnit** et **161 scénarios fonctionnels**,
   0 échec (dernière campagne). Deux scénarios contrôlent les KPI d'accueil
   personnalisé : `jalonsSemaine` (jalons non atteints du jour au dimanche
   courant) et `initiativesARisque` (santé ORANGE ou ROUGE recalculée depuis la

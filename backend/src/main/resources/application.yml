@@ -61,13 +61,21 @@ app:
     # même si une clé est présente — un simple redémarrage du conteneur
     # suffit, sans redéploiement de code.
     actif: ${IA_ACTIF:true}
-    # Clé API Anthropic : jamais de valeur par défaut, jamais versionnée
-    # (.env est ignoré par git, voir .env.example). Sans clé, la page
-    # /assistant affiche « indisponible » et l'API répond 503 en clair.
+    # Format d'appel : « anthropic » (API /v1/messages, défaut) ou
+    # « openai » (chat/completions compatible OpenAI : Ollama local,
+    # LM Studio, Groq, Mistral, OpenRouter…). En mode openai, AUCUNE clé
+    # n'est nécessaire pour un service local type Ollama.
+    format: ${IA_FORMAT:anthropic}
+    # Clé API : jamais de valeur par défaut, jamais versionnée (.env est
+    # ignoré par git, voir .env.example). Exigée en mode anthropic ; en
+    # mode openai elle est facultative (service local sans auth). Sans clé
+    # en mode anthropic, la page /assistant affiche « indisponible » et
+    # l'API répond 503 en clair.
     cle-api: ${ANTHROPIC_API_KEY:}
-    # Modèle (défaut : claude-haiku-4-5 — rapide et économique) et
-    # bornes d'appel : timeouts courts côté HTTP, réponse tronquée.
-    modele: ${ANTHROPIC_MODELE:claude-haiku-4-5}
+    # Modèle (défaut : claude-haiku-4-5 — rapide et économique ; en mode
+    # openai, ex. qwen2.5:3b sous Ollama) et bornes d'appel : timeouts
+    # courts côté HTTP, réponse tronquée.
+    modele: ${IA_MODELE:${ANTHROPIC_MODELE:claude-haiku-4-5}}
     max-tokens: ${IA_MAX_TOKENS:1024}
     timeout-ms: ${IA_TIMEOUT_MS:60000}
-    url-api: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}
+    url-api: ${IA_BASE_URL:${ANTHROPIC_BASE_URL:https://api.anthropic.com}}

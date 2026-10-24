@@ -62,8 +62,12 @@ class AssistantIaServiceTest {
     private ArgumentCaptor<JournalIa> journalCaptor;
 
     private AssistantIaService service(boolean actif, String cle) {
+        return service(actif, cle, "anthropic");
+    }
+
+    private AssistantIaService service(boolean actif, String cle, String format) {
         return new AssistantIaService(initiativeRepository, jalonRepository, calculeurSante,
-                journalIaRepository, clientIa, actif, cle);
+                journalIaRepository, clientIa, actif, cle, format);
     }
 
     private static Initiative initiativeTest() {
@@ -127,6 +131,31 @@ class AssistantIaServiceTest {
 
         verify(journalIaRepository).save(journalCaptor.capture());
         assertThat(journalCaptor.getValue().getStatut()).isEqualTo(JournalIa.STATUT_NON_DISPONIBLE);
+    }
+
+    @Test
+    @DisplayName("mode openai (Ollama) : disponible et utilisable SANS clé")
+    void openaiSansCle() {
+        when(clientIa.modele()).thenReturn("qwen2.5:3b");
+
+        // Statut : actif sans clé, car le format openai n'exige aucune clé.
+        assertThat(service(true, "", "openai").statut())
+                .isEqualTo(new StatutIaResponse(true, false, true, "qwen2.5:3b"));
+        // Même kill switch reste prioritaire en mode openai.
+        assertThat(service(false, "", "openai").statut().disponible()).isFalse();
+
+        // Et une question passe le garde puis obtient la réponse du modèle local.
+        when(initiativeRepository.findAllFetch()).thenReturn(List.of(initiativeTest()));
+        when(calculeurSante.calculerTous(any()))
+                .thenReturn(Map.of(1L, new SanteDto(SanteDto.VERTE, "conforme", Map.of())));
+        when(clientIa.generer(anyString(), anyString())).thenReturn("  Réponse locale.  ");
+
+        AssistantIaResponse reponse = service(true, "", "openai")
+                .poserQuestion("Combien d'initiatives ?", "fr", null);
+
+        assertThat(reponse.reponse()).isEqualTo("Réponse locale.");
+        verify(journalIaRepository).save(journalCaptor.capture());
+        assertThat(journalCaptor.getValue().getStatut()).isEqualTo(JournalIa.STATUT_OK);
     }
 
     // =================================================================

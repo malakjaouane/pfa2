@@ -63,12 +63,18 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin@123}
       # Conteneurs : seule l'origine du front conteneurisé sert.
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:*}
-      # Assistant IA (Anthropic) — OPTIONNEL : sans clé, la page /assistant
-      # affiche « indisponible » et l'API répond 503 en clair (aucune panne).
+      # Assistant IA (Anthropic / format ouvert) — OPTIONNEL : sans clé en
+      # mode anthropic, la page /assistant affiche « indisponible » et
+      # l'API répond 503 en clair (aucune panne). En mode openai (Ollama
+      # local via host.docker.internal), AUCUNE clé nécessaire.
       # La clé ne transite que par .env (ignoré par git), jamais versionnée.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODELE: ${ANTHROPIC_MODELE:-claude-haiku-4-5}
       IA_ACTIF: ${IA_ACTIF:-true}
+      IA_FORMAT: ${IA_FORMAT:-anthropic}
+      IA_BASE_URL: ${IA_BASE_URL:-https://api.anthropic.com}
+      IA_MODELE: ${IA_MODELE:-claude-haiku-4-5}
+      IA_MAX_TOKENS: ${IA_MAX_TOKENS:-1024}
     ports:
       - "${SERVER_PORT:-8080}:8080"
 

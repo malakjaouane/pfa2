@@ -65,6 +65,8 @@ public class AssistantIaService {
     private final ClientIa clientIa;
     private final boolean actif;
     private final String cleApi;
+    /** La clé est-elle obligatoire ? Faux en mode openai (Ollama local). */
+    private final boolean cleExigee;
 
     public AssistantIaService(InitiativeRepository initiativeRepository,
                               JalonRepository jalonRepository,
@@ -72,7 +74,8 @@ public class AssistantIaService {
                               JournalIaRepository journalIaRepository,
                               ClientIa clientIa,
                               @Value("${app.ia.actif:true}") boolean actif,
-                              @Value("${app.ia.cle-api:}") String cleApi) {
+                              @Value("${app.ia.cle-api:}") String cleApi,
+                              @Value("${app.ia.format:anthropic}") String format) {
         this.initiativeRepository = initiativeRepository;
         this.jalonRepository = jalonRepository;
         this.calculeurSante = calculeurSante;
@@ -80,6 +83,7 @@ public class AssistantIaService {
         this.clientIa = clientIa;
         this.actif = actif;
         this.cleApi = cleApi == null ? "" : cleApi;
+        this.cleExigee = !ClientIa.FORMAT_OPENAI.equalsIgnoreCase(format);
     }
 
     // ------------------------------------------------------------------
@@ -88,7 +92,8 @@ public class AssistantIaService {
 
     public StatutIaResponse statut() {
         boolean cleRenseignee = !cleApi.isBlank();
-        return new StatutIaResponse(actif, cleRenseignee, actif && cleRenseignee, clientIa.modele());
+        boolean disponible = actif && (cleRenseignee || !cleExigee);
+        return new StatutIaResponse(actif, cleRenseignee, disponible, clientIa.modele());
     }
 
     // ------------------------------------------------------------------
@@ -188,7 +193,7 @@ public class AssistantIaService {
         String motif = null;
         if (!actif) {
             motif = "L'assistant IA est désactivé par l'administrateur (interrupteur IA_ACTIF).";
-        } else if (cleApi.isBlank()) {
+        } else if (cleExigee && cleApi.isBlank()) {
             motif = "L'assistant IA n'est pas configuré : la clé ANTHROPIC_API_KEY est absente "
                     + "du serveur (fichier .env). Contactez l'administrateur.";
         }

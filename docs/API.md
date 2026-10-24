@@ -283,42 +283,58 @@ RÃ¨gles contrÃ´lÃ©es par le service :
 - la transformation d'une demande **non acceptÃ©e** ou **dÃ©jÃ  transformÃ©e** renvoie **400** ;
 - le code `DEM-%06d` est dÃ©rivÃ© de l'identifiant de la demande (unicitÃ© garantie).
 
-## 12. Assistant IA (« Demande à ton portefeuille »)
+## 12. Assistant IA Â« Demande Ã  ton portefeuille Â»
 
-L'assistant répond **uniquement** à partir d'un contexte reconstruit à chaque requête
-(initiatives non archivées : statut, avancement, santé, budget, responsable) — le
-modèle n'a jamais d'accès libre, et le prompt système lui interdit d'inventer
-(la loi 09-08 / CNDP). **Chaque requête est journalisée** (`journal_ia` : auteur,
-demande, réponse, statut, durée).
+| MÃ©thode | Chemin | Droit | Description |
+|---|---|---|---|
+| `GET` | `/ia/statut` | tout utilisateur connectÃ© | DisponibilitÃ© de l'assistant (ouvert sans droit IA : sert au bandeau et aux tests) |
+| `POST` | `/ia/assistant` | `IA_UTILISER` | Question libre Ã  l'assistant |
+| `POST` | `/ia/resume/{idInitiative}` | `IA_UTILISER` | RÃ©sumÃ© gÃ©nÃ©rÃ© d'une initiative (contexte reconstruit en base) |
+| `GET` | `/ia/journal` | `UTILISATEUR_GERER` | 100 derniÃ¨res lignes du journal `journal_ia` |
 
-| Endpoint | Permission | Rôle |
-|---|---|---|
-| `GET /ia/statut` | connecté | Disponibilité (`actif`, `cleRenseignee`, `disponible`, `modele`) — permet à l'interface d'afficher « indisponible » explicitement |
-| `POST /ia/assistant` | `IA_UTILISER` (17) | Question conversationnelle |
-| `POST /ia/resume/{idInitiative}` | `IA_UTILISER` (17) | Résumé d'une initiative (fiche + étapes + jalons) |
-| `GET /ia/journal` | `UTILISATEUR_GERER` | Journal des requêtes (administrateurs) |
+Exemple :
 
-Corps de `POST /ia/assistant` (`AssistantIaRequest`) :
+```http
+POST /api/ia/assistant
+Authorization: Bearer <jeton>
+Content-Type: application/json
 
-```json
-{ "question": "Quelles initiatives risquent de dépasser leur budget ?", "langue": "fr" }
+{ "question": "Quelles initiatives sont en retard ?", "langue": "fr" }
 ```
 
-Réponse (`AssistantIaResponse`) :
-
 ```json
-{ "reponse": "…", "modele": "claude-haiku-4-5", "dureeMs": 842 }
+{
+  "reponse": "â€¦",
+  "modele": "claude-haiku-4-5",
+  "dureeMs": 842
+}
 ```
 
-Comportement selon la configuration (`application.yml` ? `app.ia.*`, variables
-`ANTHROPIC_API_KEY`, `IA_ACTIF`, `ANTHROPIC_MODELE`) :
+Comportement selon la configuration (`application.yml` â†’ `app.ia.*`, variables
+`IA_ACTIF`, `IA_FORMAT`, `IA_BASE_URL`, `IA_MODELE`, `ANTHROPIC_API_KEY`) :
 
-- **configuré** : appel Anthropic (`POST {url}/v1/messages`), réponse 200 ;
-- **clé absente ou `IA_ACTIF=false`** : **503** avec message actionnable
-  (« renseignez ANTHROPIC_API_KEY » / « désactivé par l'administrateur ») +
-  ligne `NON_DISPONIBLE` au journal ;
-- **échec du service (429, réseau…)** : **503** avec message traduit +
+- **configurÃ©** : appel du modÃ¨le selon le format â€” `anthropic` â†’
+  `POST {url}/v1/messages` (clÃ© obligatoire) ; `openai` â†’
+  `POST {url}/v1/chat/completions` (compatible **Ollama local sans clÃ©**,
+  LM Studio, Groq, Mistral, OpenRouterâ€¦) â€” rÃ©ponse 200 ;
+- **clÃ© absente en mode `anthropic`, ou `IA_ACTIF=false`** : **503** avec
+  message actionnable (Â« renseignez ANTHROPIC_API_KEY Â» / Â« dÃ©sactivÃ© par
+  l'administrateur Â») + ligne `NON_DISPONIBLE` au journal ;
+- **Ã©chec du service (429, rÃ©seauâ€¦)** : **503** avec message traduit +
   ligne `ERREUR` au journal.
 
-Le journal (`GET /ia/journal`) renvoie les 100 dernières lignes :
-`{ id, dateRequete, type: QUESTION|RESUME, demande, reponse, statut: OK|ERREUR|NON_DISPONIBLE, modele, dureeMs, initiativeCode, utilisateurEmail }`.
+Le journal (`GET /ia/journal`) renvoie les 100 derniÃ¨res lignes :
+`UTILISATEUR`, `TYPE_QUESTION` (`LIBRE`/`RESUME`), `INITIATIVE_CONSULTEE`,
+`MODELE`, `STATUT` (`OK`/`NON_DISPONIBLE`/`ERREUR`), `DUREE_MS`,
+`MESSAGE_ERREUR` (jamais la clÃ© API).
+
+Points d'assurance :
+- **grounding strict** : le contexte (initiatives, jalons, santÃ©) est
+  reconstruit depuis la base Ã  chaque requÃªte ; le prompt systÃ¨me interdit
+  d'inventer et impose la langue demandÃ©e (fr/en/ar/es) + mention loi 09-08 /
+  CNDP ;
+- **kill switch** : `IA_ACTIF=false` dÃ©sactive tout (statut, chat, rÃ©sumÃ©)
+  mÃªme avec une clÃ© prÃ©sente ;
+- **aucune donnÃ©e sensible** : la clÃ© n'est ni journalisÃ©e ni renvoyÃ©e ;
+  seules les questions et mÃ©tadonnÃ©es (modÃ¨le, durÃ©e, statut) sont tracÃ©es.
+
