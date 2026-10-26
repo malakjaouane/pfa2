@@ -11,6 +11,7 @@ import ma.it6.portefeuille.security.CustomUserDetailsService;
 import ma.it6.portefeuille.security.JwtService;
 import ma.it6.portefeuille.security.PrincipalUser;
 import ma.it6.portefeuille.security.ProtectionConnexions;
+import ma.it6.portefeuille.service.HistoriqueConnexionService;
 import ma.it6.portefeuille.service.UtilisateurService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -37,41 +38,77 @@ public class AuthController {
     private final CustomUserDetailsService userDetailsService;
     private final ProtectionConnexions protectionConnexions;
     private final UtilisateurService utilisateurService;
+    private final HistoriqueConnexionService historiqueConnexionService;
 
     public AuthController(AuthenticationManager authenticationManager,
                           JwtService jwtService,
                           CustomUserDetailsService userDetailsService,
                           ProtectionConnexions protectionConnexions,
-                          UtilisateurService utilisateurService) {
+                          UtilisateurService utilisateurService,
+                          HistoriqueConnexionService historiqueConnexionService) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
         this.protectionConnexions = protectionConnexions;
         this.utilisateurService = utilisateurService;
+        this.historiqueConnexionService = historiqueConnexionService;
     }
 
     /**
      * Connexion. Les échecs sont comptabilisés par compte et par adresse IP
      * (voir {@link ProtectionConnexions}) : au-delà du seuil, l'API répond 429
      * avant même de tester les identifiants.
+     *
+     * <p>Chaque tentative — y compris refusée — est aussi déposée dans
+     * l'historique des connexions (traçabilité loi 09-08).</p>
      */
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request,
                                                HttpServletRequest httpServletRequest) {
         String adresseIp = adresseIp(httpServletRequest);
-        protectionConnexions.verifierAutorise(adresseIp, request.email());
+        try {
+            protectionConnexions.verifierAutorise(adresseIp, request.email());
+        } catch (RuntimeException refus) {
+            tracer(request.email(), null, adresseIp, false, refus.getMessage());
+            throw refus;
+        }
 
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.email(), request.motDePasse()));
             PrincipalUser principal = (PrincipalUser) authentication.getPrincipal();
             protectionConnexions.reussite(adresseIp, request.email());
+            tracer(request.email(), principal.getUtilisateur().getIdUser(), adresseIp, true, null);
 
             String token = jwtService.generer(principal);
             return ResponseEntity.ok(reponse(token, principal));
         } catch (AuthenticationException echec) {
             protectionConnexions.enregistrerEchec(adresseIp, request.email());
+            tracer(request.email(), null, adresseIp, false, echec.getMessage());
             throw echec;
+        }
+    }
+
+    /**
+     * Dépôt <strong>best-effort</strong> dans l'historique des connexions :
+     * la traçabilité ne doit jamais être le motif de l'échec d'une
+     * connexion (ni masquer l'exception d'authentification d'origine).
+     */
+    private void tracer(String email, Long idUtilisateur, String adresseIp, boolean succes, String motif) {
+        try {
+            Long id = idUtilisateur;
+            if (id == null) {
+                // Tentative échouée sur un compte existant : on rattache la
+                // ligne au compte (un compte inconnu reste sans lien).
+                try {
+                    id = userDetailsService.chargerParEmail(email).getUtilisateur().getIdUser();
+                } catch (RuntimeException absent) {
+                    id = null;
+                }
+            }
+            historiqueConnexionService.enregistrer(email, id, adresseIp, succes, motif);
+        } catch (RuntimeException ignore) {
+            // Journal secondaire : jamais bloquant pour l'authentification.
         }
     }
 

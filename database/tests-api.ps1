@@ -723,6 +723,138 @@ Test-Check 'Journal IA : admin, ≥ 1 ligne tracée après appel' (
 $iaJournalV = Invoke-Api 'Get' "$Base/ia/journal" $null $visiteurToken
 Test-Check 'Journal IA refusé au visiteur -> 403' ($iaJournalV.OK -eq $false -and $iaJournalV.Status -eq 403) "($($iaJournalV.Status))"
 
+Write-Output '=== 14. Suppression d''utilisateur (3 garde-fous) ==='
+# /users/** est réservé à UTILISATEUR_GERER : anonyme 401, visiteur ET
+# responsable 403 (ni l'un ni l'autre n'a ce droit — 14 permissions ≠ 17).
+$delAnonyme = Invoke-Api 'Delete' "$Base/users/999999" $null $null
+Test-Check 'Suppression utilisateur : anonyme -> 401' ($delAnonyme.OK -eq $false -and $delAnonyme.Status -eq 401) "($($delAnonyme.Status))"
+$delVisiteur = Invoke-Api 'Delete' "$Base/users/999999" $null $visiteurToken
+Test-Check 'Suppression utilisateur : visiteur -> 403' ($delVisiteur.OK -eq $false -and $delVisiteur.Status -eq 403) "($($delVisiteur.Status))"
+$delResp = Invoke-Api 'Delete' "$Base/users/999999" $null $responsableToken
+Test-Check 'Suppression utilisateur : responsable sans UTILISATEUR_GERER -> 403' ($delResp.OK -eq $false -and $delResp.Status -eq 403) "($($delResp.Status))"
+$delInconnu = Invoke-Api 'Delete' "$Base/users/999999" $null $adminToken
+Test-Check 'Suppression utilisateur : id inexistant -> 404' ($delInconnu.OK -eq $false -and $delInconnu.Status -eq 404) "($($delInconnu.Status))"
+
+# Garde-fou 1 : jamais son propre compte (l'admin connecté sur son propre id).
+$listUsers = Invoke-Api 'Get' "$Base/users" $null $adminToken
+$adminId = ($listUsers.Body | Where-Object { $_.email -eq 'admin@it6.ma' }).idUser
+$autoDel = Invoke-Api 'Delete' "$Base/users/$adminId" $null $adminToken
+Test-Check 'Garde-fou : suppression de son propre compte -> 400' ($autoDel.OK -eq $false -and $autoDel.Status -eq 400) "($($autoDel.Status))"
+
+# Parcours nominal : création puis suppression effective (204 -> 404).
+# Email préfixé « test » : nettoyé par cleanup-test-data.sql comme tout
+# compte de test (email LIKE 'test%@it6.ma').
+$emailDel = "testdel$suffixe@it6.ma"
+$nouveauDel = Invoke-Api 'Post' "$Base/users" @{ nom = 'Del'; prenom = 'Test'; email = $emailDel; motDePasse = 'Pass@123'; telephone = ''; actif = $true; idRole = 2; idEntite = 1 } $adminToken
+$idDel = 0
+if ($nouveauDel.OK) { $idDel = $nouveauDel.Body.idUser }
+Test-Check 'Création du compte de test à supprimer -> 201' ($nouveauDel.OK -and $idDel -gt 0) "($($nouveauDel.Status))"
+$delOk = Invoke-Api 'Delete' "$Base/users/$idDel" $null $adminToken
+Test-Check 'Suppression utilisateur : compte sans demande -> 204' ($delOk.OK -and $delOk.Status -eq 204) "($($delOk.Status))"
+$delDetail = Invoke-Api 'Get' "$Base/users/$idDel" $null $adminToken
+Test-Check 'Compte supprimé -> 404 au détail' ($delDetail.OK -eq $false -and $delDetail.Status -eq 404) "($($delDetail.Status))"
+
+# Garde-fou 3 : un compte qui porte encore des demandes est refusé (400)
+# — la clé étrangère est sans cascade, on conseille la désactivation.
+# (Le garde-fou « dernier administrateur actif » est couvert par
+# UtilisateurServiceTest : seul le compte admin existe en démo, et le
+# garde-fou « propre compte » est prioritaire.)
+$emailDem = "testdem$suffixe@it6.ma"
+$nouveauDem = Invoke-Api 'Post' "$Base/users" @{ nom = 'Dem'; prenom = 'Test'; email = $emailDem; motDePasse = 'Pass@123'; telephone = ''; actif = $true; idRole = 2; idEntite = 1 } $adminToken
+$idDemUser = 0
+if ($nouveauDem.OK) { $idDemUser = $nouveauDem.Body.idUser }
+$loginDem = Invoke-Api 'Post' "$Base/auth/login" @{ email = $emailDem; motDePasse = 'Pass@123' }
+$tokenDem = $null
+if ($loginDem.OK) { $tokenDem = $loginDem.Body.token }
+$demParCompte = Invoke-Api 'Post' "$Base/demandes" @{ titre = "TEST-DEM-$suffixe-DEL"; descriptionBesoin = 'Besoin du compte de test'; justificationMetier = 'Justification du test de suppression'; idEntite = 1; idPriorite = 3 } $tokenDem
+Test-Check 'Demande créée par le compte de test (demandeur rattaché)' ($demParCompte.OK -and $demParCompte.Body.demandeur.idUser -eq $idDemUser) "($($demParCompte.Status))"
+$delAvecDemande = Invoke-Api 'Delete' "$Base/users/$idDemUser" $null $adminToken
+Test-Check 'Garde-fou : compte porteur de demande -> 400 avec message' (
+    $delAvecDemande.OK -eq $false -and $delAvecDemande.Status -eq 400 -and
+    "$($delAvecDemande.Body.message)" -match 'demande') "($($delAvecDemande.Status))"
+$encoreLa = Invoke-Api 'Get' "$Base/users/$idDemUser" $null $adminToken
+Test-Check 'Compte refusé toujours présent (détail -> 200)' ($encoreLa.OK -and $encoreLa.Status -eq 200) "($($encoreLa.Status))"
+
+Write-Output '=== 15. Historique des connexions (recherche + suppressions admin) ==='
+# /historique-connexions/** : administrateurs SEULS, tous verbes (le
+# journal expose e-mails et adresses IP = données de contrôle d'accès).
+$hcAnonyme = Invoke-Api 'Get' "$Base/historique-connexions" $null $null
+Test-Check 'Connexions : anonyme -> 401' ($hcAnonyme.OK -eq $false -and $hcAnonyme.Status -eq 401) "($($hcAnonyme.Status))"
+$hcVisiteur = Invoke-Api 'Get' "$Base/historique-connexions" $null $visiteurToken
+Test-Check 'Connexions : visiteur (lecture interdite) -> 403' ($hcVisiteur.OK -eq $false -and $hcVisiteur.Status -eq 403) "($($hcVisiteur.Status))"
+$hcResp = Invoke-Api 'Get' "$Base/historique-connexions" $null $responsableToken
+Test-Check 'Connexions : responsable sans UTILISATEUR_GERER -> 403' ($hcResp.OK -eq $false -and $hcResp.Status -eq 403) "($($hcResp.Status))"
+$hcAdmin = Invoke-Api 'Get' "$Base/historique-connexions" $null $adminToken
+$hcTotal = 0
+if ($hcAdmin.OK) { $hcTotal = [int](@($hcAdmin.Headers['X-Total-Count'])[0]) }
+Test-Check 'Connexions : admin -> 200 + X-Total-Count ≥ 1 (logins déjà tracés)' ($hcAdmin.OK -and $hcTotal -ge 1 -and @($hcAdmin.Body).Count -ge 1) "($($hcAdmin.Status)/$hcTotal)"
+
+# Recherche : e-mail exact -> lignes toutes de cet e-mail ; sans
+# correspondance -> 0 ligne et total 0.
+$hcRech = Invoke-Api 'Get' "$Base/historique-connexions?recherche=admin@it6.ma" $null $adminToken
+$hcRechTotal = 0
+if ($hcRech.OK) { $hcRechTotal = [int](@($hcRech.Headers['X-Total-Count'])[0]) }
+Test-Check 'Recherche e-mail : ≥1 ligne, toutes rattachées à cet e-mail' (
+    $hcRech.OK -and $hcRechTotal -ge 1 -and
+    @($hcRech.Body | Where-Object { $_.email -eq 'admin@it6.ma' }).Count -eq @($hcRech.Body).Count) "($($hcRechTotal)/$(@($hcRech.Body).Count))"
+$hcVide = Invoke-Api 'Get' "$Base/historique-connexions?recherche=zzzinexistant$suffixe" $null $adminToken
+$hcVideTotal = -1
+if ($hcVide.OK) { $hcVideTotal = [int](@($hcVide.Headers['X-Total-Count'])[0]) }
+Test-Check 'Recherche sans correspondance : 0 ligne, total 0' ($hcVide.OK -and @($hcVide.Body).Count -eq 0 -and $hcVideTotal -eq 0) "($($hcVideTotal))"
+
+# Une tentative échouée est tracée (compte de test déjà désactivé par la
+# section 8) : la ligne apparaît en « échouée » avec son motif.
+$hcLoginRate = Invoke-Api 'Post' "$Base/auth/login" @{ email = $emailTest; motDePasse = 'MotDePasseFaux' }
+Test-Check 'Tentative échouée -> 401 (et tracée en historique)' ($hcLoginRate.OK -eq $false -and $hcLoginRate.Status -eq 401) "($($hcLoginRate.Status))"
+$hcEchecs = Invoke-Api 'Get' "$Base/historique-connexions?succes=false&recherche=$emailTest" $null $adminToken
+$hcEchecsTotal = 0
+if ($hcEchecs.OK) { $hcEchecsTotal = [int](@($hcEchecs.Headers['X-Total-Count'])[0]) }
+Test-Check 'Filtre « échouées » : ligne du compte de test présente' (
+    $hcEchecs.OK -and $hcEchecsTotal -ge 1 -and
+    @($hcEchecs.Body | Where-Object { $_.succes -eq $false -and $_.email -eq $emailTest }).Count -eq @($hcEchecs.Body).Count) "($($hcEchecsTotal))"
+
+# Validation des paramètres + absence d'écriture (aucun POST déclaré).
+$hcPeriodeBad = Invoke-Api 'Get' "$Base/historique-connexions?du=$jour&au=2020-01-01" $null $adminToken
+Test-Check 'Période inversée (du > au) -> 400' ($hcPeriodeBad.OK -eq $false -and $hcPeriodeBad.Status -eq 400) "($($hcPeriodeBad.Status))"
+$hcEcriture = Invoke-Api 'Post' "$Base/historique-connexions" @{ email = 'x' } $adminToken
+Test-Check 'Écriture sur le journal refusée (POST -> 4xx)' ($hcEcriture.OK -eq $false -and $hcEcriture.Status -ge 400 -and $hcEcriture.Status -lt 500) "($($hcEcriture.Status))"
+
+# Suppression d'une ligne : mêmes règles que la lecture, puis parcours
+# nominal sur la tentative échouée créée ci-dessus (donnée de test, donc
+# le nettoyage est déjà fait en cours de route).
+$hcLigne = 0
+if (@($hcEchecs.Body).Count -gt 0) { $hcLigne = @($hcEchecs.Body)[0].idConnexion }
+$hcSupprAnonyme = Invoke-Api 'Delete' "$Base/historique-connexions/$hcLigne" $null $null
+Test-Check 'Suppression connexion : anonyme -> 401' ($hcSupprAnonyme.OK -eq $false -and $hcSupprAnonyme.Status -eq 401) "($($hcSupprAnonyme.Status))"
+$hcSupprVisiteur = Invoke-Api 'Delete' "$Base/historique-connexions/$hcLigne" $null $visiteurToken
+Test-Check 'Suppression connexion : visiteur -> 403' ($hcSupprVisiteur.OK -eq $false -and $hcSupprVisiteur.Status -eq 403) "($($hcSupprVisiteur.Status))"
+$hcSupprInconnue = Invoke-Api 'Delete' "$Base/historique-connexions/999999999" $null $adminToken
+Test-Check 'Suppression connexion : id inexistant -> 404' ($hcSupprInconnue.OK -eq $false -and $hcSupprInconnue.Status -eq 404) "($($hcSupprInconnue.Status))"
+# Total re-mesuré juste avant la suppression : le décompte de départ du
+# bloc date d'avant la tentative échouée (qui a ajouté une ligne).
+$hcAvantSuppr = Invoke-Api 'Get' "$Base/historique-connexions" $null $adminToken
+$hcTotalAvant = 0
+if ($hcAvantSuppr.OK) { $hcTotalAvant = [int](@($hcAvantSuppr.Headers['X-Total-Count'])[0]) }
+$hcSuppr = Invoke-Api 'Delete' "$Base/historique-connexions/$hcLigne" $null $adminToken
+$hcApresSuppr = Invoke-Api 'Get' "$Base/historique-connexions" $null $adminToken
+$hcTotalApres = 0
+if ($hcApresSuppr.OK) { $hcTotalApres = [int](@($hcApresSuppr.Headers['X-Total-Count'])[0]) }
+Test-Check 'Suppression connexion : admin -> 204, total diminué de 1' (
+    $hcLigne -gt 0 -and $hcSuppr.OK -and $hcSuppr.Status -eq 204 -and
+    $hcTotalApres -eq ($hcTotalAvant - 1)) "($($hcSuppr.Status)/$hcTotalAvant->$hcTotalApres)"
+
+# Purge TOUT le journal : mêmes règles que la suppression d'une ligne.
+# La suite n'exécute JAMAIS la purge admin pour préserver l'historique
+# réel des connexions (démo + sessions de l'utilisateur) — le chemin
+# administrateur est couvert par SecuriteApiTest (JUnit) et testé dans le
+# navigateur avec sauvegarde/restore MySQL.
+$hcPurgeAnonyme = Invoke-Api 'Delete' "$Base/historique-connexions" $null $null
+Test-Check 'Purge connexions : anonyme -> 401' ($hcPurgeAnonyme.OK -eq $false -and $hcPurgeAnonyme.Status -eq 401) "($($hcPurgeAnonyme.Status))"
+$hcPurgeVisiteur = Invoke-Api 'Delete' "$Base/historique-connexions" $null $visiteurToken
+Test-Check 'Purge connexions : visiteur -> 403' ($hcPurgeVisiteur.OK -eq $false -and $hcPurgeVisiteur.Status -eq 403) "($($hcPurgeVisiteur.Status))"
+$hcPurgeResp = Invoke-Api 'Delete' "$Base/historique-connexions" $null $responsableToken
+Test-Check 'Purge connexions : responsable sans UTILISATEUR_GERER -> 403' ($hcPurgeResp.OK -eq $false -and $hcPurgeResp.Status -eq 403) "($($hcPurgeResp.Status))"
+
 Write-Output ''
 Write-Output '------------------------------------------------------------'
 Write-Output "RESULTATS : $script:Pass reussis, $script:Fail echoues"

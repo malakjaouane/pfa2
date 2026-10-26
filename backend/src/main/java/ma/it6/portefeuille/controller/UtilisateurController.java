@@ -43,4 +43,20 @@ public class UtilisateurController {
                                                  @Valid @RequestBody UserRequest request) {
         return ResponseEntity.ok(utilisateurService.modifier(id, request));
     }
+
+    /**
+     * Suppression définitive d'un compte — administrateurs uniquement
+     * (droit existant {@code UTILISATEUR_GERER}, imposé par SecurityConfig).
+     *
+     * <p>Trois garde-fous renvoient 400 : son propre compte, le dernier
+     * administrateur actif, un compte qui porte encore des demandes
+     * d'évaluation (voir {@link UtilisateurService#supprimer}).</p>
+     *
+     * @return {@code 204} si le compte a été supprimé, {@code 404} sinon
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> supprimer(@PathVariable Long id) {
+        utilisateurService.supprimer(id);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -7,6 +7,7 @@ import ma.it6.portefeuille.controller.BudgetController;
 import ma.it6.portefeuille.controller.DashboardController;
 import ma.it6.portefeuille.controller.DemandeController;
 import ma.it6.portefeuille.controller.EtapeController;
+import ma.it6.portefeuille.controller.HistoriqueConnexionController;
 import ma.it6.portefeuille.controller.HistoriqueStatutController;
 import ma.it6.portefeuille.controller.InitiativeController;
 import ma.it6.portefeuille.controller.UtilisateurController;
@@ -23,6 +24,7 @@ import ma.it6.portefeuille.service.BudgetService;
 import ma.it6.portefeuille.service.DashboardService;
 import ma.it6.portefeuille.service.DemandeService;
 import ma.it6.portefeuille.service.EtapeService;
+import ma.it6.portefeuille.service.HistoriqueConnexionService;
 import ma.it6.portefeuille.service.HistoriqueStatutService;
 import ma.it6.portefeuille.service.InitiativeService;
 import ma.it6.portefeuille.service.UtilisateurService;
@@ -83,6 +85,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(controllers = {
         InitiativeController.class,
         HistoriqueStatutController.class,
+        HistoriqueConnexionController.class,
         EtapeController.class,
         UtilisateurController.class,
         DashboardController.class,
@@ -117,6 +120,8 @@ class SecuriteApiTest {
     private BudgetService budgetService;
     @MockitoBean
     private HistoriqueStatutService historiqueStatutService;
+    @MockitoBean
+    private HistoriqueConnexionService historiqueConnexionService;
     @MockitoBean
     private AuthenticationManager authenticationManager;
     @MockitoBean
@@ -431,6 +436,73 @@ class SecuriteApiTest {
                     .andExpect(status().isForbidden());
             mockMvc.perform(delete("/api/initiatives/1")
                             .with(auth("INITIATIVE_ARCHIVER")))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("suppression d'un utilisateur : UTILISATEUR_GERER (règle /api/users/**)")
+        void suppressionUtilisateur() throws Exception {
+            // Même droit que la lecture des comptes : aucun nouveau droit créé.
+            mockMvc.perform(delete("/api/users/1"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(delete("/api/users/1")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete("/api/users/1")
+                            .with(auth("DEMANDE_EVALUER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete("/api/users/1")
+                            .with(auth("UTILISATEUR_GERER")))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("historique des connexions : administrateurs seuls, tous verbes")
+        void historiqueDesConnexions() throws Exception {
+            when(historiqueConnexionService.lister(any(), anyInt(), anyInt()))
+                    .thenReturn(List.of());
+            when(historiqueConnexionService.compter(any())).thenReturn(0L);
+
+            // Lecture : e-mails + IP = données de contrôle d'accès, le droit
+            // de consultation des initiatives ne suffit PAS.
+            mockMvc.perform(get("/api/historique-connexions"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(get("/api/historique-connexions")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(get("/api/historique-connexions")
+                            .with(auth("DEMANDE_EVALUER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(get("/api/historique-connexions")
+                            .with(auth("UTILISATEUR_GERER")))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("X-Total-Count", "0"));
+
+            // Aucun POST/PUT n'est déclaré sur le journal (405, pas 403).
+            mockMvc.perform(post("/api/historique-connexions")
+                            .with(auth("UTILISATEUR_GERER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isMethodNotAllowed());
+
+            // Suppression d'une ligne : mêmes règles que la lecture.
+            mockMvc.perform(delete("/api/historique-connexions/1"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(delete("/api/historique-connexions/1")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete("/api/historique-connexions/1")
+                            .with(auth("UTILISATEUR_GERER")))
+                    .andExpect(status().isNoContent());
+
+            // Purge TOUT (bouton admin), collection sans identifiant.
+            mockMvc.perform(delete("/api/historique-connexions"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(delete("/api/historique-connexions")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete("/api/historique-connexions")
+                            .with(auth("UTILISATEUR_GERER")))
                     .andExpect(status().isNoContent());
         }
     }

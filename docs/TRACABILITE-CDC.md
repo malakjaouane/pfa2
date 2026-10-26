@@ -121,10 +121,23 @@ test fonctionnel `tests-api.ps1`).
   uniquement archivées (`INITIATIVE_ARCHIVER`), purge du journal réservée à
   `UTILISATEUR_GERER`. Couvert par 15 scénarios fonctionnels (sections 11 et
   12) et 11 tests JUnit (recherche `%…%`, refus 400/404, règles d'URL).
+- **P5 (comptes et journal des accès)** : les comptes se suppriment
+  définitivement (bouton masqué sur son propre compte), le serveur refusant
+  en 400 son propre compte, le dernier administrateur actif et un compte qui
+  porte encore des demandes ; chaque tentative de connexion — réussie ou
+  échouée — est tracée dans `historique_connexion` (horodatage, e-mail saisi,
+  IP, motif) et consultée depuis `/historique-connexions` avec recherche,
+  filtres, suppression de ligne et purge totale, **réservées aux
+  administrateurs** (`UTILISATEUR_GERER`, tous verbes — aucun nouveau droit).
+  L'écriture du journal est en transaction propre et best-effort : elle ne
+  peut ni faire échouer une connexion ni masquer l'erreur d'authentification
+  d'origine. Couvert par 28 scénarios fonctionnels (sections 14 et 15) et
+  20 tests JUnit (`UtilisateurServiceTest`, `HistoriqueConnexionServiceTest`,
+  2 règles d'URL supplémentaires dans `SecuriteApiTest`).
 - **Score de santé** : 5 scénarios fonctionnels (section 3 de `tests-api.ps1`) et
   13 tests JUnit (`CalculeurSanteTest`) : niveau + motif sur liste/fiche/surveillance,
   rouge sur initiative en retard, `null` sur les écritures.
-- **Bilan chiffré** : **149 tests JUnit** et **176 scénarios fonctionnels**,
+- **Bilan chiffré** : **169 tests JUnit** et **204 scénarios fonctionnels**,
   0 échec (dernière campagne). Deux scénarios contrôlent les KPI d'accueil
   personnalisé : `jalonsSemaine` (jalons non atteints du jour au dimanche
   courant) et `initiativesARisque` (santé ORANGE ou ROUGE recalculée depuis la

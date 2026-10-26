@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api, { messageErreur } from '../api';
+import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import { afficherMessage } from '../i18n/message';
 import { useReferentiels } from '../i18n/referentiels';
@@ -12,6 +13,10 @@ const vide = { nom: '', prenom: '', email: '', motDePasse: '', telephone: '', ac
 export default function UsersPage() {
   const { t } = useI18n();
   const ref = useReferentiels();
+  const { user, hasPermission } = useAuth();
+  // La page est déjà réservée à UTILISATEUR_GERER (route + API) : le droit
+  // est relu ici pour n'afficher la colonne que sur un compte qui l'a.
+  const peutSupprimer = hasPermission('UTILISATEUR_GERER');
   const [utilisateurs, setUtilisateurs] = useState([]);
   const [roles, setRoles] = useState([]);
   const [entites, setEntites] = useState([]);
@@ -115,6 +120,27 @@ export default function UsersPage() {
 
   const set = (champ) => (e) => setForm((f) => ({ ...f, [champ]: e.target.value }));
 
+  /**
+   * Suppression définitive d'un compte (confirmation puis rechargement).
+   * Le bouton est masqué sur son propre compte ; le serveur refuse aussi :
+   * soi-même, le dernier administrateur actif et un compte qui porte
+   * encore des demandes (400 avec message explicite).
+   */
+  const supprimer = (u) => {
+    const nom = `${u.prenom} ${u.nom}`;
+    if (!window.confirm(t('users.supprimerConfirmer', { nom }))) return;
+    api.delete(`/users/${u.idUser}`)
+      .then(() => {
+        setErreur('');
+        setInfo({ cle: 'users.utilisateurSupprime' });
+        charger();
+      })
+      .catch((err) => {
+        setInfo('');
+        setErreur(messageErreur(err));
+      });
+  };
+
   return (
     <div className="page">
       <header className="page-entete">
@@ -180,7 +206,15 @@ export default function UsersPage() {
                   <td><span className="badge badge-bleu">{ref.role(u.role?.code, u.role?.libelle)}</span></td>
                   <td>{u.entite?.nom ?? t('users.aucun')}</td>
                   <td>{u.actif ? <span className="badge badge-vert">{t('users.oui')}</span> : <span className="badge badge-rouge">{t('users.non')}</span>}</td>
-                  <td><button className="btn btn-petit btn-secondaire" onClick={() => ouvrirEdition(u)}>{t('users.modifier')}</button></td>
+                  <td>
+                    <button className="btn btn-petit btn-secondaire" onClick={() => ouvrirEdition(u)}>{t('users.modifier')}</button>
+                    {peutSupprimer && user?.idUser !== u.idUser && (
+                      <>
+                        {' '}
+                        <button className="btn btn-petit btn-danger" onClick={() => supprimer(u)}>{t('users.supprimer')}</button>
+                      </>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

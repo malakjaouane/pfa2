@@ -11,6 +11,7 @@ export default {
     'layout.nav.archives': 'Archives',
     'layout.nav.historique': 'Historique des statuts',
     'layout.nav.utilisateurs': 'Utilisateurs',
+    'layout.nav.connexions': 'Historique des connexions',
     'layout.nav.roles': 'Rôles & permissions',
     'layout.nav.assistant': 'Assistant IA',
 
@@ -39,6 +40,7 @@ export default {
     'layout.nav.archives': 'Archives',
     'layout.nav.historique': 'Status history',
     'layout.nav.utilisateurs': 'Users',
+    'layout.nav.connexions': 'Login history',
     'layout.nav.roles': 'Roles & permissions',
     'layout.nav.assistant': 'AI assistant',
 
@@ -67,6 +69,7 @@ export default {
     'layout.nav.archives': 'الأرشيف',
     'layout.nav.historique': 'تاريخ الحالات',
     'layout.nav.utilisateurs': 'المستخدمون',
+    'layout.nav.connexions': 'سجل تسجيل الدخول',
     'layout.nav.roles': 'الأدوار والأذونات',
     'layout.nav.assistant': 'المساعد الذكاء الاصطناعي',
 
@@ -95,6 +98,7 @@ export default {
     'layout.nav.archives': 'Archivo',
     'layout.nav.historique': 'Historial de estados',
     'layout.nav.utilisateurs': 'Usuarios',
+    'layout.nav.connexions': 'Historial de conexiones',
     'layout.nav.roles': 'Roles y permisos',
     'layout.nav.assistant': 'Asistente de IA',
 

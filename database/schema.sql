@@ -479,3 +479,35 @@ SET @sql_date_ia = IF(@col = 0,
 PREPARE stmt_date_ia FROM @sql_date_ia;
 EXECUTE stmt_date_ia;
 DEALLOCATE PREPARE stmt_date_ia;
+
+-- ------------------------------------------------------------------
+-- Historique des connexions (traçabilité des tentatives de connexion,
+-- loi 09-08) : chaque tentative est horodatée, réussie ou non, avec
+-- l'adresse IP et le motif d'échec. L'e-mail saisi est conservé tel quel
+-- (une tentative sur un compte inconnu reste traçable) ; le compte
+-- rattaché passe en NULL s'il est supprimé entre-temps.
+-- Table ajoutée en fin de fichier : la clé étrangère vers utilisateur
+-- est alors garantie créée.
+-- ------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS historique_connexion (
+    id_connexion    BIGINT        NOT NULL AUTO_INCREMENT,
+    date_connexion  DATETIME      NOT NULL,
+    email           VARCHAR(150)  NOT NULL,
+    id_utilisateur  BIGINT        NULL,
+    adresse_ip      VARCHAR(45)   NOT NULL,
+    succes          BOOLEAN       NOT NULL,
+    motif           VARCHAR(200)  NULL,
+    PRIMARY KEY (id_connexion),
+    CONSTRAINT fk_connexion_utilisateur FOREIGN KEY (id_utilisateur) REFERENCES utilisateur (id_user) ON DELETE SET NULL
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Lecture administrative (tri date décroissante, filtre e-mail / IP).
+SET @col = (SELECT COUNT(*) FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'historique_connexion'
+        AND INDEX_NAME = 'idx_connexion_date');
+SET @sql_conn_date = IF(@col = 0,
+        'CREATE INDEX idx_connexion_date ON historique_connexion (date_connexion)',
+        'SELECT 1');
+PREPARE stmt_conn_date FROM @sql_conn_date;
+EXECUTE stmt_conn_date;
+DEALLOCATE PREPARE stmt_conn_date;

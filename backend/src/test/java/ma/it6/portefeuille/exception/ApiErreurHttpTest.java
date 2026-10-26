@@ -10,6 +10,7 @@ import ma.it6.portefeuille.security.SessionsService;
 import ma.it6.portefeuille.service.BudgetService;
 import ma.it6.portefeuille.service.DashboardService;
 import ma.it6.portefeuille.service.EtapeService;
+import ma.it6.portefeuille.service.HistoriqueConnexionService;
 import ma.it6.portefeuille.service.HistoriqueStatutService;
 import ma.it6.portefeuille.service.InitiativeService;
 import ma.it6.portefeuille.service.UtilisateurService;
@@ -80,6 +81,8 @@ class ApiErreurHttpTest {
     private BudgetService budgetService;
     @MockitoBean
     private HistoriqueStatutService historiqueStatutService;
+    @MockitoBean
+    private HistoriqueConnexionService historiqueConnexionService;
     @MockitoBean
     private AuthenticationManager authenticationManager;
     @MockitoBean

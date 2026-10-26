@@ -38,6 +38,7 @@ function filAriane(pathname, search) {
   if (pathname.startsWith('/roadmap')) return ['layout.fil.portefeuille', 'layout.nav.roadmap'];
   if (pathname.startsWith('/demandes')) return ['layout.fil.portefeuille', 'layout.nav.demandes'];
   if (pathname.startsWith('/objectifs')) return ['layout.fil.portefeuille', 'layout.fil.objectifs'];
+  if (pathname.startsWith('/historique-connexions')) return ['layout.fil.portefeuille', 'layout.nav.connexions'];
   if (pathname.startsWith('/historique')) return ['layout.fil.portefeuille', 'layout.nav.historique'];
   if (pathname.startsWith('/utilisateurs')) return ['layout.fil.portefeuille', 'layout.nav.utilisateurs'];
   if (pathname.startsWith('/roles')) return ['layout.fil.portefeuille', 'layout.nav.roles'];
@@ -117,11 +118,15 @@ export default function Layout() {
     liens.push({ to: '/objectifs', cle: 'layout.nav.objectifs', Icone: IconTarget, actif: pathname.startsWith('/objectifs') });
     liens.push({ to: '/initiatives?archive=1', cle: 'layout.nav.archives', Icone: IconArchive, actif: dansArchives });
     // Journal global : même permission que la lecture des initiatives —
-    // aucun nouveau droit ouvert par la page.
-    liens.push({ to: '/historique', cle: 'layout.nav.historique', Icone: IconClock, actif: pathname.startsWith('/historique') });
+    // aucun nouveau droit ouvert par la page. Le chemin est exact (et non
+    // « startsWith ») pour ne pas rester actif sur /historique-connexions.
+    liens.push({ to: '/historique', cle: 'layout.nav.historique', Icone: IconClock, actif: pathname === '/historique' });
   }
   if (hasPermission('UTILISATEUR_GERER')) {
     liens.push({ to: '/utilisateurs', cle: 'layout.nav.utilisateurs', Icone: IconUsers, actif: pathname.startsWith('/utilisateurs') });
+    // Journal des connexions (e-mails + IP) : administrateurs seuls,
+    // même droit que la gestion des comptes — aucun nouveau droit créé.
+    liens.push({ to: '/historique-connexions', cle: 'layout.nav.connexions', Icone: IconClock, actif: pathname.startsWith('/historique-connexions') });
   }
   if (user?.permissions?.some((p) => ['ROLE_GERER', 'PERMISSION_GERER'].includes(p))) {
     liens.push({ to: '/roles', cle: 'layout.nav.roles', Icone: IconShield, actif: pathname.startsWith('/roles') });

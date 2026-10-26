@@ -49,5 +49,11 @@ DELETE FROM journal_ia
 WHERE demande LIKE 'TEST%'
    OR demande LIKE 'Résumé de l''initiative TEST%';
 
+-- Tentatives de connexion des comptes de test (historique des
+-- connexions) : l'e-mail saisi est la trace, qu'un compte soit rattaché
+-- ou non (une tentative échouée sur un compte désactivé reste tracée).
+DELETE FROM historique_connexion
+WHERE email LIKE 'test%@it6.ma';
+
 DELETE FROM utilisateur
 WHERE email LIKE 'test%@it6.ma';

@@ -8,11 +8,14 @@ import ma.it6.portefeuille.entity.Utilisateur;
 import ma.it6.portefeuille.exception.BadRequestException;
 import ma.it6.portefeuille.exception.ResourceNotFoundException;
 import ma.it6.portefeuille.mapper.UtilisateurMapper;
+import ma.it6.portefeuille.repository.DemandeInitiativeRepository;
 import ma.it6.portefeuille.repository.EntiteRepository;
 import ma.it6.portefeuille.repository.RoleRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
 import ma.it6.portefeuille.security.PolitiqueMotDePasse;
 import ma.it6.portefeuille.security.SessionsService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,17 +41,20 @@ public class UtilisateurService {
     private final EntiteRepository entiteRepository;
     private final PasswordEncoder passwordEncoder;
     private final SessionsService sessionsService;
+    private final DemandeInitiativeRepository demandeRepository;
 
     public UtilisateurService(UtilisateurRepository utilisateurRepository,
                               RoleRepository roleRepository,
                               EntiteRepository entiteRepository,
                               PasswordEncoder passwordEncoder,
-                              SessionsService sessionsService) {
+                              SessionsService sessionsService,
+                              DemandeInitiativeRepository demandeRepository) {
         this.utilisateurRepository = utilisateurRepository;
         this.roleRepository = roleRepository;
         this.entiteRepository = entiteRepository;
         this.passwordEncoder = passwordEncoder;
         this.sessionsService = sessionsService;
+        this.demandeRepository = demandeRepository;
     }
 
     @Transactional(readOnly = true)
@@ -131,6 +137,67 @@ public class UtilisateurService {
         sessionsService.invaliderApresCommit(enregistre.getEmail());
 
         return UtilisateurMapper.toResponse(enregistre);
+    }
+
+    /**
+     * Suppression <strong>définitive</strong> d'un compte (droit existant
+     * {@code UTILISATEUR_GERER}, imposé par SecurityConfig sur
+     * {@code DELETE /api/users/**}).
+     *
+     * <p>Trois garde-fous, tous en 400 avec un message explicite :</p>
+     * <ol>
+     *   <li><strong>son propre compte</strong> — on ne se supprime pas soi-même
+     *       (sinon un dernier admin pourrait s'effacer en un clic) ;</li>
+     *   <li><strong>le dernier administrateur actif</strong> — continuité
+     *       d'exploitation, même garde-fou que {@link #modifier} ;</li>
+     *   <li><strong>un compte qui porte encore des demandes</strong> — la clé
+     *       étrangère de {@code demande_initiative.demandeur} est sans
+     *       cascade : on désactive plutôt le compte (les demandes, elles,
+     *       restent).</li>
+     * </ol>
+     *
+     * <p>Les autres liens (initiatives en charge, journal des statuts,
+     * connexions) sont en {@code ON DELETE SET NULL} : le compte part, ses
+     * œuvres restent. La session en cache est invalidée pour couper
+     * immédiatement l'accès du compte supprimé.</p>
+     */
+    @Transactional
+    public void supprimer(Long idUser) {
+        Utilisateur cible = getUtilisateur(idUser);
+
+        // 1. Jamais de suppression de son propre compte.
+        Authentication connecte = SecurityContextHolder.getContext().getAuthentication();
+        if (connecte != null && connecte.isAuthenticated()
+                && cible.getEmail() != null
+                && cible.getEmail().equalsIgnoreCase(connecte.getName())) {
+            throw new BadRequestException("Impossible de supprimer votre propre compte.");
+        }
+
+        // 2. Jamais de portefeuille sans administrateur actif.
+        boolean adminActif = cible.getRole() != null
+                && ROLE_ADMIN.equals(cible.getRole().getCode())
+                && Boolean.TRUE.equals(cible.getActif());
+        if (adminActif
+                && !utilisateurRepository.existsByIdUserNotAndActifTrueAndRoleCode(idUser, ROLE_ADMIN)) {
+            throw new BadRequestException(
+                    "Opération refusée : ce compte est le dernier administrateur actif. "
+                            + "Désactivez d'abord un autre administrateur.");
+        }
+
+        // 3. Pas de suppression d'un compte qui porte encore des demandes :
+        //    on conseille la désactivation plutôt que de perdre la donnée.
+        long demandes = demandeRepository.countByDemandeur_IdUser(idUser);
+        if (demandes > 0) {
+            throw new BadRequestException("Opération refusée : ce compte porte "
+                    + demandes + " demande(s) d'évaluation. "
+                    + "Désactivez le compte au lieu de le supprimer.");
+        }
+
+        utilisateurRepository.delete(cible);
+
+        // La suppression est immédiatement effective côté session (différée
+        // jusqu'au commit pour ne pas relire un compte déjà parti).
+        sessionsService.invaliderApresCommit(cible.getEmail());
     }
 
     /**

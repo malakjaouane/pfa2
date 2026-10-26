@@ -14,6 +14,7 @@ import RolesPage from './pages/RolesPage';
 import RoadmapPage from './pages/RoadmapPage';
 import DemandesPage from './pages/DemandesPage';
 import HistoriquePage from './pages/HistoriquePage';
+import ConnexionsPage from './pages/ConnexionsPage';
 import ObjectifsPage from './pages/ObjectifsPage';
 import MotDePassePage from './pages/MotDePassePage';
 import AssistantPage from './pages/AssistantPage';
@@ -71,6 +72,14 @@ export default function App() {
             element={
               <RequireAuth permissions={['UTILISATEUR_GERER']}>
                 <UsersPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/historique-connexions"
+            element={
+              <RequireAuth permissions={['UTILISATEUR_GERER']}>
+                <ConnexionsPage />
               </RequireAuth>
             }
           />

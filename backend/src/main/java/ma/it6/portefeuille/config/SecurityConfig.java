@@ -91,6 +91,11 @@ public class SecurityConfig {
                         .hasAuthority("DEMANDE_EVALUER")
                         // Utilisateurs : administrateur uniquement
                         .requestMatchers("/api/users/**").hasAuthority("UTILISATEUR_GERER")
+                        // Historique des connexions (e-mails + IP) :
+                        // administrateur uniquement, TOUS verbes (lecture,
+                        // suppression d'une ligne, purge totale).
+                        .requestMatchers("/api/historique-connexions/**")
+                        .hasAuthority("UTILISATEUR_GERER")
                         // Initiatives
                         .requestMatchers(HttpMethod.GET, "/api/initiatives/**").hasAuthority("INITIATIVE_CONSULTER")
                         .requestMatchers(HttpMethod.POST, "/api/initiatives").hasAuthority("INITIATIVE_CREER")

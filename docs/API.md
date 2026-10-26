@@ -194,6 +194,21 @@ Les initiatives exposent leur rattachement à un objectif stratégique :
 | GET | `/users/{id}` | `UTILISATEUR_GERER` | Détail |
 | POST | `/users` | `UTILISATEUR_GERER` | Création (mot de passe hashé BCrypt) |
 | PUT | `/users/{id}` | `UTILISATEUR_GERER` | Modification (dont activation/désactivation) |
+| DELETE | `/users/{id}` | `UTILISATEUR_GERER` | **Suppression définitive** d'un compte, **204** si supprimé, **404** si absent |
+
+Trois garde-fous renvoient **400** avec un message explicite :
+
+1. **son propre compte** — on ne se supprime pas soi-même ;
+2. **le dernier administrateur actif** — continuité d'exploitation
+   (même garde-fou que la modification) ;
+3. **un compte qui porte encore des demandes** — la clé étrangère
+   `demande_initiative.demandeur` est sans cascade : on conseille la
+   désactivation (les demandes restent attachées au compte).
+
+Les autres liens (initiatives en charge, historique des statuts,
+connexions) sont en `ON DELETE SET NULL` : le compte part, ses œuvres
+restent. La session en cache du compte supprimé est invalidée pour couper
+son accès à la requête suivante.
 
 ---
 
@@ -370,3 +385,38 @@ Aucun `POST` ni `PUT` n'existe sur cette ressource : le journal est en
 lecture seule, seule l'écriture métier (services de transition) y ajoute
 des lignes, colonne `automatique` distinguant les clôtures RM07-auto des
 actions manuelles.
+
+---
+
+## 14. Historique des connexions (journal des accès)
+
+Chaque passage par `POST /auth/login` dépose une ligne dans la table
+`historique_connexion` — **réussie ou échec** (mauvais mot de passe,
+compte désactivé, verrouillage 429), avec l'adresse IP et le motif. C'est
+le journal de contrôle d'accès attendu d'un outil de pilotage partagé
+(loi 09-08).
+
+**Tout accès est réservé aux administrateurs** (`UTILISATEUR_GERER` sur
+`/historique-connexions/**`, tous verbes) : le journal expose e-mails et
+adresses IP. Aucun nouveau droit n'est créé ; aucun `POST` ni `PUT`
+n'existe sur la ressource.
+
+| Méthode | Route | Permission | Description |
+|---|---|---|---|
+| GET | `/historique-connexions` | `UTILISATEUR_GERER` | Liste paginée (tri fixe : plus récent d'abord), en-tête `X-Total-Count` = total hors pagination |
+| DELETE | `/historique-connexions/{id}` | `UTILISATEUR_GERER` | Suppression d'une ligne, **404** si absente |
+| DELETE | `/historique-connexions` | `UTILISATEUR_GERER` | **Purge totale** (bouton « Purger tout ») : un seul `DELETE` en base via `deleteAllInBatch()` |
+
+Paramètres de `GET /historique-connexions` (tous facultatifs) :
+
+| Paramètre | Type | Exemple |
+|---|---|---|
+| `recherche` | `string` | `recherche=admin@it6.ma` — e-mail, IP ou nom (jokers `%…%`) |
+| `succes` | `boolean` | `succes=false` — tentatives échouées seulement |
+| `du` / `au` | `date` | `du=2026-01-01&au=2026-12-31` (ISO ; `du > au` → **400**) |
+| `page`, `size` | `int` | pagination (`page` à partir de 0, `size` plafonné à 100) |
+
+L'e-mail saisi est copié en clair, indépendamment du compte : une
+tentative sur une adresse inexistante reste traçable. La clé étrangère
+`id_utilisateur` est en `ON DELETE SET NULL` : la suppression d'un
+compte n'efface pas le journal de ses tentatives.

@@ -215,6 +215,17 @@ n'est ni versionnée ni journalisée côté serveur.
   droit existant) peuvent supprimer une entrée erronée via la colonne
   « Actions » (confirmation systématique, `DELETE` refusée aux autres
   profils) — aucune autre écriture n'est exposée.
+- **Historique des connexions** (`/historique-connexions`) : journal de
+  contrôle d'accès (loi 09-08) alimenté à **chaque tentative de
+  connexion**, réussie ou échouée (mauvais mot de passe, compte désactivé,
+  verrouillage 429) avec horodatage, e-mail saisi, adresse IP et motif.
+  Recherche (e-mail, IP ou nom), filtre de résultat (réussies /
+  échouées), période du/au, pagination — puis **suppression d'une ligne
+  ou purge totale** avec confirmation. Page réservée aux administrateurs
+  (`UTILISATEUR_GERER` sur toute la route, aucun nouveau droit) ; l'e-mail
+  est conservé même quand le compte a été supprimé (clé étrangère
+  `ON DELETE SET NULL`), et l'écriture est en transaction propre : une
+  panne du journal ne fait jamais échouer une connexion valide.
 - **Assistant IA** (« Demande à ton portefeuille », permission dédiée
   `IA_UTILISER` — 17ᵉ, ADMIN + RESPONSABLE) : chat et résumé d'initiative
   (`/assistant`, bouton « Résumé IA » sur la fiche) branchés sur l'API
@@ -227,7 +238,12 @@ n'est ni versionnée ni journalisée côté serveur.
   et **journalisation intégrale** de chaque requête (`journal_ia` : auteur,
   demande, réponse, statut OK / ERREUR / NON_DISPONIBLE, durée — consultable
   par les administrateurs).
-- **Administration** : utilisateurs, rôles, permissions.
+- **Administration** : utilisateurs, rôles, permissions. Les comptes se
+  **suppriment définitivement** depuis la colonne « Actions » (bouton
+  masqué sur son propre compte, confirmation systématique) ; le serveur
+  refuse en 400 son propre compte, le dernier administrateur actif et un
+  compte qui porte encore des demandes (désactivation conseillée à la
+  place).
 
 ---
 
@@ -270,11 +286,17 @@ d'une entrée avec 404 si elle n'existe pas, purge totale en un seul
 et suppression refusée à 400 si la demande est déjà transformée),
 `InitiativeService` (purge définitive réservée aux initiatives archivées),
 `SecuriteApiTest` (règles d'URL et filtrage JWT, dont lecture et suppression du
-journal, purge totale du journal, suppression des demandes `DEMANDE_EVALUER`
-et purge des initiatives `INITIATIVE_ARCHIVER`) et
+journal, purge totale du journal, suppression des demandes `DEMANDE_EVALUER`,
+purge des initiatives `INITIATIVE_ARCHIVER`, **suppression d'utilisateur
+`UTILISATEUR_GERER`** et **accès admin unique à l'historique des connexions**,
+tous verbes) et
 `ApiErreurHttpTest` (codes HTTP d'erreur : 405 / 400 / 415 / 406 au lieu de 500)
 et `DashboardServiceTest` (dont l'accueil personnalisé : jalons de la semaine
-et initiatives à risque). **149 tests, 0 échec.**
+et initiatives à risque) et `UtilisateurServiceTest` (suppression définitive
+d'un compte : propre compte, dernier admin actif, compte porteur de demandes —
+trois refus 400) et `HistoriqueConnexionServiceTest` (écriture de chaque
+tentative de connexion, normalisation e-mail, filtres/tri/pagination, 404 et
+purge). **169 tests, 0 échec.**
 
 ### Tests fonctionnels de l'API
 
@@ -304,7 +326,14 @@ administrateurs. Les sections 11 à 13 couvrent en outre la **recherche et la
 suppression des demandes** (401 anonyme, 403 visiteur, 404 après suppression,
 400 si déjà transformée), la **purge des initiatives archivées** (400 si non
 archivée, 204 puis 404 après purge) et le refus de la **purge du journal**
-hors administrateur (401 / 403). **176 scénarios, 0 échec.**
+hors administrateur (401 / 403). Les sections 14 et 15 couvrent la
+**suppression d'utilisateur** (401 anonyme, 403 visiteur et responsable, 404
+inconnu, 400 sur son propre compte, parcours nominal 201 → 204 → 404, 400 avec
+message quand le compte porte des demandes) et l'**historique des connexions**
+(admin seuls en lecture : 401 / 403, 200 + `X-Total-Count`, recherche par
+e-mail, filtre « échouées » après une tentative réelle, période inversée →
+400, POST interdit, suppression de ligne 401/403/404/204, purge refusée hors
+administrateur). **204 scénarios, 0 échec.**
 
 Après une campagne de tests, purgez les résidus (initiatives `TEST*` archivées,
 initiatives issues de demandes de test `DEM-*`, demandes `TEST-DEM*`, objectifs

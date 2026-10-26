@@ -30,4 +30,12 @@ public interface DemandeInitiativeRepository extends JpaRepository<DemandeInitia
             order by d.dateSoumission desc, d.idDemande desc
             """)
     List<DemandeInitiative> findAllFetch(@Param("recherche") String recherche);
+
+    /**
+     * Nombre de demandes portées par un compte (demandeur) — garde-fou de
+     * la suppression d'un utilisateur : la clé étrangère est sans cascade,
+     * un compte qui porte encore des demandes se désactive mais ne se
+     * supprime pas.
+     */
+    long countByDemandeur_IdUser(Long idUser);
 }
