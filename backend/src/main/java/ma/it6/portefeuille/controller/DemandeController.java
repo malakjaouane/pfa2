@@ -33,14 +33,26 @@ public class DemandeController {
         this.userDetailsService = userDetailsService;
     }
 
+    /**
+     * Liste des demandes — {@code recherche} filtre sur titre, description
+     * et justification (insensible à la casse, collation de la base).
+     */
     @GetMapping
-    public ResponseEntity<List<DemandeResponse>> lister() {
-        return ResponseEntity.ok(demandeService.lister());
+    public ResponseEntity<List<DemandeResponse>> lister(
+            @RequestParam(required = false) String recherche) {
+        return ResponseEntity.ok(demandeService.lister(recherche));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<DemandeResponse> trouver(@PathVariable Long id) {
         return ResponseEntity.ok(demandeService.trouver(id));
+    }
+
+    /** Suppression définitive (DEMANDE_EVALUER) — 400 si déjà transformée. */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> supprimer(@PathVariable Long id) {
+        demandeService.supprimer(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping

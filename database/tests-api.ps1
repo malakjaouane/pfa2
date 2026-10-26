@@ -504,6 +504,35 @@ Test-Check 'Demande : détail OK' ($detailDem.OK -and $detailDem.Body.idDemande 
 $listeDem = Invoke-Api 'Get' "$Base/demandes" $null $adminToken
 Test-Check 'Demandes : liste contient les demandes de test' ($listeDem.OK -and @($listeDem.Body | Where-Object { $_.titre -like 'TEST-DEM*' }).Count -ge 3) "($(@($listeDem.Body | Where-Object { $_.titre -like 'TEST-DEM*' }).Count))"
 
+# Recherche : le filtre « recherche » ne renvoie que les demandes dont le
+# titre / la description / la justification contiennent le mot-clé.
+$jetonRech = "TEST-RECH-$suffixe"
+$demRechCorps = $demCorps.Clone()
+$demRechCorps.titre = $jetonRech
+$demRech = Invoke-Api 'Post' "$Base/demandes" $demRechCorps $adminToken
+$idDemRech = $demRech.Body.idDemande
+$rechListe = Invoke-Api 'Get' "$Base/demandes?recherche=$jetonRech" $null $adminToken
+Test-Check 'Recherche de demandes : seuls les titres correspondants reviennent' (
+    $rechListe.OK -and
+    @($rechListe.Body | Where-Object { $_.titre -like "*$jetonRech*" }).Count -ge 1 -and
+    @($rechListe.Body | Where-Object { $_.titre -notlike "*$jetonRech*" }).Count -eq 0) "($(@($rechListe.Body).Count))"
+$rechVide = Invoke-Api 'Get' "$Base/demandes?recherche=ZZZ-AUCUN-$suffixe" $null $adminToken
+Test-Check 'Recherche de demandes sans résultat -> aucune ligne (200)' (
+    $rechVide.OK -and @($rechVide.Body | Where-Object { $null -ne $_ }).Count -eq 0) "($($rechVide.Status))"
+
+# Suppression : « juste qui a le droit » = DEMANDE_EVALUER (admin +
+# responsable) — anonyme 401, visiteur 403 ; demande transformée -> 400.
+$demSupprAnonyme = Invoke-Api 'Delete' "$Base/demandes/$idDemRech" $null $null
+Test-Check 'Suppression demande : anonyme -> 401' ($demSupprAnonyme.OK -eq $false -and $demSupprAnonyme.Status -eq 401) "($($demSupprAnonyme.Status))"
+$demSupprVisiteur = Invoke-Api 'Delete' "$Base/demandes/$idDemRech" $null $visiteurToken
+Test-Check 'Suppression demande : visiteur -> 403' ($demSupprVisiteur.OK -eq $false -and $demSupprVisiteur.Status -eq 403) "($($demSupprVisiteur.Status))"
+$demSupprTransformee = Invoke-Api 'Delete' "$Base/demandes/$idDem1" $null $adminToken
+Test-Check 'Suppression d''une demande transformée -> 400 (initiative liée)' ($demSupprTransformee.OK -eq $false -and $demSupprTransformee.Status -eq 400) "($($demSupprTransformee.Status))"
+$demSupprResp = Invoke-Api 'Delete' "$Base/demandes/$idDemRech" $null $responsableToken
+Test-Check 'Suppression demande : responsable (DEMANDE_EVALUER) -> 204' ($demSupprResp.OK -and $demSupprResp.Status -eq 204) "($($demSupprResp.Status))"
+$demSupprDetail = Invoke-Api 'Get' "$Base/demandes/$idDemRech" $null $adminToken
+Test-Check 'Demande supprimée -> 404 au détail' ($demSupprDetail.OK -eq $false -and $demSupprDetail.Status -eq 404) "($($demSupprDetail.Status))"
+
 Write-Output '=== 12. Historique des statuts (journal global, lecture + suppression admin) ==='
 # Une initiative dédiée enchaîne les trois origines possibles : création
 # (manuelle), transition explicite (manuelle), puis passage RM07-auto
@@ -614,6 +643,17 @@ Test-Check 'Suppression journal : anonyme -> 401' ($histSupprAnonyme.OK -eq $fal
 $histSupprInconnue = Invoke-Api 'Delete' "$Base/historique-statuts/999999999" $null $adminToken
 Test-Check 'Suppression journal : id inexistant -> 404' ($histSupprInconnue.OK -eq $false -and $histSupprInconnue.Status -eq 404) "($($histSupprInconnue.Status))"
 
+# Purge TOUT le journal (nouveau bouton admin) : mêmes règles que la
+# suppression d'une ligne. La suite n'exécute jamais la purge admin pour
+# préserver l'historique réel des initiatives de démonstration — le
+# chemin administrateur est couvert par SecuriteApiTest (JUnit).
+$purgeJournalAnonyme = Invoke-Api 'Delete' "$Base/historique-statuts" $null $null
+Test-Check 'Purge journal : anonyme -> 401' ($purgeJournalAnonyme.OK -eq $false -and $purgeJournalAnonyme.Status -eq 401) "($($purgeJournalAnonyme.Status))"
+$purgeJournalVisiteur = Invoke-Api 'Delete' "$Base/historique-statuts" $null $visiteurToken
+Test-Check 'Purge journal : visiteur (lecture seule) -> 403' ($purgeJournalVisiteur.OK -eq $false -and $purgeJournalVisiteur.Status -eq 403) "($($purgeJournalVisiteur.Status))"
+$purgeJournalResp = Invoke-Api 'Delete' "$Base/historique-statuts" $null $responsableToken
+Test-Check 'Purge journal : responsable sans UTILISATEUR_GERER -> 403' ($purgeJournalResp.OK -eq $false -and $purgeJournalResp.Status -eq 403) "($($purgeJournalResp.Status))"
+
 $histAvantSuppr = Invoke-Api 'Get' "$Base/historique-statuts" $null $adminToken
 $histTotalAvant = 0
 if ($histAvantSuppr.OK) { $histTotalAvant = [int](@($histAvantSuppr.Headers['X-Total-Count'])[0]) }
@@ -623,9 +663,23 @@ $histTotalApres = 0
 if ($histApresSuppr.OK) { $histTotalApres = [int](@($histApresSuppr.Headers['X-Total-Count'])[0]) }
 Test-Check 'Suppression journal : admin -> 204, total diminué de 1' ($histSuppr.OK -and $histSuppr.Status -eq 204 -and $histTotalApres -eq ($histTotalAvant - 1)) "($($histSuppr.Status)/$histTotalAvant->$histTotalApres)"
 
-# Nettoyage : « Terminée » -> archivée (exclue des KPI des exécutions suivantes).
+# Purge d'initiative : refusée tant qu'elle n'est pas archivée (RM14) et
+# réservée à INITIATIVE_ARCHIVER (anonyme 401, visiteur 403).
+$purgeActive = Invoke-Api 'Delete' "$Base/initiatives/$idHist" $null $adminToken
+Test-Check 'Purge initiative : non archivée -> 400' ($purgeActive.OK -eq $false -and $purgeActive.Status -eq 400) "($($purgeActive.Status))"
+$purgeIniVisiteur = Invoke-Api 'Delete' "$Base/initiatives/$idHist" $null $visiteurToken
+Test-Check 'Purge initiative : visiteur -> 403' ($purgeIniVisiteur.OK -eq $false -and $purgeIniVisiteur.Status -eq 403) "($($purgeIniVisiteur.Status))"
+$purgeIniAnonyme = Invoke-Api 'Delete' "$Base/initiatives/$idHist" $null $null
+Test-Check 'Purge initiative : anonyme -> 401' ($purgeIniAnonyme.OK -eq $false -and $purgeIniAnonyme.Status -eq 401) "($($purgeIniAnonyme.Status))"
+
+# Nettoyage : « Terminée » -> archivée, puis purge définitive : aucune
+# archive TEST ne subsiste (exclue des KPI des exécutions suivantes).
 $histArch = Invoke-Api 'Patch' "$Base/initiatives/$idHist/archive" $null $adminToken
 Test-Check 'Nettoyage : initiative du journal archivée' ($histArch.OK -and $histArch.Body.archive -eq $true)
+$purgeArchivee = Invoke-Api 'Delete' "$Base/initiatives/$idHist" $null $adminToken
+Test-Check 'Purge initiative : archivée -> 204' ($purgeArchivee.OK -and $purgeArchivee.Status -eq 204) "($($purgeArchivee.Status))"
+$purgeDetail = Invoke-Api 'Get' "$Base/initiatives/$idHist" $null $adminToken
+Test-Check 'Initiative purgée -> 404 au détail' ($purgeDetail.OK -eq $false -and $purgeDetail.Status -eq 404) "($($purgeDetail.Status))"
 
 Write-Output '=== 13. Assistant IA (permission, disponibilité, journal) ==='
 # Le statut est ouvert à tout utilisateur connecté : l'interface doit

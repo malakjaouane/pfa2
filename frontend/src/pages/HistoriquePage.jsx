@@ -247,6 +247,28 @@ export default function HistoriquePage() {
       });
   };
 
+  /**
+   * Purge TOUT le journal (admin, UTILISATEUR_GERER) : confirmation puis
+   * rechargement — on revient à la première page si on était ailleurs.
+   */
+  const purgerTout = () => {
+    if (!window.confirm(t('historique.purgerConfirmer'))) return;
+    api.delete('/historique-statuts')
+      .then(() => {
+        setErreur('');
+        setInfo(t('historique.purgeOk'));
+        if (filtres.page > 0) {
+          allerPage(0);
+        } else {
+          charger(filtres);
+        }
+      })
+      .catch((err) => {
+        setInfo('');
+        setErreur(messageErreur(err));
+      });
+  };
+
   const pagesTotales = Math.max(1, Math.ceil(total / TAILLE_PAGE));
   const depart = total === 0 ? 0 : filtres.page * TAILLE_PAGE + 1;
   const arrivee = Math.min((filtres.page + 1) * TAILLE_PAGE, total);
@@ -265,14 +287,21 @@ export default function HistoriquePage() {
           <h2>{t('historique.titre')}</h2>
           <p>{t('historique.sousTitre')}</p>
         </div>
-        <button
-          type="button"
-          className="btn btn-secondaire"
-          onClick={exporterCsv}
-          disabled={lignes.length === 0}
-        >
-          {t('historique.exportCsv')}
-        </button>
+        <div className="actions">
+          <button
+            type="button"
+            className="btn btn-secondaire"
+            onClick={exporterCsv}
+            disabled={lignes.length === 0}
+          >
+            {t('historique.exportCsv')}
+          </button>
+          {peutSupprimer && total > 0 && (
+            <button type="button" className="btn btn-danger" onClick={purgerTout}>
+              {t('historique.purger')}
+            </button>
+          )}
+        </div>
       </header>
 
       {erreur && <div className="alerte alerte-erreur">{erreur}</div>}

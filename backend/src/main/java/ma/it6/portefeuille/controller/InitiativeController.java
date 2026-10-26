@@ -111,4 +111,17 @@ public class InitiativeController {
     public ResponseEntity<InitiativeResponse> archiver(@PathVariable Long id) {
         return ResponseEntity.ok(initiativeService.archiver(id));
     }
+
+    /**
+     * Purge définitive d'une initiative archivée — INITIATIVE_ARCHIVER
+     * (imposé par SecurityConfig). 400 si l'initiative n'est pas archivée.
+     *
+     * @return {@code 204} si la purge a eu lieu, {@code 404} si elle
+     *         n'existe pas
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> purger(@PathVariable Long id) {
+        initiativeService.purger(id);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -42,7 +42,10 @@ export default {
     'historique.colActions': 'Actions',
     'historique.supprimer': 'Supprimer',
     'historique.supprimerConfirmer': "Supprimer définitivement la ligne {ligne} de l'historique des statuts ?",
-    'historique.supprimeOk': "Entrée d'historique supprimée."
+    'historique.supprimeOk': "Entrée d'historique supprimée.",
+    'historique.purger': 'Purger tout',
+    'historique.purgerConfirmer': "Purger TOUT l'historique des statuts ? Cette action est définitive et concerne toutes les initiatives.",
+    'historique.purgeOk': 'Historique des statuts purgé.'
   },
 
   en: {
@@ -85,7 +88,10 @@ export default {
     'historique.colActions': 'Actions',
     'historique.supprimer': 'Delete',
     'historique.supprimerConfirmer': 'Permanently delete history row {ligne}?',
-    'historique.supprimeOk': 'History entry deleted.'
+    'historique.supprimeOk': 'History entry deleted.',
+    'historique.purger': 'Clear all',
+    'historique.purgerConfirmer': 'Clear the ENTIRE status history? This is permanent and affects all initiatives.',
+    'historique.purgeOk': 'Status history cleared.'
   },
 
   ar: {
@@ -128,7 +134,10 @@ export default {
     'historique.colActions': 'إجراءات',
     'historique.supprimer': 'حذف',
     'historique.supprimerConfirmer': 'حذف نهائيًا للسطر {ligne} من سجل حالات المبادرات؟',
-    'historique.supprimeOk': 'تم حذف سجل الحالة.'
+    'historique.supprimeOk': 'تم حذف سجل الحالة.',
+    'historique.purger': 'مسح الكل',
+    'historique.purgerConfirmer': 'مسح سجل الحالات بالكامل؟ هذا إجراء نهائي ويشمل جميع المبادرات.',
+    'historique.purgeOk': 'تم مسح سجل الحالات.'
   },
 
   es: {
@@ -171,6 +180,9 @@ export default {
     'historique.colActions': 'Acciones',
     'historique.supprimer': 'Eliminar',
     'historique.supprimerConfirmer': '¿Eliminar definitivamente la fila {ligne} del historial?',
-    'historique.supprimeOk': 'Entrada del historial eliminada.'
+    'historique.supprimeOk': 'Entrada del historial eliminada.',
+    'historique.purger': 'Vaciar todo',
+    'historique.purgerConfirmer': '¿Vaciar TODO el historial de estados? Es permanente y afecta a todas las iniciativas.',
+    'historique.purgeOk': 'Historial de estados vaciado.'
   }
 };

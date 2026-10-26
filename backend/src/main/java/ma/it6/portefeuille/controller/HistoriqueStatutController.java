@@ -114,4 +114,17 @@ public class HistoriqueStatutController {
         historiqueStatutService.supprimer(id);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Purge TOUT le journal des statuts — administrateurs uniquement
+     * (droit existant {@code UTILISATEUR_GERER}, impos&eacute; par
+     * SecurityConfig sur {@code DELETE /api/historique-statuts}).
+     *
+     * @return {@code 204} une fois la table vid&eacute;e
+     */
+    @DeleteMapping
+    public ResponseEntity<Void> purgerTout() {
+        historiqueStatutService.purgerTout();
+        return ResponseEntity.noContent().build();
+    }
 }

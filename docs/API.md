@@ -98,6 +98,7 @@ et la note sous le budget de la fiche d'une initiative.
 | PUT | `/initiatives/{id}/statut` | `INITIATIVE_MODIFIER` | Changement de statut seul (Kanban, glisser-déposer) : `{ idStatut, commentaire? }`, mêmes règles de cycle de vie que la modification |
 | GET | `/initiatives/{id}/historique-statuts` | `INITIATIVE_CONSULTER` | Historique des changements de statut |
 | PATCH | `/initiatives/{id}/archive` | `INITIATIVE_ARCHIVER` | Archivage (réservé à « Terminée » / « Annulée », RC03) |
+| DELETE | `/initiatives/{id}` | `INITIATIVE_ARCHIVER` | Purge définitive d'une initiative **archivée** uniquement (**400** sinon) : étapes, jalons et lignes d'historique partent en `ON DELETE CASCADE`, la demande liée et le journal IA basculent en `NULL` |
 
 ### Filtres (`GET /initiatives`)
 
@@ -242,8 +243,9 @@ Brouillon → Soumise → En évaluation → Acceptée → (initiative créée, 
 
 | Méthode | Route | Permission | Description |
 |---|---|---|---|
-| GET | `/demandes` | `DEMANDE_SOUMETTRE` ou `DEMANDE_EVALUER` | Liste des demandes |
+| GET | `/demandes` | `DEMANDE_SOUMETTRE` ou `DEMANDE_EVALUER` | Liste des demandes — `?recherche=` filtre sur le titre, la description du besoin et la justification (jokers `%…%`, insensible à la casse et aux accents via `utf8mb4_unicode_ci`) |
 | GET | `/demandes/{id}` | idem | Détail d'une demande |
+| DELETE | `/demandes/{id}` | `DEMANDE_EVALUER` | Suppression définitive (**400** si la demande est déjà transformée en initiative) |
 | POST | `/demandes` | `DEMANDE_SOUMETTRE` | Création en « Brouillon » (demandeur = utilisateur connecté) |
 | PUT | `/demandes/{id}` | `DEMANDE_SOUMETTRE` | Modification (uniquement en « Brouillon ») |
 | POST | `/demandes/{id}/soumettre` | `DEMANDE_SOUMETTRE` | Brouillon → Soumise |
@@ -281,6 +283,8 @@ Réponse (`DemandeResponse`) — extraits :
 Règles contrôlées par le service :
 - chaque transition n'accepte que le statut précédent exact (sinon **400**) ;
 - la transformation d'une demande **non acceptée** ou **déjà transformée** renvoie **400** ;
+- la suppression d'une demande **déjà transformée** renvoie **400** (elle a
+  engendré une initiative avec étapes, budget et historique) ;
 - le code `DEM-%06d` est dérivé de l'identifiant de la demande (unicité garantie).
 
 ## 12. Assistant IA « Demande à ton portefeuille »
@@ -338,3 +342,31 @@ Points d'assurance :
 - **aucune donnée sensible** : la clé n'est ni journalisée ni renvoyée ;
   seules les questions et métadonnées (modèle, durée, statut) sont tracées.
 
+## 13. Historique des statuts (journal global)
+
+La page « Historique des statuts » agrège, toutes initiatives confondues,
+les changements de statut enregistrés dans la table `historique_statut`.
+
+| Méthode | Route | Permission | Description |
+|---|---|---|---|
+| GET | `/historique-statuts` | `INITIATIVE_CONSULTER` | Liste paginée, en-tête `X-Total-Count` = total hors pagination |
+| GET | `/historique-statuts/auteurs` | `INITIATIVE_CONSULTER` | Utilisateurs déjà présents dans le journal (options du filtre déroulant) |
+| DELETE | `/historique-statuts/{id}` | `UTILISATEUR_GERER` | Suppression d'une ligne (nettoyage administratif), **404** si absente |
+| DELETE | `/historique-statuts` | `UTILISATEUR_GERER` | **Purge totale** du journal (bouton « Purger tout ») : un seul `DELETE` en base via `deleteAllInBatch()`, efficace même après des années d'historique |
+
+Paramètres de `GET /historique-statuts` (tous facultatifs) :
+
+| Paramètre | Type | Exemple |
+|---|---|---|
+| `recherche` | `string` | `recherche=MOB` — code ou nom de l'initiative (jokers `%…%`) |
+| `statut` | `string` | `statut=En cours` — ancien ou nouveau statut |
+| `utilisateur` | `long` | `utilisateur=1` |
+| `initiative` | `long` | `initiative=3` — filtre posé par la fiche d'initiative |
+| `du` / `au` | `date` | `du=2026-01-01&au=2026-12-31` (ISO ; `du > au` → **400**) |
+| `direction` | `string` | `asc` / `desc` (défaut `desc`) ; valeur inconnue → **400** |
+| `page`, `size` | `int` | pagination (`page` à partir de 0) |
+
+Aucun `POST` ni `PUT` n'existe sur cette ressource : le journal est en
+lecture seule, seule l'écriture métier (services de transition) y ajoute
+des lignes, colonne `automatique` distinguant les clôtures RM07-auto des
+actions manuelles.

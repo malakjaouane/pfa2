@@ -113,11 +113,18 @@ test fonctionnel `tests-api.ps1`).
   `tests-api.ps1`) : origine manuelle/automatique des lignes, page globale,
   recherche, filtres statut/utilisateur/période, pagination, tri, validation des
   paramètres, permissions, lecture seule (POST → 405) et suppression
-  administrative (401/403/404/204 + total décrémenté).
+  administrative (401/403/404/204 + total décrémenté), purge totale refusée hors
+  administrateur (401/403 pour anonyme, visiteur et responsable).
+- **P4 (recherche et suppression)** : les trois écrans de listes disposent
+  d'une barre de recherche ; la suppression suit les droits existants —
+  demandes (`DEMANDE_EVALUER`, 400 si déjà transformée), initiatives
+  uniquement archivées (`INITIATIVE_ARCHIVER`), purge du journal réservée à
+  `UTILISATEUR_GERER`. Couvert par 15 scénarios fonctionnels (sections 11 et
+  12) et 11 tests JUnit (recherche `%…%`, refus 400/404, règles d'URL).
 - **Score de santé** : 5 scénarios fonctionnels (section 3 de `tests-api.ps1`) et
   13 tests JUnit (`CalculeurSanteTest`) : niveau + motif sur liste/fiche/surveillance,
   rouge sur initiative en retard, `null` sur les écritures.
-- **Bilan chiffré** : **138 tests JUnit** et **161 scénarios fonctionnels**,
+- **Bilan chiffré** : **149 tests JUnit** et **176 scénarios fonctionnels**,
   0 échec (dernière campagne). Deux scénarios contrôlent les KPI d'accueil
   personnalisé : `jalonsSemaine` (jalons non atteints du jour au dimanche
   courant) et `initiativesARisque` (santé ORANGE ou ROUGE recalculée depuis la

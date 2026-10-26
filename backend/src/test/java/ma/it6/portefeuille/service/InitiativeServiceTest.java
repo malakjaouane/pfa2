@@ -464,5 +464,42 @@ class InitiativeServiceTest {
             assertThatThrownBy(() -> service.archiver(404L))
                     .isInstanceOf(ResourceNotFoundException.class);
         }
+
+        // ----------------------------------------------------------------
+        // Purge définitive : uniquement des initiatives archivées
+        // ----------------------------------------------------------------
+
+        @Test
+        @DisplayName("purge une initiative archivée (suppression définitive)")
+        void purger_archivee() {
+            Initiative existante = initiativeExistante(terminee, 100, true);
+            when(initiativeRepository.findById(1L)).thenReturn(Optional.of(existante));
+
+            service.purger(1L);
+
+            verify(initiativeRepository).delete(existante);
+        }
+
+        @Test
+        @DisplayName("refuse de purger une initiative non archivée")
+        void purger_nonArchivee() {
+            Initiative existante = initiativeExistante(terminee, 50, false);
+            when(initiativeRepository.findById(1L)).thenReturn(Optional.of(existante));
+
+            assertThatThrownBy(() -> service.purger(1L))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("archivées");
+
+            verify(initiativeRepository, never()).delete(any(Initiative.class));
+        }
+
+        @Test
+        @DisplayName("purge d'une initiative inexistante (404)")
+        void purger_introuvable() {
+            when(initiativeRepository.findById(404L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.purger(404L))
+                    .isInstanceOf(ResourceNotFoundException.class);
+        }
     }
 }

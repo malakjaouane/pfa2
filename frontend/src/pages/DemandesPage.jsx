@@ -45,6 +45,8 @@ export default function DemandesPage() {
   const [demandes, setDemandes] = useState([]);
   const [entites, setEntites] = useState([]);
   const [priorites, setPriorites] = useState([]);
+  const [recherche, setRecherche] = useState('');
+  const [rechercheAppliquee, setRechercheAppliquee] = useState('');
   const [form, setForm] = useState(formVide);
   const [idEdition, setIdEdition] = useState(null);
   const [formVisible, setFormVisible] = useState(false);
@@ -58,8 +60,18 @@ export default function DemandesPage() {
   const libelleStatut = (libelle) =>
     libelle && CLES_STATUT_DEMANDE[libelle] ? t(CLES_STATUT_DEMANDE[libelle]) : libelle;
 
-  const charger = (f = api.get('/demandes'), e = api.get('/referentiels/entites'), p = api.get('/referentiels/priorites')) => {
-    Promise.all([f, e, p])
+  /**
+   * Rechargement : demandes (avec la recherche libre éventuelle), entités
+   * et priorités. `motCle` permet de forcer le mot-clé au moment de la
+   * soumission du formulaire — l'état React n'est pas encore mis à jour.
+   */
+  const charger = (motCle) => {
+    const q = (motCle ?? rechercheAppliquee).trim();
+    Promise.all([
+      api.get('/demandes', q ? { params: { recherche: q } } : {}),
+      api.get('/referentiels/entites'),
+      api.get('/referentiels/priorites')
+    ])
       .then(([d, en, pr]) => {
         setDemandes(d.data);
         setEntites(en.data);
@@ -67,6 +79,20 @@ export default function DemandesPage() {
       })
       .catch((err) => setErreur(messageErreur(err)))
       .finally(() => setChargement(false));
+  };
+
+  const appliquerRecherche = (e) => {
+    e.preventDefault();
+    setRechercheAppliquee(recherche);
+    setChargement(true);
+    charger(recherche);
+  };
+
+  const effacerRecherche = () => {
+    setRecherche('');
+    setRechercheAppliquee('');
+    setChargement(true);
+    charger('');
   };
 
   useEffect(() => {
@@ -157,6 +183,22 @@ export default function DemandesPage() {
     }
   };
 
+  /**
+   * Suppression définitive (DEMANDE_EVALUER) : confirmation puis
+   * rechargement. Une demande déjà transformée en initiative est masquée
+   * côté interface et refusée côté serveur (400).
+   */
+  const supprimer = async (d) => {
+    if (!window.confirm(t('demandes.confirmSupprimer', { titre: d.titre }))) return;
+    try {
+      await api.delete(`/demandes/${d.idDemande}`);
+      setInfo({ cle: 'demandes.infoSupprimee' });
+      charger();
+    } catch (err) {
+      setErreur(messageErreur(err));
+    }
+  };
+
   return (
     <div className="page">
       <header className="page-entete">
@@ -213,6 +255,29 @@ export default function DemandesPage() {
           </div>
         </form>
       )}
+
+      <form className="carte filtre-bar" onSubmit={appliquerRecherche}>
+        <div className="filtre-ligne">
+          <input
+            type="search"
+            placeholder={t('demandes.recherchePlaceholder')}
+            aria-label={t('demandes.recherchePlaceholder')}
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+          />
+          <button type="submit" className="btn btn-primaire" disabled={chargement}>
+            {t('demandes.appliquer')}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondaire"
+            onClick={effacerRecherche}
+            disabled={!recherche && !rechercheAppliquee}
+          >
+            {t('demandes.reinitialiser')}
+          </button>
+        </div>
+      </form>
 
       <div className="carte">
         <div className="table-enveloppe">
@@ -298,6 +363,11 @@ export default function DemandesPage() {
                           )}
                           {d.statut?.libelle === 'Acceptée' && d.initiativeLiee && (
                             <Link to={`/initiatives/${d.initiativeLiee.idInitiative}`} className="btn btn-petit btn-secondaire">{t('demandes.voirInitiative')}</Link>
+                          )}
+                          {peutEvaluer && !d.initiativeLiee && (
+                            <button className="btn btn-petit btn-danger" onClick={() => supprimer(d)}>
+                              {t('demandes.supprimer')}
+                            </button>
                           )}
                         </div>
                       </td>

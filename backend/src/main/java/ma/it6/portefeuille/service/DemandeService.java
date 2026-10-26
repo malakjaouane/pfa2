@@ -56,14 +56,44 @@ public class DemandeService {
     // Consultation
     // ------------------------------------------------------------------
 
-    public List<DemandeResponse> lister() {
-        return demandeRepository.findAllFetch().stream()
+    /**
+     * Liste des demandes, avec recherche libre facultative sur le titre,
+     * la description du besoin ou la justification (joker construit ici).
+     * Un mot vide ou absent = liste complète.
+     */
+    public List<DemandeResponse> lister(String recherche) {
+        String joker = (recherche == null || recherche.isBlank())
+                ? null : "%" + recherche.trim() + "%";
+        return demandeRepository.findAllFetch(joker).stream()
                 .map(DemandeService::toResponse)
                 .toList();
     }
 
     public DemandeResponse trouver(Long idDemande) {
         return toResponse(getDemande(idDemande));
+    }
+
+    // ------------------------------------------------------------------
+    // Suppression
+    // ------------------------------------------------------------------
+
+    /**
+     * Suppression définitive d'une demande — réservée aux titulaires de
+     * {@code DEMANDE_EVALUER} (contrôlé par la couche sécurité). Une
+     * demande <strong>transformée en initiative</strong> ne peut pas être
+     * supprimée : elle a engendré des étapes, un budget et un historique
+     * dans le portefeuille.
+     */
+    @Transactional
+    public void supprimer(Long idDemande) {
+        DemandeInitiative demande = getDemande(idDemande);
+        if (demande.getInitiativeLiee() != null) {
+            throw new BadRequestException(
+                    "Demande déjà transformée en initiative ("
+                            + demande.getInitiativeLiee().getCode()
+                            + ") : suppression impossible.");
+        }
+        demandeRepository.delete(demande);
     }
 
     // ------------------------------------------------------------------

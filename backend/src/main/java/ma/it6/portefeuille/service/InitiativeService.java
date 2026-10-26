@@ -430,6 +430,23 @@ public class InitiativeService {
     }
 
     /**
+     * Purge définitive d'une initiative <strong>archivée</strong> (RM14) :
+     * supprimer une initiative non archivée est refusé — l'archivage reste
+     * la façon standard de la retirer du circuit. Côté base, les étapes,
+     * jalons et lignes d'historique partent en {@code ON DELETE CASCADE} ;
+     * la demande liée et le journal IA basculent en {@code NULL}.
+     */
+    @Transactional
+    public void purger(Long idInitiative) {
+        Initiative initiative = getInitiative(idInitiative);
+        if (!Boolean.TRUE.equals(initiative.getArchive())) {
+            throw new BadRequestException(
+                    "Seules les initiatives archivées peuvent être supprimées définitivement.");
+        }
+        initiativeRepository.delete(initiative);
+    }
+
+    /**
      * E-mail de l'utilisateur derrière l'appel courant, ou {@code null}
      * (appel interne, exécution de démarrage, ou test unitaire sans
      * contexte de sécurité).

@@ -142,6 +142,23 @@ export default function InitiativesPage() {
     !i.archive &&
     ['Terminée', 'Annulée'].includes(i.statut?.libelle);
 
+  /**
+   * Purge définitive d'une initiative DÉJÀ archivée (RM14) : confirmation
+   * puis rechargement. Le serveur refuse toute purge hors archivage (400).
+   */
+  const purger = async (initiative) => {
+    if (!window.confirm(t('initiatives.confirmPurger', { nom: initiative.nom }))) {
+      return;
+    }
+    try {
+      await api.delete(`/initiatives/${initiative.idInitiative}`);
+      setInfo({ cle: 'initiatives.initiativePurgee', params: { nom: initiative.nom } });
+      chargerListe();
+    } catch (err) {
+      setErreur(messageErreur(err));
+    }
+  };
+
   const champ = (champs) =>
     champs.map((c) => ({
       ...c,
@@ -267,6 +284,9 @@ export default function InitiativesPage() {
                         )}
                         {peutArchiver(i) && (
                           <button className="btn btn-petit btn-danger" onClick={() => archiver(i)}>{t('initiatives.archiver')}</button>
+                        )}
+                        {i.archive && hasPermission('INITIATIVE_ARCHIVER') && (
+                          <button className="btn btn-petit btn-danger" onClick={() => purger(i)}>{t('initiatives.purger')}</button>
                         )}
                       </div>
                     </td>

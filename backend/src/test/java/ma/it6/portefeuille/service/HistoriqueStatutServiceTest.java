@@ -295,5 +295,16 @@ class HistoriqueStatutServiceTest {
 
             verify(historiqueRepository, never()).delete(any(HistoriqueStatut.class));
         }
+
+        @Test
+        @DisplayName("la purge totale vide la table en une seule requête SQL")
+        void purgeTotale() {
+            service.purgerTout();
+
+            verify(historiqueRepository).deleteAllInBatch();
+            // Aucun chargement des lignes en mémoire : le journal se vide
+            // par un seul DELETE en base, même après des années d'historique.
+            verify(historiqueRepository, never()).deleteAll();
+        }
     }
 }

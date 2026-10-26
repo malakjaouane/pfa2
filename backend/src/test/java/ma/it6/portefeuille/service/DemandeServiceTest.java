@@ -4,6 +4,7 @@ import ma.it6.portefeuille.dto.DemandeRequest;
 import ma.it6.portefeuille.dto.DemandeResponse;
 import ma.it6.portefeuille.entity.*;
 import ma.it6.portefeuille.exception.BadRequestException;
+import ma.it6.portefeuille.exception.ResourceNotFoundException;
 import ma.it6.portefeuille.repository.DemandeInitiativeRepository;
 import ma.it6.portefeuille.repository.EntiteRepository;
 import ma.it6.portefeuille.repository.PrioriteRepository;
@@ -20,11 +21,13 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -287,6 +290,77 @@ class DemandeServiceTest {
             assertThatThrownBy(() -> service.transformer(1L))
                     .isInstanceOf(BadRequestException.class)
                     .hasMessageContaining("transformée");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Recherche et suppression
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Recherche - filtre titre / description / justification")
+    class Recherche {
+
+        @Test
+        @DisplayName("construit le joker %...% autour du mot-clé saisi")
+        void recherche_joker() {
+            when(demandeRepository.findAllFetch("%cloud%")).thenReturn(List.of(demande(soumise)));
+
+            assertThat(service.lister(" cloud ")).hasSize(1);
+
+            verify(demandeRepository).findAllFetch("%cloud%");
+        }
+
+        @Test
+        @DisplayName("sans mot-clé : aucun joker, liste complète")
+        void recherche_sansMotCle() {
+            when(demandeRepository.findAllFetch(null)).thenReturn(List.of());
+
+            assertThat(service.lister(null)).isEmpty();
+
+            verify(demandeRepository).findAllFetch(null);
+        }
+    }
+
+    @Nested
+    @DisplayName("Suppression - droits gérés par la couche sécurité")
+    class Suppression {
+
+        @Test
+        @DisplayName("supprime une demande non transformée")
+        void supprimer_ok() {
+            DemandeInitiative demande = demande(brouillon);
+            when(demandeRepository.findById(1L)).thenReturn(Optional.of(demande));
+
+            service.supprimer(1L);
+
+            verify(demandeRepository).delete(demande);
+        }
+
+        @Test
+        @DisplayName("refuse de supprimer une demande déjà transformée en initiative")
+        void supprimer_transformee() {
+            DemandeInitiative transformee = demande(acceptee);
+            transformee.setInitiativeLiee(Initiative.builder()
+                    .idInitiative(99L).code("DEM-000001").build());
+            when(demandeRepository.findById(1L)).thenReturn(Optional.of(transformee));
+
+            assertThatThrownBy(() -> service.supprimer(1L))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("suppression impossible");
+
+            verify(demandeRepository, never()).delete(any(DemandeInitiative.class));
+        }
+
+        @Test
+        @DisplayName("demande inexistante : 404, rien n'est supprimé")
+        void supprimer_introuvable() {
+            when(demandeRepository.findById(404L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.supprimer(404L))
+                    .isInstanceOf(ResourceNotFoundException.class);
+
+            verify(demandeRepository, never()).delete(any(DemandeInitiative.class));
         }
     }
 }

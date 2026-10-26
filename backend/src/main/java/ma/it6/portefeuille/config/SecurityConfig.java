@@ -85,11 +85,19 @@ public class SecurityConfig {
                         .requestMatchers("/api/demandes/*/evaluer", "/api/demandes/*/accepter",
                                 "/api/demandes/*/refuser", "/api/demandes/*/transformer")
                         .hasAuthority("DEMANDE_EVALUER")
+                        // Suppression d'une demande = ceux qui ont le droit
+                        // d'en décider (DEMANDE_EVALUER : admin + responsable).
+                        .requestMatchers(HttpMethod.DELETE, "/api/demandes/**")
+                        .hasAuthority("DEMANDE_EVALUER")
                         // Utilisateurs : administrateur uniquement
                         .requestMatchers("/api/users/**").hasAuthority("UTILISATEUR_GERER")
                         // Initiatives
                         .requestMatchers(HttpMethod.GET, "/api/initiatives/**").hasAuthority("INITIATIVE_CONSULTER")
                         .requestMatchers(HttpMethod.POST, "/api/initiatives").hasAuthority("INITIATIVE_CREER")
+                        // Purge définitive d'une initiative archivée = même
+                        // droit que l'archivage (INITIATIVE_ARCHIVER).
+                        .requestMatchers(HttpMethod.DELETE, "/api/initiatives/**")
+                        .hasAuthority("INITIATIVE_ARCHIVER")
                         // Journal des statuts : lecture = même permission que
                         // la lecture des initiatives (pas de nouveau droit).
                         // Suppression d'une ligne = administrateurs seulement

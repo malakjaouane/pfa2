@@ -182,6 +182,18 @@ public class HistoriqueStatutService {
         historiqueRepository.delete(entree);
     }
 
+    /**
+     * Purge totale du journal des statuts — demandée par l'administrateur
+     * depuis l'écran « Historique des statuts » (réservée à
+     * {@code UTILISATEUR_GERER}). Utilise un {@code DELETE} en base en une
+     * seule requête (pas de chargement des lignes), ce qui reste efficace
+     * même avec des années d'historique.
+     */
+    @Transactional
+    public void purgerTout() {
+        historiqueRepository.deleteAllInBatch();
+    }
+
     // ------------------------------------------------------------------
     // Internes
     // ------------------------------------------------------------------

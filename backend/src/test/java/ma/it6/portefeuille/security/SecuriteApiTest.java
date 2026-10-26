@@ -5,6 +5,7 @@ import ma.it6.portefeuille.controller.AssistantIaController;
 import ma.it6.portefeuille.controller.AuthController;
 import ma.it6.portefeuille.controller.BudgetController;
 import ma.it6.portefeuille.controller.DashboardController;
+import ma.it6.portefeuille.controller.DemandeController;
 import ma.it6.portefeuille.controller.EtapeController;
 import ma.it6.portefeuille.controller.HistoriqueStatutController;
 import ma.it6.portefeuille.controller.InitiativeController;
@@ -20,6 +21,7 @@ import ma.it6.portefeuille.exception.BadRequestException;
 import ma.it6.portefeuille.service.AssistantIaService;
 import ma.it6.portefeuille.service.BudgetService;
 import ma.it6.portefeuille.service.DashboardService;
+import ma.it6.portefeuille.service.DemandeService;
 import ma.it6.portefeuille.service.EtapeService;
 import ma.it6.portefeuille.service.HistoriqueStatutService;
 import ma.it6.portefeuille.service.InitiativeService;
@@ -86,7 +88,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         DashboardController.class,
         BudgetController.class,
         AuthController.class,
-        AssistantIaController.class
+        AssistantIaController.class,
+        DemandeController.class
 })
 @Import({SecurityConfig.class, JwtService.class})
 class SecuriteApiTest {
@@ -124,6 +127,8 @@ class SecuriteApiTest {
     private ProtectionConnexions protectionConnexions;
     @MockitoBean
     private AssistantIaService assistantIaService;
+    @MockitoBean
+    private DemandeService demandeService;
 
     // =================================================================
     // 0. Assistant IA : permission dédiée IA_UTILISER + journal admin
@@ -377,6 +382,55 @@ class SecuriteApiTest {
                     .andExpect(status().isForbidden());
             mockMvc.perform(delete("/api/historique-statuts/1")
                             .with(auth("UTILISATEUR_GERER")))
+                    .andExpect(status().isNoContent());
+
+            // Purge TOUT le journal (bouton admin) : mêmes règles que la
+            // suppression d'une ligne, sur la collection sans identifiant.
+            mockMvc.perform(delete("/api/historique-statuts"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(delete("/api/historique-statuts")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete("/api/historique-statuts")
+                            .with(auth("UTILISATEUR_GERER")))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("demandes : recherche pour les acteurs, suppression DEMANDE_EVALUER")
+        void demandesRechercheEtSuppression() throws Exception {
+            when(demandeService.lister(any())).thenReturn(List.of());
+
+            // Recherche : ouverte à ceux qui soumettent ou évaluent.
+            mockMvc.perform(get("/api/demandes"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(get("/api/demandes").with(auth("VISITEUR")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(get("/api/demandes").param("recherche", "cloud")
+                            .with(auth("DEMANDE_SOUMETTRE")))
+                    .andExpect(status().isOk());
+
+            // Suppression : « juste qui a le droit » = DEMANDE_EVALUER.
+            mockMvc.perform(delete("/api/demandes/1"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(delete("/api/demandes/1").with(auth("VISITEUR")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete("/api/demandes/1").with(auth("DEMANDE_SOUMETTRE")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete("/api/demandes/1").with(auth("DEMANDE_EVALUER")))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("purge d'une initiative archivée : INITIATIVE_ARCHIVER")
+        void purgeInitiativeArchivee() throws Exception {
+            mockMvc.perform(delete("/api/initiatives/1"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(delete("/api/initiatives/1")
+                            .with(auth("INITIATIVE_CREER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete("/api/initiatives/1")
+                            .with(auth("INITIATIVE_ARCHIVER")))
                     .andExpect(status().isNoContent());
         }
     }

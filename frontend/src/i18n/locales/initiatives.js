@@ -45,6 +45,9 @@ export default {
     'initiatives.confirmArchiver':
       "Archiver l'initiative « {nom} » ? Cette action ferme son cycle de vie.",
     'initiatives.initiativeArchivee': 'Initiative « {nom} » archivée.',
+    'initiatives.purger': 'Supprimer',
+    'initiatives.confirmPurger': "Supprimer définitivement l'initiative archivée « {nom} » ? Ses étapes, jalons et son historique seront effacés.",
+    'initiatives.initiativePurgee': 'Initiative « {nom} » supprimée définitivement.',
     'initiatives.deplacementEffectue': 'Statut de l\'initiative mis à jour.'
   },
 
@@ -93,6 +96,9 @@ export default {
     'initiatives.confirmArchiver':
       'Archive the initiative "{nom}"? This action closes its lifecycle.',
     'initiatives.initiativeArchivee': 'Initiative "{nom}" archived.',
+    'initiatives.purger': 'Delete',
+    'initiatives.confirmPurger': 'Permanently delete the archived initiative "{nom}"? Its steps, milestones and history will be erased.',
+    'initiatives.initiativePurgee': 'Initiative "{nom}" permanently deleted.',
     'initiatives.deplacementEffectue': 'Initiative status updated.'
   },
 
@@ -141,6 +147,9 @@ export default {
     'initiatives.confirmArchiver':
       'أرشفة المبادرة «{nom}»؟ سيؤدي هذا الإجراء إلى إغلاق دورة حياتها.',
     'initiatives.initiativeArchivee': 'تمت أرشفة المبادرة «{nom}».',
+    'initiatives.purger': 'حذف',
+    'initiatives.confirmPurger': 'حذف المبادرة المؤرشفة «{nom}» نهائيًا؟ ستُمسح مراحلها وأحداثها الجدولية وتاريخها.',
+    'initiatives.initiativePurgee': 'تم حذف المبادرة «{nom}» نهائيًا.',
     'initiatives.deplacementEffectue': 'تم تحديث حالة المبادرة.'
   },
 
@@ -189,6 +198,9 @@ export default {
     'initiatives.confirmArchiver':
       '¿Archivar la iniciativa «{nom}»? Esta acción cierra su ciclo de vida.',
     'initiatives.initiativeArchivee': 'Iniciativa «{nom}» archivada.',
+    'initiatives.purger': 'Eliminar',
+    'initiatives.confirmPurger': '¿Eliminar definitivamente la iniciativa archivada «{nom}»? Se borrarán sus etapas, hitos e historial.',
+    'initiatives.initiativePurgee': 'Iniciativa «{nom}» eliminada definitivamente.',
     'initiatives.deplacementEffectue': 'Estado de la iniciativa actualizado.'
   }
 };

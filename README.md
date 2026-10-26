@@ -265,12 +265,16 @@ jalons sans N+1),
 (workflow des demandes, transformation en initiative), `EtapeService`
 (étapes et jalons), `HistoriqueStatutService` (origine manuelle/automatique des
 lignes du journal, filtres/tri/pagination de la lecture globale, suppression
-d'une entrée avec 404 si elle n'existe pas),
+d'une entrée avec 404 si elle n'existe pas, purge totale en un seul
+`DELETE`), `DemandeService` (recherche `%…%` sur titre/besoin/justification
+et suppression refusée à 400 si la demande est déjà transformée),
+`InitiativeService` (purge définitive réservée aux initiatives archivées),
 `SecuriteApiTest` (règles d'URL et filtrage JWT, dont lecture et suppression du
-journal) et
+journal, purge totale du journal, suppression des demandes `DEMANDE_EVALUER`
+et purge des initiatives `INITIATIVE_ARCHIVER`) et
 `ApiErreurHttpTest` (codes HTTP d'erreur : 405 / 400 / 415 / 406 au lieu de 500)
 et `DashboardServiceTest` (dont l'accueil personnalisé : jalons de la semaine
-et initiatives à risque). **138 tests, 0 échec.**
+et initiatives à risque). **149 tests, 0 échec.**
 
 ### Tests fonctionnels de l'API
 
@@ -296,7 +300,11 @@ sont comparés à un recalcul indépendant issu de la liste réelle des initiati
 l'**assistant IA** : `IA_UTILISER` exigée (403 visiteur), statut de
 disponibilité, question réelle (200 + réponse, ou 503 explicite si non
 configuré), résumé d'inconnu → 404, journal accessible aux seuls
-administrateurs. **161 scénarios, 0 échec.**
+administrateurs. Les sections 11 à 13 couvrent en outre la **recherche et la
+suppression des demandes** (401 anonyme, 403 visiteur, 404 après suppression,
+400 si déjà transformée), la **purge des initiatives archivées** (400 si non
+archivée, 204 puis 404 après purge) et le refus de la **purge du journal**
+hors administrateur (401 / 403). **176 scénarios, 0 échec.**
 
 Après une campagne de tests, purgez les résidus (initiatives `TEST*` archivées,
 initiatives issues de demandes de test `DEM-*`, demandes `TEST-DEM*`, objectifs
