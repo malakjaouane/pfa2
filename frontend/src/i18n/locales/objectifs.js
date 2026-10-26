@@ -32,7 +32,10 @@ export default {
     'objectifs.erreurPartielle': '{n} supprimé(s), {echecs} en échec : {detail}',
     'objectifs.selectionnerTout': 'Tout sélectionner',
     'objectifs.caseSelection': 'Sélectionner l\'objectif « {libelle} »',
-    'objectifs.caseLiee': 'Référencé par {n} initiative(s) — suppression impossible'
+    'objectifs.caseLiee': 'Référencé par {n} initiative(s) — suppression impossible',
+    'objectifs.verrouillee': 'Verrouillé',
+    'objectifs.verrouillees': '{n} verrouillée(s)',
+    'objectifs.toutesVerrouillees': 'Aucun objectif sélectionnable : les {n} objectif(s) affichés sont référencés par des initiatives (archivées comprises). Détachez-les d\'abord dans chaque initiative, puis supprimez.'
   },
 
   en: {
@@ -67,7 +70,10 @@ export default {
     'objectifs.erreurPartielle': '{n} deleted, {echecs} failed: {detail}',
     'objectifs.selectionnerTout': 'Select all',
     'objectifs.caseSelection': 'Select objective "{libelle}"',
-    'objectifs.caseLiee': 'Referenced by {n} initiative(s) — cannot be deleted'
+    'objectifs.caseLiee': 'Referenced by {n} initiative(s) — cannot be deleted',
+    'objectifs.verrouillee': 'Locked',
+    'objectifs.verrouillees': '{n} locked',
+    'objectifs.toutesVerrouillees': 'No selectable objective: the {n} displayed objective(s) are referenced by initiatives (archived included). Detach them from each initiative first, then delete.'
   },
 
   ar: {
@@ -102,7 +108,10 @@ export default {
     'objectifs.erreurPartielle': 'تم حذف {n} وفشل {echecs}: {detail}',
     'objectifs.selectionnerTout': 'تحديد الكل',
     'objectifs.caseSelection': 'تحديد الهدف «{libelle}»',
-    'objectifs.caseLiee': 'مرتبط بـ {n} مبادرة — لا يمكن الحذف'
+    'objectifs.caseLiee': 'مرتبط بـ {n} مبادرة — لا يمكن الحذف',
+    'objectifs.verrouillee': 'مقفل',
+    'objectifs.verrouillees': '{n} مقفلة',
+    'objectifs.toutesVerrouillees': 'لا هدف قابل للتحديد: الأهداف المعروضة ({n}) مرتبطة بمبادرات (بما فيها المؤرشفة). افصلها أولًا في كل مبادرة ثم احذف.'
   },
 
   es: {
@@ -137,6 +146,9 @@ export default {
     'objectifs.erreurPartielle': '{n} eliminados, {echecs} fallidos: {detail}',
     'objectifs.selectionnerTout': 'Seleccionar todo',
     'objectifs.caseSelection': 'Seleccionar el objetivo «{libelle}»',
-    'objectifs.caseLiee': 'Referenciado por {n} iniciativa(s) — no se puede eliminar'
+    'objectifs.caseLiee': 'Referenciado por {n} iniciativa(s) — no se puede eliminar',
+    'objectifs.verrouillee': 'Bloqueado',
+    'objectifs.verrouillees': '{n} bloqueado(s)',
+    'objectifs.toutesVerrouillees': 'Ningún objetivo seleccionable: los {n} objetivo(s) mostrados están referenciados por iniciativas (incluidas las archivadas). Desvínculos primero en cada iniciativa y luego elimine.'
   }
 };

@@ -201,6 +201,9 @@ n'est ni versionnée ni journalisée côté serveur.
   désactivées dès qu'un objectif est relié à au moins une initiative,
   **archivée comprise** (le serveur refuse en 400 : la clé étrangère est
   en `ON DELETE SET NULL`, détacher silencieusement perdrait l'alignement).
+  Les cartes bloquées affichent un **cadenas « Verrouillé »** avec le
+  compte d'initiatives en infobulle, et un bandeau explicite signale
+  quand rien n'est sélectionnable.
 - **Demandes d'initiatives** (`/demandes`) : workflow à états contrôlés
   `Brouillon → Soumise → En évaluation → Acceptée/Refusée`, refus avec motif
   facultatif, transformation en initiative (code `DEM-xxxxxx`, aucune création
@@ -208,7 +211,9 @@ n'est ni versionnée ni journalisée côté serveur.
   suppression en lot** : cases à cocher sur les lignes (désactivées sur les
   demandes transformées), un « Supprimer (n) » avec compteur et une seule
   confirmation — chaque `DELETE` garde les garde-fous serveur (`DEMANDE_EVALUER`,
-  400 si déjà transformée).
+  400 si déjà transformée). Les lignes bloquées affichent un **cadenas
+  « Verrouillée »** (infobulle avec la raison exacte) et, quand rien n'est
+  sélectionnable, un bandeau explicite — plus jamais de case muette.
 - **Historique des statuts** (`/historique`) : journal global de tous les
   changements de statut — recherche par code ou nom
   d'initiative (insensible à la casse et aux accents), filtres statut,

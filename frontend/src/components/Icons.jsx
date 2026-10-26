@@ -325,6 +325,20 @@ export function IconAssistant(props) {
   );
 }
 
+/**
+ * Cadenas — état « verrouillé » d'une ligne non sélectionnable
+ * (demande transformée, objectif référencé).
+ */
+export function IconCadenas(props) {
+  return (
+    <Svg {...props}>
+      <rect x="4.5" y="10.5" width="15" height="10" rx="2" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+      <path d="M12 14v3" />
+    </Svg>
+  );
+}
+
 export const ICONES = {
   dashboard: IconDashboard,
   project: IconProject,
@@ -337,7 +351,8 @@ export const ICONES = {
   kanban: IconKanban,
   archive: IconArchive,
   settings: IconSettings,
-  assistant: IconAssistant
+  assistant: IconAssistant,
+  lock: IconCadenas
 };
 
 /** Rend une icône par son nom (clé de ICONES). */

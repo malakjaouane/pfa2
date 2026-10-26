@@ -123,7 +123,10 @@ test fonctionnel `tests-api.ps1`).
   au moins une initiative **archivée comprise** — même barre de sélection
   en lot que les demandes), initiatives
   uniquement archivées (`INITIATIVE_ARCHIVER`), purge du journal réservée à
-  `UTILISATEUR_GERER`. Couvert par 22 scénarios fonctionnels (sections 10 à
+  `UTILISATEUR_GERER`. Les lignes bloquées (demande transformée, objectif
+  référencé) portent un **cadenas « Verrouillé(e) »** avec la raison en
+  infobulle et un bandeau explicite quand rien n'est sélectionnable —
+  refuser n'est plus muet. Couvert par 22 scénarios fonctionnels (sections 10 à
   12), 15 tests JUnit (recherche `%…%`, refus 400/404, règles d'URL,
   suppression d'objectif) et le e2e navigateur (sélection → suppression en
   lot sur demandes **et** objectifs, refus serveur remonté en cas d'échec

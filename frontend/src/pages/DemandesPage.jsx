@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api, { messageErreur } from '../api';
+import { IconCadenas } from '../components/Icons';
 import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import { afficherMessage } from '../i18n/message';
@@ -212,6 +213,9 @@ export default function DemandesPage() {
   const supprimable = (d) => peutEvaluer && !d.initiativeLiee;
 
   const demandesAffichees = demandes.filter(supprimable);
+  // Lignes verrouillées (transformées) — affichées avec un cadenas pour
+  // que le refus soit explicable d'un coup d'œil.
+  const verrouillees = demandes.length - demandesAffichees.length;
   const toutesCochees = demandesAffichees.length > 0
     && demandesAffichees.every((d) => selection.includes(d.idDemande));
 
@@ -340,11 +344,18 @@ export default function DemandesPage() {
 
       {/* Barre de suppression en lot : présente dès l'arrivée sur la page
           (bouton inactif sans sélection) pour que l'action soit trouvable —
-          les lignes transformées en initiative ne sont pas cochables. */}
+          les lignes transformées en initiative affichent un cadenas et le
+          bandeau ci-dessous explique pourquoi rien n'est sélectionnable. */}
       {peutEvaluer && (
         <div className="carte vue-bar">
           <span className="texte-muet">
             {t('demandes.selectionnees', { n: selection.length })}
+            {verrouillees > 0 && (
+              <span className="texte-muet">
+                {' — '}
+                {t('demandes.verrouillees', { n: verrouillees })}
+              </span>
+            )}
           </span>
           <div className="actions">
             <button
@@ -364,6 +375,11 @@ export default function DemandesPage() {
               {t('demandes.annulerSelection')}
             </button>
           </div>
+        </div>
+      )}
+      {peutEvaluer && verrouillees > 0 && demandesAffichees.length === 0 && (
+        <div className="alerte alerte-info">
+          {t('demandes.toutesVerrouillees', { n: verrouillees })}
         </div>
       )}
 
@@ -402,14 +418,21 @@ export default function DemandesPage() {
                   <tr key={d.idDemande}>
                       {peutEvaluer && (
                         <td>
-                          <input
-                            type="checkbox"
-                            checked={selection.includes(d.idDemande)}
-                            onChange={() => basculer(d.idDemande)}
-                            disabled={!supprimable(d)}
-                            title={supprimable(d) ? undefined : t('demandes.caseNonSupprimable')}
-                            aria-label={t('demandes.caseSelection', { titre: d.titre })}
-                          />
+                          {supprimable(d) ? (
+                            <input
+                              type="checkbox"
+                              checked={selection.includes(d.idDemande)}
+                              onChange={() => basculer(d.idDemande)}
+                              aria-label={t('demandes.caseSelection', { titre: d.titre })}
+                            />
+                          ) : (
+                            <span
+                              className="badge badge-gris"
+                              title={t('demandes.caseNonSupprimable')}
+                            >
+                              <IconCadenas size={13} /> {t('demandes.verrouillee')}
+                            </span>
+                          )}
                         </td>
                       )}
                       <td>

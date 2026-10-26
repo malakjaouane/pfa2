@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api, { messageErreur } from '../api';
+import { IconCadenas } from '../components/Icons';
 import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import { afficherMessage } from '../i18n/message';
@@ -76,6 +77,9 @@ export default function ObjectifsPage() {
   const supprimable = (o) => (rattachees.get(o.idObjectif) ?? []).length === 0;
 
   const objectifsAffichees = objectifs.filter(supprimable);
+  // Cartes verrouillées (reliées à des initiatives) — affichées avec un
+  // cadenas pour que le refus soit explicable d'un coup d'œil.
+  const verrouillees = objectifs.length - objectifsAffichees.length;
   const toutesCochees = objectifsAffichees.length > 0
     && objectifsAffichees.every((o) => selection.includes(o.idObjectif));
 
@@ -189,7 +193,8 @@ export default function ObjectifsPage() {
 
       {/* Barre de suppression en lot : présente dès l'arrivée sur la page
           (bouton inactif sans sélection) pour que l'action soit trouvable —
-          les objectifs reliés à des initiatives ne sont pas cochables. */}
+          les objectifs reliés à des initiatives affichent un cadenas et le
+          bandeau ci-dessous explique pourquoi rien n'est sélectionnable. */}
       {peutGerer && (
         <div className="carte vue-bar">
           <label>
@@ -204,6 +209,7 @@ export default function ObjectifsPage() {
             <span className="texte-muet">
               {' — '}
               {t('objectifs.selectionnees', { n: selection.length })}
+              {verrouillees > 0 && ` — ${t('objectifs.verrouillees', { n: verrouillees })}`}
             </span>
           </label>
           <div className="actions">
@@ -224,6 +230,11 @@ export default function ObjectifsPage() {
               {t('objectifs.annulerSelection')}
             </button>
           </div>
+        </div>
+      )}
+      {peutGerer && verrouillees > 0 && objectifsAffichees.length === 0 && (
+        <div className="alerte alerte-info">
+          {t('objectifs.toutesVerrouillees', { n: verrouillees })}
         </div>
       )}
 
@@ -267,14 +278,21 @@ export default function ObjectifsPage() {
                       </div>
                       {peutGerer && (
                         <div className="actions">
-                          <input
-                            type="checkbox"
-                            checked={selection.includes(o.idObjectif)}
-                            onChange={() => basculer(o.idObjectif)}
-                            disabled={!supprimable(o)}
-                            title={supprimable(o) ? undefined : t('objectifs.caseLiee', { n: liste.length })}
-                            aria-label={t('objectifs.caseSelection', { libelle: o.libelle })}
-                          />
+                          {supprimable(o) ? (
+                            <input
+                              type="checkbox"
+                              checked={selection.includes(o.idObjectif)}
+                              onChange={() => basculer(o.idObjectif)}
+                              aria-label={t('objectifs.caseSelection', { libelle: o.libelle })}
+                            />
+                          ) : (
+                            <span
+                              className="badge badge-gris"
+                              title={t('objectifs.caseLiee', { n: liste.length })}
+                            >
+                              <IconCadenas size={13} /> {t('objectifs.verrouillee')}
+                            </span>
+                          )}
                           <button
                             className="btn btn-petit btn-secondaire"
                             onClick={() => { setEdition(o.idObjectif); setForm({ code: o.code, libelle: o.libelle, description: o.description ?? '' }); setNouveau(false); }}
