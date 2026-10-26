@@ -10,6 +10,7 @@ import ma.it6.portefeuille.controller.EtapeController;
 import ma.it6.portefeuille.controller.HistoriqueConnexionController;
 import ma.it6.portefeuille.controller.HistoriqueStatutController;
 import ma.it6.portefeuille.controller.InitiativeController;
+import ma.it6.portefeuille.controller.ObjectifController;
 import ma.it6.portefeuille.controller.UtilisateurController;
 import ma.it6.portefeuille.dto.AssistantIaResponse;
 import ma.it6.portefeuille.dto.StatutIaResponse;
@@ -27,6 +28,7 @@ import ma.it6.portefeuille.service.EtapeService;
 import ma.it6.portefeuille.service.HistoriqueConnexionService;
 import ma.it6.portefeuille.service.HistoriqueStatutService;
 import ma.it6.portefeuille.service.InitiativeService;
+import ma.it6.portefeuille.service.ObjectifService;
 import ma.it6.portefeuille.service.UtilisateurService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -88,6 +90,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         HistoriqueConnexionController.class,
         EtapeController.class,
         UtilisateurController.class,
+        ObjectifController.class,
         DashboardController.class,
         BudgetController.class,
         AuthController.class,
@@ -110,6 +113,8 @@ class SecuriteApiTest {
     // ---- Services applicatifs simulés (la sécurité ne doit pas les appeler) ----
     @MockitoBean
     private InitiativeService initiativeService;
+    @MockitoBean
+    private ObjectifService objectifService;
     @MockitoBean
     private EtapeService etapeService;
     @MockitoBean
@@ -503,6 +508,33 @@ class SecuriteApiTest {
                     .andExpect(status().isForbidden());
             mockMvc.perform(delete("/api/historique-connexions")
                             .with(auth("UTILISATEUR_GERER")))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("objectifs : lecture à tout compte connecté, suppression réservée à INITIATIVE_MODIFIER")
+        void objectifs() throws Exception {
+            when(objectifService.lister()).thenReturn(List.of());
+
+            // Lecture du référentiel : tout compte authentifié suffit.
+            mockMvc.perform(get("/api/objectifs"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(get("/api/objectifs")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isOk());
+
+            // Suppression : même droit que la création et la modification
+            // (règle SecurityConfig existante, aucun nouveau droit créé).
+            mockMvc.perform(delete("/api/objectifs/7"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(delete("/api/objectifs/7")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete("/api/objectifs/7")
+                            .with(auth("UTILISATEUR_GERER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete("/api/objectifs/7")
+                            .with(auth("INITIATIVE_MODIFIER")))
                     .andExpect(status().isNoContent());
         }
     }

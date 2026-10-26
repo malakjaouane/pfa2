@@ -38,4 +38,22 @@ public class ObjectifController {
                                                 @Valid @RequestBody ObjectifRequest request) {
         return ResponseEntity.ok(objectifService.modifier(id, request));
     }
+
+    /**
+     * Suppression définitive d'un objectif — le droit existant
+     * {@code INITIATIVE_MODIFIER} s'applique (SecurityConfig, même règle
+     * que la création et la modification : aucun nouveau droit créé).
+     *
+     * <p>Refus <strong>400</strong> si l'objectif est référencé par au
+     * moins une initiative (la clé étrangère est en
+     * {@code ON DELETE SET NULL} : le détachement silencieux perdrait
+     * l'alignement stratégique), <strong>404</strong> s'il n'existe pas.</p>
+     *
+     * @return {@code 204} si l'objectif a été supprimé
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> supprimer(@PathVariable Long id) {
+        objectifService.supprimer(id);
+        return ResponseEntity.noContent().build();
+    }
 }

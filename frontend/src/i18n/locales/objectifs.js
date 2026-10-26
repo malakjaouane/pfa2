@@ -23,7 +23,16 @@ export default {
     'objectifs.kpi.initiativesRattachees': 'initiatives rattachées',
     'objectifs.aucuneInitiative': 'Aucune initiative rattachée.',
     'objectifs.info.cree': 'Objectif créé.',
-    'objectifs.info.misAJour': 'Objectif mis à jour.'
+    'objectifs.info.misAJour': 'Objectif mis à jour.',
+    'objectifs.info.supprimees': '{n} objectif(s) supprimé(s).',
+    'objectifs.selectionnees': '{n} sélectionnée(s)',
+    'objectifs.supprimerSelection': 'Supprimer ({n})',
+    'objectifs.annulerSelection': 'Tout désélectionner',
+    'objectifs.confirmSupprimerSelection': 'Supprimer définitivement les {n} objectif(s) sélectionné(s) ? Cette action est irréversible.',
+    'objectifs.erreurPartielle': '{n} supprimé(s), {echecs} en échec : {detail}',
+    'objectifs.selectionnerTout': 'Tout sélectionner',
+    'objectifs.caseSelection': 'Sélectionner l\'objectif « {libelle} »',
+    'objectifs.caseLiee': 'Référencé par {n} initiative(s) — suppression impossible'
   },
 
   en: {
@@ -49,7 +58,16 @@ export default {
     'objectifs.kpi.initiativesRattachees': 'linked initiatives',
     'objectifs.aucuneInitiative': 'No linked initiative.',
     'objectifs.info.cree': 'Objective created.',
-    'objectifs.info.misAJour': 'Objective updated.'
+    'objectifs.info.misAJour': 'Objective updated.',
+    'objectifs.info.supprimees': '{n} objective(s) deleted.',
+    'objectifs.selectionnees': '{n} selected',
+    'objectifs.supprimerSelection': 'Delete ({n})',
+    'objectifs.annulerSelection': 'Clear selection',
+    'objectifs.confirmSupprimerSelection': 'Permanently delete the {n} selected objective(s)? This cannot be undone.',
+    'objectifs.erreurPartielle': '{n} deleted, {echecs} failed: {detail}',
+    'objectifs.selectionnerTout': 'Select all',
+    'objectifs.caseSelection': 'Select objective "{libelle}"',
+    'objectifs.caseLiee': 'Referenced by {n} initiative(s) — cannot be deleted'
   },
 
   ar: {
@@ -75,7 +93,16 @@ export default {
     'objectifs.kpi.initiativesRattachees': 'مبادرات مرتبطة',
     'objectifs.aucuneInitiative': 'لا توجد مبادرة مرتبطة.',
     'objectifs.info.cree': 'تم إنشاء الهدف.',
-    'objectifs.info.misAJour': 'تم تحديث الهدف.'
+    'objectifs.info.misAJour': 'تم تحديث الهدف.',
+    'objectifs.info.supprimees': 'تم حذف {n} هدف.',
+    'objectifs.selectionnees': '{n} محددة',
+    'objectifs.supprimerSelection': 'حذف ({n})',
+    'objectifs.annulerSelection': 'إلغاء التحديد',
+    'objectifs.confirmSupprimerSelection': 'حذف نهائيًا لـ {n} هدف محدد؟ لا يمكن التراجع عن هذا الإجراء.',
+    'objectifs.erreurPartielle': 'تم حذف {n} وفشل {echecs}: {detail}',
+    'objectifs.selectionnerTout': 'تحديد الكل',
+    'objectifs.caseSelection': 'تحديد الهدف «{libelle}»',
+    'objectifs.caseLiee': 'مرتبط بـ {n} مبادرة — لا يمكن الحذف'
   },
 
   es: {
@@ -101,6 +128,15 @@ export default {
     'objectifs.kpi.initiativesRattachees': 'iniciativas vinculadas',
     'objectifs.aucuneInitiative': 'Ninguna iniciativa vinculada.',
     'objectifs.info.cree': 'Objetivo creado.',
-    'objectifs.info.misAJour': 'Objetivo actualizado.'
+    'objectifs.info.misAJour': 'Objetivo actualizado.',
+    'objectifs.info.supprimees': '{n} objetivo(s) eliminado(s).',
+    'objectifs.selectionnees': '{n} seleccionada(s)',
+    'objectifs.supprimerSelection': 'Eliminar ({n})',
+    'objectifs.annulerSelection': 'Deseleccionar todo',
+    'objectifs.confirmSupprimerSelection': '¿Eliminar definitivamente los {n} objetivo(s) seleccionado(s)? Esta acción no se puede deshacer.',
+    'objectifs.erreurPartielle': '{n} eliminados, {echecs} fallidos: {detail}',
+    'objectifs.selectionnerTout': 'Seleccionar todo',
+    'objectifs.caseSelection': 'Seleccionar el objetivo «{libelle}»',
+    'objectifs.caseLiee': 'Referenciado por {n} iniciativa(s) — no se puede eliminar'
   }
 };

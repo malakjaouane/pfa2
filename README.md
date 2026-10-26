@@ -196,7 +196,11 @@ n'est ni versionnée ni journalisée côté serveur.
   dates réelles, barres colorées par statut, ligne « aujourd'hui », initiatives
   non planifiées listées à part.
 - **Objectifs stratégiques** (`/objectifs`) : référentiel, rattachement des
-  initiatives (formulaire + fiche + filtre + graphique dashboard).
+  initiatives (formulaire + fiche + filtre + graphique dashboard), et
+  **barre de suppression en lot** (mêmes cases à cocher que Demandes) —
+  désactivées dès qu'un objectif est relié à au moins une initiative,
+  **archivée comprise** (le serveur refuse en 400 : la clé étrangère est
+  en `ON DELETE SET NULL`, détacher silencieusement perdrait l'alignement).
 - **Demandes d'initiatives** (`/demandes`) : workflow à états contrôlés
   `Brouillon → Soumise → En évaluation → Acceptée/Refusée`, refus avec motif
   facultatif, transformation en initiative (code `DEM-xxxxxx`, aucune création
@@ -300,7 +304,9 @@ et initiatives à risque) et `UtilisateurServiceTest` (suppression définitive
 d'un compte : propre compte, dernier admin actif, compte porteur de demandes —
 trois refus 400) et `HistoriqueConnexionServiceTest` (écriture de chaque
 tentative de connexion, normalisation e-mail, filtres/tri/pagination, 404 et
-purge). **169 tests, 0 échec.**
+purge), `ObjectifServiceTest` (suppression d'objectif : parcours nominal,
+refus 400 quand l'objectif est référencé, 404) et la règle d'URL
+`DELETE /objectifs` dans `SecuriteApiTest`. **173 tests, 0 échec.**
 
 ### Tests fonctionnels de l'API
 
@@ -337,7 +343,10 @@ message quand le compte porte des demandes) et l'**historique des connexions**
 (admin seuls en lecture : 401 / 403, 200 + `X-Total-Count`, recherche par
 e-mail, filtre « échouées » après une tentative réelle, période inversée →
 400, POST interdit, suppression de ligne 401/403/404/204, purge refusée hors
-administrateur). **204 scénarios, 0 échec.**
+administrateur), et la **suppression d'objectif** de la section 10 (401
+anonyme, 403 sans `INITIATIVE_MODIFIER`, 400 si l'objectif est référencé
+par une initiative, 404 id inconnu, 204 puis ré-DELETE 404).
+**211 scénarios, 0 échec.**
 
 Après une campagne de tests, purgez les résidus (initiatives `TEST*` archivées,
 initiatives issues de demandes de test `DEM-*`, demandes `TEST-DEM*`, objectifs
@@ -364,8 +373,9 @@ Points connus et acceptés pour un prototype, à traiter avant une mise en produ
   sinon.
 - **Droits par rôle, non par initiative** : un responsable disposant de
   `INITIATIVE_MODIFIER` peut modifier toute initiative non archivée.
-- **Objectifs stratégiques** : pas de permission dédiée ; l'écriture exige
-  `INITIATIVE_MODIFIER`.
+- **Objectifs stratégiques** : pas de permission dédiée ; l'écriture comme la
+  suppression exigent `INITIATIVE_MODIFIER` (la suppression refuse en 400
+  un objectif référencé par au moins une initiative, archivées comprises).
 
 ---
 

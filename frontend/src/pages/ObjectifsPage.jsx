@@ -26,12 +26,25 @@ export default function ObjectifsPage() {
   const [soumission, setSoumission] = useState(false);
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
+  // Objectifs cochés dans la barre de suppression en lot.
+  const [selection, setSelection] = useState([]);
 
   const charger = () => {
-    Promise.all([api.get('/objectifs'), api.get('/initiatives')])
-      .then(([obj, init]) => {
+    Promise.all([
+      api.get('/objectifs'),
+      api.get('/initiatives'),
+      api.get('/initiatives?archive=true')
+    ])
+      .then(([obj, init, archivees]) => {
         setObjectifs(obj.data);
-        setInitiatives(init.data);
+        // Le serveur compte TOUTES les initiatives rattachées — y compris
+        // les archivées — pour refuser (400) la suppression d'un objectif.
+        // La liste par défaut exclut les archivées : on cumule les deux
+        // appels pour que la case soit désactivée aussi sur ces objectifs.
+        setInitiatives([...init.data, ...archivees.data]);
+        // Le rechargement repart d'une sélection vide : on ne supprime
+        // jamais des cartes qui ne sont plus affichées.
+        setSelection([]);
       })
       .catch((err) => setErreur(messageErreur(err)))
       .finally(() => setChargement(false));
@@ -53,6 +66,62 @@ export default function ObjectifsPage() {
     });
     return m;
   }, [initiatives]);
+
+  /**
+   * Un objectif se coche seulement s'il est relié à zéro initiative :
+   * la clé étrangère `initiative.id_objectif` est en
+   * `ON DELETE SET NULL`, le serveur refuserait en 400 — on désactive
+   * la case plutôt que de proposer une suppression qui échoue.
+   */
+  const supprimable = (o) => (rattachees.get(o.idObjectif) ?? []).length === 0;
+
+  const objectifsAffichees = objectifs.filter(supprimable);
+  const toutesCochees = objectifsAffichees.length > 0
+    && objectifsAffichees.every((o) => selection.includes(o.idObjectif));
+
+  const basculer = (id) =>
+    setSelection((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
+  const toutSelectionner = () =>
+    setSelection(toutesCochees ? [] : objectifsAffichees.map((o) => o.idObjectif));
+
+  /**
+   * Suppression en lot depuis la barre de sélection : une seule
+   * confirmation, puis un `DELETE` par objectif choisi — les garde-fous
+   * serveur (droits `INITIATIVE_MODIFIER`, objectif référencé) restent
+   * appliqués carte à carte. Un échec partiel est annoncé avec le
+   * détail du premier refus.
+   */
+  const supprimerSelection = async () => {
+    const cibles = objectifs.filter((o) => selection.includes(o.idObjectif) && supprimable(o));
+    if (cibles.length === 0) return;
+    if (!window.confirm(t('objectifs.confirmSupprimerSelection', { n: cibles.length }))) return;
+
+    let supprimes = 0;
+    const echecs = [];
+    for (const o of cibles) {
+      try {
+        await api.delete(`/objectifs/${o.idObjectif}`);
+        supprimes += 1;
+      } catch (err) {
+        echecs.push(`${o.code} — ${afficherMessage(t, messageErreur(err))}`);
+      }
+    }
+
+    setSelection([]);
+    setEdition(null);
+    if (echecs.length === 0) {
+      setErreur('');
+      setInfo({ cle: 'objectifs.info.supprimees', params: { n: supprimes } });
+    } else {
+      if (supprimes > 0) setInfo({ cle: 'objectifs.info.supprimees', params: { n: supprimes } });
+      setErreur({
+        cle: 'objectifs.erreurPartielle',
+        params: { n: supprimes, echecs: echecs.length, detail: echecs[0] }
+      });
+    }
+    charger();
+  };
 
   const enregistrer = async (e) => {
     e.preventDefault();
@@ -118,6 +187,46 @@ export default function ObjectifsPage() {
         </form>
       )}
 
+      {/* Barre de suppression en lot : présente dès l'arrivée sur la page
+          (bouton inactif sans sélection) pour que l'action soit trouvable —
+          les objectifs reliés à des initiatives ne sont pas cochables. */}
+      {peutGerer && (
+        <div className="carte vue-bar">
+          <label>
+            <input
+              type="checkbox"
+              checked={toutesCochees}
+              onChange={toutSelectionner}
+              disabled={objectifsAffichees.length === 0}
+              aria-label={t('objectifs.selectionnerTout')}
+            />
+            {t('objectifs.selectionnerTout')}
+            <span className="texte-muet">
+              {' — '}
+              {t('objectifs.selectionnees', { n: selection.length })}
+            </span>
+          </label>
+          <div className="actions">
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={supprimerSelection}
+              disabled={selection.length === 0}
+            >
+              {t('objectifs.supprimerSelection', { n: selection.length })}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondaire"
+              onClick={() => setSelection([])}
+              disabled={selection.length === 0}
+            >
+              {t('objectifs.annulerSelection')}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="roles-grille">
         {chargement ? (
           <div className="center-page">{t('objectifs.chargement')}</div>
@@ -157,12 +266,22 @@ export default function ObjectifsPage() {
                         <h3 style={{ margin: '8px 0 4px' }}>{o.libelle}</h3>
                       </div>
                       {peutGerer && (
-                        <button
-                          className="btn btn-petit btn-secondaire"
-                          onClick={() => { setEdition(o.idObjectif); setForm({ code: o.code, libelle: o.libelle, description: o.description ?? '' }); setNouveau(false); }}
-                        >
-                          {t('objectifs.modifier')}
-                        </button>
+                        <div className="actions">
+                          <input
+                            type="checkbox"
+                            checked={selection.includes(o.idObjectif)}
+                            onChange={() => basculer(o.idObjectif)}
+                            disabled={!supprimable(o)}
+                            title={supprimable(o) ? undefined : t('objectifs.caseLiee', { n: liste.length })}
+                            aria-label={t('objectifs.caseSelection', { libelle: o.libelle })}
+                          />
+                          <button
+                            className="btn btn-petit btn-secondaire"
+                            onClick={() => { setEdition(o.idObjectif); setForm({ code: o.code, libelle: o.libelle, description: o.description ?? '' }); setNouveau(false); }}
+                          >
+                            {t('objectifs.modifier')}
+                          </button>
+                        </div>
                       )}
                     </div>
                     {o.description && <p className="texte-muet">{o.description}</p>}

@@ -229,6 +229,7 @@ son accès à la requête suivante.
 | GET | `/objectifs` | connecté | Référentiel des objectifs stratégiques |
 | POST | `/objectifs` | `INITIATIVE_MODIFIER` | Création (code unique) |
 | PUT | `/objectifs/{id}` | `INITIATIVE_MODIFIER` | Modification |
+| DELETE | `/objectifs/{id}` | `INITIATIVE_MODIFIER` | Suppression définitive (204) |
 
 Corps (`ObjectifRequest`) :
 
@@ -241,6 +242,15 @@ Réponse (`ObjectifDto`) :
 ```json
 { "idObjectif": 3, "code": "OBJ-CLOUD", "libelle": "Moderniser vers le cloud", "description": "…" }
 ```
+
+**Suppression** : `204` si l'objectif est supprimé, `404` si l'id
+n'existe pas, `400` avec message détaillé s'il est référencé par au
+moins une initiative (**archivées comprises** — le serveur compte toutes
+les initiatives rattachées). La clé étrangère `initiative.id_objectif`
+est en `ON DELETE SET NULL` : sans ce garde-fou, MySQL détacherait
+silencieusement les initiatives et le portefeuille perdrait son
+alignement stratégique. On détache d'abord (champ « Objectif » de
+l'initiative), on supprime ensuite.
 
 Rattachement : une initiative est liée à un objectif via `idObjectif` (nullable) dans
 `InitiativeRequest`. Le filtre `GET /initiatives?objectif={id}` restreint la liste.

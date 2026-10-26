@@ -119,12 +119,15 @@ test fonctionnel `tests-api.ps1`).
   d'une barre de recherche ; la suppression suit les droits existants —
   demandes (`DEMANDE_EVALUER`, 400 si déjà transformée, **sélection multiple
   en lot** : cases à cocher + barre « Supprimer (n) » avec une seule
-  confirmation), initiatives
+  confirmation), **objectifs** (`INITIATIVE_MODIFIER`, 400 si référencé par
+  au moins une initiative **archivée comprise** — même barre de sélection
+  en lot que les demandes), initiatives
   uniquement archivées (`INITIATIVE_ARCHIVER`), purge du journal réservée à
-  `UTILISATEUR_GERER`. Couvert par 15 scénarios fonctionnels (sections 11 et
-  12), 11 tests JUnit (recherche `%…%`, refus 400/404, règles d'URL) et le
-  e2e navigateur (sélection de 2 demandes → suppression en lot → reste
-  démo intacte).
+  `UTILISATEUR_GERER`. Couvert par 22 scénarios fonctionnels (sections 10 à
+  12), 15 tests JUnit (recherche `%…%`, refus 400/404, règles d'URL,
+  suppression d'objectif) et le e2e navigateur (sélection → suppression en
+  lot sur demandes **et** objectifs, refus serveur remonté en cas d'échec
+  partiel, données de démo intactes).
 - **P5 (comptes et journal des accès)** : les comptes se suppriment
   définitivement (bouton masqué sur son propre compte), le serveur refusant
   en 400 son propre compte, le dernier administrateur actif et un compte qui
@@ -141,7 +144,7 @@ test fonctionnel `tests-api.ps1`).
 - **Score de santé** : 5 scénarios fonctionnels (section 3 de `tests-api.ps1`) et
   13 tests JUnit (`CalculeurSanteTest`) : niveau + motif sur liste/fiche/surveillance,
   rouge sur initiative en retard, `null` sur les écritures.
-- **Bilan chiffré** : **169 tests JUnit** et **204 scénarios fonctionnels**,
+- **Bilan chiffré** : **173 tests JUnit** et **211 scénarios fonctionnels**,
   0 échec (dernière campagne). Deux scénarios contrôlent les KPI d'accueil
   personnalisé : `jalonsSemaine` (jalons non atteints du jour au dimanche
   courant) et `initiativesARisque` (santé ORANGE ou ROUGE recalculée depuis la

@@ -442,6 +442,32 @@ $annuleObjInit = Invoke-Api 'Put' "$Base/initiatives/$idInitObj" $corpsObjInit $
 $archObjInit = Invoke-Api 'Patch' "$Base/initiatives/$idInitObj/archive" $null $adminToken
 Test-Check 'Nettoyage : initiative rattachée clôturée' ($annuleObjInit.OK -and $archObjInit.OK -and $archObjInit.Body.archive -eq $true)
 
+# --- Suppression d'objectif (DELETE) : droit INITIATIVE_MODIFIER,
+# --- déjà imposé par SecurityConfig pour POST/PUT — aucun nouveau droit créé.
+$objDelAnon = Invoke-Api 'Delete' "$Base/objectifs/999999" $null $null
+Test-Check 'Objectifs : DELETE anonyme -> 401' ($objDelAnon.Status -eq 401)
+$objDelVis = Invoke-Api 'Delete' "$Base/objectifs/$idObjTest" $null $visiteurToken
+Test-Check 'Objectifs : DELETE sans INITIATIVE_MODIFIER -> 403' ($objDelVis.Status -eq 403)
+
+# L'objectif TEST est référencé par une initiative : la clé étrangère
+# initiative.id_objectif est en ON DELETE SET NULL — le serveur refuse
+# en 400 plutôt que de détacher silencieusement l'initiative.
+$objLie = Invoke-Api 'Delete' "$Base/objectifs/$idObjTest" $null $adminToken
+Test-Check 'Objectifs : DELETE avec initiative rattachée -> 400' ($objLie.OK -eq $false -and $objLie.Status -eq 400 -and "$($objLie.Body.message)" -match 'initiative') "($($objLie.Status))"
+
+# Le responsable a le droit : un id inexistant renvoie 404 (jamais 403).
+$objInconnu = Invoke-Api 'Delete' "$Base/objectifs/999999" $null $responsableToken
+Test-Check 'Objectifs : DELETE id inconnu -> 404' ($objInconnu.Status -eq 404)
+
+# Parcours nominal : création dédiée -> 204 -> second DELETE -> 404.
+$objDelCree = Invoke-Api 'Post' "$Base/objectifs" @{ code = "TEST-OBJ-DEL-$suffixe"; libelle = 'Objectif à supprimer'; description = 'Créé puis supprimé par les tests' } $adminToken
+$idObjDel = $objDelCree.Body.idObjectif
+Test-Check 'Objectifs : création pour suppression -> 201' ($objDelCree.OK -and $idObjDel -gt 0)
+$objSuppr = Invoke-Api 'Delete' "$Base/objectifs/$idObjDel" $null $adminToken
+Test-Check 'Objectifs : DELETE -> 204' ($objSuppr.Status -eq 204)
+$objReSuppr = Invoke-Api 'Delete' "$Base/objectifs/$idObjDel" $null $adminToken
+Test-Check 'Objectifs : ré-DELETE -> 404' ($objReSuppr.Status -eq 404)
+
 Write-Output '=== 11. Demandes d''initiatives (workflow SPM) ==='
 $demVisiteur = Invoke-Api 'Get' "$Base/demandes" $null $visiteurToken
 Test-Check 'Demandes : visiteur accès interdit -> 403' ($demVisiteur.OK -eq $false -and $demVisiteur.Status -eq 403) "($($demVisiteur.Status))"
