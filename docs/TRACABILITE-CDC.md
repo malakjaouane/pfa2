@@ -117,10 +117,14 @@ test fonctionnel `tests-api.ps1`).
   administrateur (401/403 pour anonyme, visiteur et responsable).
 - **P4 (recherche et suppression)** : les trois écrans de listes disposent
   d'une barre de recherche ; la suppression suit les droits existants —
-  demandes (`DEMANDE_EVALUER`, 400 si déjà transformée), initiatives
+  demandes (`DEMANDE_EVALUER`, 400 si déjà transformée, **sélection multiple
+  en lot** : cases à cocher + barre « Supprimer (n) » avec une seule
+  confirmation), initiatives
   uniquement archivées (`INITIATIVE_ARCHIVER`), purge du journal réservée à
   `UTILISATEUR_GERER`. Couvert par 15 scénarios fonctionnels (sections 11 et
-  12) et 11 tests JUnit (recherche `%…%`, refus 400/404, règles d'URL).
+  12), 11 tests JUnit (recherche `%…%`, refus 400/404, règles d'URL) et le
+  e2e navigateur (sélection de 2 demandes → suppression en lot → reste
+  démo intacte).
 - **P5 (comptes et journal des accès)** : les comptes se suppriment
   définitivement (bouton masqué sur son propre compte), le serveur refusant
   en 400 son propre compte, le dernier administrateur actif et un compte qui

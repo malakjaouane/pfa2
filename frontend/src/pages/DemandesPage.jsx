@@ -56,6 +56,8 @@ export default function DemandesPage() {
   const [soumission, setSoumission] = useState(false);
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
+  // Demandes cochées dans la barre de suppression en lot.
+  const [selection, setSelection] = useState([]);
 
   const libelleStatut = (libelle) =>
     libelle && CLES_STATUT_DEMANDE[libelle] ? t(CLES_STATUT_DEMANDE[libelle]) : libelle;
@@ -76,6 +78,9 @@ export default function DemandesPage() {
         setDemandes(d.data);
         setEntites(en.data);
         setPriorites(pr.data);
+        // Le rechargement repart d'une sélection vide : on ne supprime
+        // jamais des lignes qui ne sont plus affichées.
+        setSelection([]);
       })
       .catch((err) => setErreur(messageErreur(err)))
       .finally(() => setChargement(false));
@@ -199,6 +204,60 @@ export default function DemandesPage() {
     }
   };
 
+  /**
+   * Une demande se coche si le compte peut l'évaluer ET si elle n'est pas
+   * déjà transformée en initiative (le serveur refuserait en 400 : la
+   * transformation lie les deux dossiers).
+   */
+  const supprimable = (d) => peutEvaluer && !d.initiativeLiee;
+
+  const demandesAffichees = demandes.filter(supprimable);
+  const toutesCochees = demandesAffichees.length > 0
+    && demandesAffichees.every((d) => selection.includes(d.idDemande));
+
+  const basculer = (id) =>
+    setSelection((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
+  const toutSelectionner = () =>
+    setSelection(toutesCochees ? [] : demandesAffichees.map((d) => d.idDemande));
+
+  /**
+   * Suppression en lot depuis la barre de sélection : une seule
+   * confirmation, puis un `DELETE` par demande choisie — les garde-fous
+   * serveur (transformée, droits) restent appliqués ligne à ligne. Un
+   * échec partiel est annoncé avec le détail du premier refus, et les
+   * demandes supprimées sont comptées.
+   */
+  const supprimerSelection = async () => {
+    const cibles = demandes.filter((d) => selection.includes(d.idDemande) && supprimable(d));
+    if (cibles.length === 0) return;
+    if (!window.confirm(t('demandes.confirmSupprimerSelection', { n: cibles.length }))) return;
+
+    let supprimees = 0;
+    const echecs = [];
+    for (const d of cibles) {
+      try {
+        await api.delete(`/demandes/${d.idDemande}`);
+        supprimees += 1;
+      } catch (err) {
+        echecs.push(`${d.titre} — ${afficherMessage(t, messageErreur(err))}`);
+      }
+    }
+
+    setSelection([]);
+    if (echecs.length === 0) {
+      setErreur('');
+      setInfo({ cle: 'demandes.infoSupprimees', params: { n: supprimees } });
+    } else {
+      if (supprimees > 0) setInfo({ cle: 'demandes.infoSupprimees', params: { n: supprimees } });
+      setErreur({
+        cle: 'demandes.erreurPartielle',
+        params: { n: supprimees, echecs: echecs.length, detail: echecs[0] }
+      });
+    }
+    charger();
+  };
+
   return (
     <div className="page">
       <header className="page-entete">
@@ -279,6 +338,35 @@ export default function DemandesPage() {
         </div>
       </form>
 
+      {/* Barre de suppression en lot : présente dès l'arrivée sur la page
+          (bouton inactif sans sélection) pour que l'action soit trouvable —
+          les lignes transformées en initiative ne sont pas cochables. */}
+      {peutEvaluer && (
+        <div className="carte vue-bar">
+          <span className="texte-muet">
+            {t('demandes.selectionnees', { n: selection.length })}
+          </span>
+          <div className="actions">
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={supprimerSelection}
+              disabled={selection.length === 0}
+            >
+              {t('demandes.supprimerSelection', { n: selection.length })}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondaire"
+              onClick={() => setSelection([])}
+              disabled={selection.length === 0}
+            >
+              {t('demandes.annulerSelection')}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="carte">
         <div className="table-enveloppe">
           {chargement ? (
@@ -289,6 +377,17 @@ export default function DemandesPage() {
             <table className="table">
               <thead>
                 <tr>
+                  {peutEvaluer && (
+                    <th>
+                      <input
+                        type="checkbox"
+                        checked={toutesCochees}
+                        onChange={toutSelectionner}
+                        disabled={demandesAffichees.length === 0}
+                        aria-label={t('demandes.selectionnerTout')}
+                      />
+                    </th>
+                  )}
                   <th>{t('demandes.colTitre')}</th>
                   <th>{t('demandes.colDemandeur')}</th>
                   <th>{t('demandes.colEntite')}</th>
@@ -301,6 +400,18 @@ export default function DemandesPage() {
               <tbody>
                 {demandes.map((d) => (
                   <tr key={d.idDemande}>
+                      {peutEvaluer && (
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={selection.includes(d.idDemande)}
+                            onChange={() => basculer(d.idDemande)}
+                            disabled={!supprimable(d)}
+                            title={supprimable(d) ? undefined : t('demandes.caseNonSupprimable')}
+                            aria-label={t('demandes.caseSelection', { titre: d.titre })}
+                          />
+                        </td>
+                      )}
                       <td>
                         <strong>{d.titre}</strong>
                         {d.justificationMetier && <div className="texte-muet"><small>{d.justificationMetier}</small></div>}

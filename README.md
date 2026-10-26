@@ -200,7 +200,11 @@ n'est ni versionnée ni journalisée côté serveur.
 - **Demandes d'initiatives** (`/demandes`) : workflow à états contrôlés
   `Brouillon → Soumise → En évaluation → Acceptée/Refusée`, refus avec motif
   facultatif, transformation en initiative (code `DEM-xxxxxx`, aucune création
-  en double).
+  en double). Recherche libre sur titre/besoin/justification, et **barre de
+  suppression en lot** : cases à cocher sur les lignes (désactivées sur les
+  demandes transformées), un « Supprimer (n) » avec compteur et une seule
+  confirmation — chaque `DELETE` garde les garde-fous serveur (`DEMANDE_EVALUER`,
+  400 si déjà transformée).
 - **Historique des statuts** (`/historique`) : journal global de tous les
   changements de statut — recherche par code ou nom
   d'initiative (insensible à la casse et aux accents), filtres statut,
