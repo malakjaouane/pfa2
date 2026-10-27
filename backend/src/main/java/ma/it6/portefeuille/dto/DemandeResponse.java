@@ -16,6 +16,8 @@ public record DemandeResponse(
         UserSummaryDto demandeur,
         PrioriteDto priorite,
         StatutDemandeDto statut,
-        InitiativeLieeDto initiativeLiee
+        InitiativeLieeDto initiativeLiee,
+        /** Vue « Archives » : {@code true} = masquée de la liste active. */
+        boolean archive
 ) {
 }

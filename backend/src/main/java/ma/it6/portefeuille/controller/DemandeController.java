@@ -35,12 +35,16 @@ public class DemandeController {
 
     /**
      * Liste des demandes — {@code recherche} filtre sur titre, description
-     * et justification (insensible à la casse, collation de la base).
+     * et justification (insensible à la casse, collation de la base),
+     * {@code archive=true} bascule sur la vue « Archives ». Les deux vues
+     * sont exclusives : sans paramètre, seules les demandes actives
+     * reviennent.
      */
     @GetMapping
     public ResponseEntity<List<DemandeResponse>> lister(
-            @RequestParam(required = false) String recherche) {
-        return ResponseEntity.ok(demandeService.lister(recherche));
+            @RequestParam(required = false) String recherche,
+            @RequestParam(required = false) Boolean archive) {
+        return ResponseEntity.ok(demandeService.lister(recherche, archive));
     }
 
     @GetMapping("/{id}")
@@ -53,6 +57,18 @@ public class DemandeController {
     public ResponseEntity<Void> supprimer(@PathVariable Long id) {
         demandeService.supprimer(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /** Bascule vers la vue « Archives » — seules les demandes terminées. */
+    @PatchMapping("/{id}/archive")
+    public ResponseEntity<DemandeResponse> archiver(@PathVariable Long id) {
+        return ResponseEntity.ok(demandeService.archiver(id));
+    }
+
+    /** Retour dans la vue « Actives » — annule l'archivage (réversible). */
+    @PatchMapping("/{id}/restaurer")
+    public ResponseEntity<DemandeResponse> restaurer(@PathVariable Long id) {
+        return ResponseEntity.ok(demandeService.restaurer(id));
     }
 
     @PostMapping

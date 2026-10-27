@@ -266,11 +266,17 @@ Brouillon → Soumise → En évaluation → Acceptée → (initiative créée, 
                           └─────────→ Refusée (motif facultatif)
 ```
 
+La page propose en outre une bascule **« Actives | Archives »** (`?archive=1`
+dans l'URL) : l'archivage masque une demande de la liste active **sans changer
+son statut** (comme pour les initiatives), et reste réversible.
+
 | Méthode | Route | Permission | Description |
 |---|---|---|---|
-| GET | `/demandes` | `DEMANDE_SOUMETTRE` ou `DEMANDE_EVALUER` | Liste des demandes — `?recherche=` filtre sur le titre, la description du besoin et la justification (jokers `%…%`, insensible à la casse et aux accents via `utf8mb4_unicode_ci`) |
+| GET | `/demandes` | `DEMANDE_SOUMETTRE` ou `DEMANDE_EVALUER` | Liste des demandes — `?recherche=` filtre sur le titre, la description du besoin et la justification (jokers `%…%`, insensible à la casse et aux accents via `utf8mb4_unicode_ci`) ; `?archive=true` bascule sur la vue « Archives ». Les deux vues sont **exclusives** : sans paramètre, seules les demandes **actives** reviennent |
 | GET | `/demandes/{id}` | idem | Détail d'une demande |
-| DELETE | `/demandes/{id}` | `DEMANDE_EVALUER` | Suppression définitive (**400** si la demande est déjà transformée en initiative) |
+| DELETE | `/demandes/{id}` | `DEMANDE_EVALUER` | Suppression définitive (**400** si la demande est déjà transformée en initiative) — utilisable depuis les deux vues (purge depuis les archives) |
+| PATCH | `/demandes/{id}/archive` | `DEMANDE_SOUMETTRE` ou `DEMANDE_EVALUER` | Archivage vers la vue « Archives » — **400** si la demande n'est pas « Acceptée » ou « Refusée » (jamais une demande en cours) ; idempotent. L'archivage n'est **pas** un statut : le workflow lui-même ne change pas |
+| PATCH | `/demandes/{id}/restaurer` | idem | Retour dans la vue « Actives » — réversible à tout moment, aucune condition de statut |
 | POST | `/demandes` | `DEMANDE_SOUMETTRE` | Création en « Brouillon » (demandeur = utilisateur connecté) |
 | PUT | `/demandes/{id}` | `DEMANDE_SOUMETTRE` | Modification (uniquement en « Brouillon ») |
 | POST | `/demandes/{id}/soumettre` | `DEMANDE_SOUMETTRE` | Brouillon → Soumise |

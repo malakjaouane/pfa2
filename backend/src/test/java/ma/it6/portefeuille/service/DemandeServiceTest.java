@@ -304,21 +304,21 @@ class DemandeServiceTest {
         @Test
         @DisplayName("construit le joker %...% autour du mot-clé saisi")
         void recherche_joker() {
-            when(demandeRepository.findAllFetch("%cloud%")).thenReturn(List.of(demande(soumise)));
+            when(demandeRepository.findAllFetch("%cloud%", false)).thenReturn(List.of(demande(soumise)));
 
-            assertThat(service.lister(" cloud ")).hasSize(1);
+            assertThat(service.lister(" cloud ", false)).hasSize(1);
 
-            verify(demandeRepository).findAllFetch("%cloud%");
+            verify(demandeRepository).findAllFetch("%cloud%", false);
         }
 
         @Test
         @DisplayName("sans mot-clé : aucun joker, liste complète")
         void recherche_sansMotCle() {
-            when(demandeRepository.findAllFetch(null)).thenReturn(List.of());
+            when(demandeRepository.findAllFetch(null, false)).thenReturn(List.of());
 
-            assertThat(service.lister(null)).isEmpty();
+            assertThat(service.lister(null, false)).isEmpty();
 
-            verify(demandeRepository).findAllFetch(null);
+            verify(demandeRepository).findAllFetch(null, false);
         }
     }
 
@@ -361,6 +361,114 @@ class DemandeServiceTest {
                     .isInstanceOf(ResourceNotFoundException.class);
 
             verify(demandeRepository, never()).delete(any(DemandeInitiative.class));
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Archivage (bascule « Actives | Archives »)
+    // ------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Archivage - vue Actives | Archives")
+    class Archivage {
+
+        @Test
+        @DisplayName("archive une demande « Acceptée » sans toucher à son statut")
+        void archiver_acceptee() {
+            DemandeInitiative demande = demande(acceptee);
+            when(demandeRepository.findById(1L)).thenReturn(Optional.of(demande));
+
+            DemandeResponse reponse = service.archiver(1L);
+
+            assertThat(reponse.archive()).isTrue();
+            assertThat(reponse.statut().libelle()).isEqualTo(DemandeService.STATUT_ACCEPTEE);
+            verify(demandeRepository).save(demande);
+        }
+
+        @Test
+        @DisplayName("archive une demande « Refusée » (état terminal)")
+        void archiver_refusee() {
+            DemandeInitiative demande = demande(refusee);
+            when(demandeRepository.findById(1L)).thenReturn(Optional.of(demande));
+
+            assertThat(service.archiver(1L).archive()).isTrue();
+
+            verify(demandeRepository).save(demande);
+        }
+
+        @Test
+        @DisplayName("refuse d'archiver une demande « Brouillon » -> 400")
+        void archiver_brouillon() {
+            when(demandeRepository.findById(1L)).thenReturn(Optional.of(demande(brouillon)));
+
+            assertThatThrownBy(() -> service.archiver(1L))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining(DemandeService.STATUT_ACCEPTEE)
+                    .hasMessageContaining(DemandeService.STATUT_BROUILLON);
+
+            verify(demandeRepository, never()).save(any(DemandeInitiative.class));
+        }
+
+        @Test
+        @DisplayName("refuse d'archiver une demande en cours d'évaluation -> 400")
+        void archiver_enEvaluation() {
+            when(demandeRepository.findById(1L)).thenReturn(Optional.of(demande(enEvaluation)));
+
+            assertThatThrownBy(() -> service.archiver(1L))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining(DemandeService.STATUT_EN_EVALUATION);
+
+            verify(demandeRepository, never()).save(any(DemandeInitiative.class));
+        }
+
+        @Test
+        @DisplayName("déjà archivée : réponse immédiate, aucune écriture")
+        void archiver_dejaArchivee() {
+            DemandeInitiative demande = demande(acceptee);
+            demande.setArchive(true);
+            when(demandeRepository.findById(1L)).thenReturn(Optional.of(demande));
+
+            assertThat(service.archiver(1L).archive()).isTrue();
+
+            verify(demandeRepository, never()).save(any(DemandeInitiative.class));
+        }
+
+        @Test
+        @DisplayName("demande inexistante : 404, rien n'est écrit")
+        void archiver_introuvable() {
+            when(demandeRepository.findById(404L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.archiver(404L))
+                    .isInstanceOf(ResourceNotFoundException.class);
+
+            verify(demandeRepository, never()).save(any(DemandeInitiative.class));
+        }
+
+        @Test
+        @DisplayName("restaure une demande archivée vers la liste active")
+        void restaurer_retourActive() {
+            DemandeInitiative demande = demande(refusee);
+            demande.setArchive(true);
+            when(demandeRepository.findById(1L)).thenReturn(Optional.of(demande));
+
+            DemandeResponse reponse = service.restaurer(1L);
+
+            assertThat(reponse.archive()).isFalse();
+            verify(demandeRepository).save(demande);
+        }
+
+        @Test
+        @DisplayName("vue Archives : le filtre « archive » est transmis au dépôt")
+        void lister_vueArchives() {
+            DemandeInitiative archivee = demande(acceptee);
+            archivee.setArchive(true);
+            when(demandeRepository.findAllFetch(null, true)).thenReturn(List.of(archivee));
+
+            List<DemandeResponse> lignes = service.lister(null, true);
+
+            assertThat(lignes).hasSize(1);
+            assertThat(lignes.get(0).archive()).isTrue();
+            verify(demandeRepository).findAllFetch(null, true);
         }
     }
 }

@@ -246,6 +246,7 @@ CREATE TABLE IF NOT EXISTS demande_initiative (
     id_priorite         BIGINT       NOT NULL,
     id_statut_demande   BIGINT       NOT NULL,
     id_initiative_liee  BIGINT       NULL,
+    archive             BOOLEAN      NOT NULL DEFAULT FALSE,
     PRIMARY KEY (id_demande),
     CONSTRAINT fk_demande_entite     FOREIGN KEY (id_entite)          REFERENCES entite (id_entite),
     CONSTRAINT fk_demande_demandeur  FOREIGN KEY (id_demandeur)       REFERENCES utilisateur (id_user),
@@ -254,6 +255,18 @@ CREATE TABLE IF NOT EXISTS demande_initiative (
     CONSTRAINT fk_demande_initiative FOREIGN KEY (id_initiative_liee) REFERENCES initiative (id_initiative) ON DELETE SET NULL,
     CONSTRAINT uq_demande_initiative UNIQUE (id_initiative_liee)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Migration douce : colonne « archive » de la bascule Actives | Archives —
+-- même garde que pour id_objectif (MySQL ignore « ADD COLUMN IF NOT
+-- EXISTS ») : no-op si la colonne existe déjà sur une base antérieure.
+SET @col_arch_dem = (SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'demande_initiative' AND COLUMN_NAME = 'archive');
+SET @sql_arch_dem = IF(@col_arch_dem = 0,
+        'ALTER TABLE demande_initiative ADD COLUMN archive BOOLEAN NOT NULL DEFAULT FALSE',
+        'SELECT 1');
+PREPARE stmt_arch_dem FROM @sql_arch_dem;
+EXECUTE stmt_arch_dem;
+DEALLOCATE PREPARE stmt_arch_dem;
 
 -- ------------------------------------------------------------------
 -- HISTORIQUE DES STATUTS : journal chronologique des transitions de

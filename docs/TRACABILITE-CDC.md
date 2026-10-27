@@ -69,7 +69,7 @@ test fonctionnel `tests-api.ps1`).
 | Fonctionnalité (CDC) | Mise en œuvre | Validation |
 |---|---|---|
 | **Objectifs stratégiques** : référentiel (code unique, libellé, description), page de gestion, rattachement d'une initiative (`initiative.id_objectif`), filtre liste, KPI dashboard, select formulaire, badge fiche | `ObjectifService/ObjectifController`, `ObjectifStrategiqueRepository`, `InitiativeModele.objectif`, `ObjectifsPage.jsx`, `InitiativeFormPage.jsx`, `InitiativeDetailPage.jsx`, `DashboardPage.jsx` | JUnit (mapper) + API section 10 (`GET/POST/PUT /objectifs`, code dupliqué 400, 403 visiteur, filtre `objectif=1`) |
-| **Demandes d'initiatives (workflow SPM)** : Brouillon → Soumise → En évaluation → Acceptée/Refusée (motif facultatif) | `DemandeService/DemandeController`, `DemandeInitiative` + `StatutDemande`, transitions à états contrôlés (400 si précédent absent) | JUnit `DemandeServiceTest` (14 tests) + API section 11 (transitions validées/interdites, refus avec/sans motif, transformation) |
+| **Demandes d'initiatives (workflow SPM)** : Brouillon → Soumise → En évaluation → Acceptée/Refusée (motif facultatif), bascule « Actives \| Archives » (colonne `archive`, `PATCH /{id}/archive` limité aux états terminaux, `PATCH /{id}/restaurer`, vue exclusive `?archive=true`) | `DemandeService/DemandeController`, `DemandeInitiative` + `StatutDemande`, transitions à états contrôlés (400 si précédent absent), archivage réversible sans changement de statut | JUnit `DemandeServiceTest` (27 tests) + `SecuriteApiTest` (règle `PATCH /demandes` archive/restaurer) + API section 11 (transitions validées/interdites, refus avec/sans motif, transformation, parcours d'archivage/restauration) |
 | **Transformation en initiative sans doublon** : code auto `DEM-%06d`, statut « À planifier », budget/avancement 0, `id_initiative_liee` UNIQUE | `DemandeService.transformer` + `InitiativeService.creerEnEntite` | JUnit `Transformation en initiative` (3 tests) + API (`seconde transformation → 400`) |
 | **Permissions** : `DEMANDE_SOUMETTRE` (soumettre) et `DEMANDE_EVALUER` (évaluer/accepter/refuser/transformer) ; lister exige l'une des deux | `SecurityConfig`, `data.sql` (permissions 14/15, role_permission) | API (`visiteur → 403`, responsable autorisé → 200) |
 
@@ -131,6 +131,20 @@ test fonctionnel `tests-api.ps1`).
   suppression d'objectif) et le e2e navigateur (sélection → suppression en
   lot sur demandes **et** objectifs, refus serveur remonté en cas d'échec
   partiel, données de démo intactes).
+- **Archives des demandes** : colonne `archive` ajoutée proprement (déjà
+  présente en `CREATE TABLE` + migration douce gardée par `information_schema`
+  pour les bases antérieures), bascule **« Actives | Archives »** dans la page
+  (`?archive=1`, aucune route ni entrée de menu), `PATCH /demandes/{id}/archive`
+  (400 si la demande n'est ni « Acceptée » ni « Refusée », idempotent) et
+  `PATCH /demandes/{id}/restaurer` (réversible, aucune condition), vue
+  exclusive `?archive=true` combinable à la recherche libre, ouverte aux deux
+  acteurs de la page (`DEMANDE_SOUMETTRE` / `DEMANDE_EVALUER` — aucun nouveau
+  droit), bouton « Supprimer » visible sur **toutes** les lignes (le refus 400
+  d'une demande transformée est alors affiché sous l'alerte). Couvert par 14
+  scénarios fonctionnels (section 11 : parcours complet archiver/restaurer,
+  vues exclusives, recherche dans les archives, 401/403, purge depuis les
+  archives), 9 tests JUnit (8 `DemandeServiceTest` + 1 règle d'URL
+  `SecuriteApiTest`) et le e2e navigateur.
 - **P5 (comptes et journal des accès)** : les comptes se suppriment
   définitivement (bouton masqué sur son propre compte), le serveur refusant
   en 400 son propre compte, le dernier administrateur actif et un compte qui
@@ -147,7 +161,7 @@ test fonctionnel `tests-api.ps1`).
 - **Score de santé** : 5 scénarios fonctionnels (section 3 de `tests-api.ps1`) et
   13 tests JUnit (`CalculeurSanteTest`) : niveau + motif sur liste/fiche/surveillance,
   rouge sur initiative en retard, `null` sur les écritures.
-- **Bilan chiffré** : **173 tests JUnit** et **211 scénarios fonctionnels**,
+- **Bilan chiffré** : **182 tests JUnit** et **225 scénarios fonctionnels**,
   0 échec (dernière campagne). Deux scénarios contrôlent les KPI d'accueil
   personnalisé : `jalonsSemaine` (jalons non atteints du jour au dimanche
   courant) et `initiativesARisque` (santé ORANGE ou ROUGE recalculée depuis la

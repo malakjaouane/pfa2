@@ -85,6 +85,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/demandes/*/evaluer", "/api/demandes/*/accepter",
                                 "/api/demandes/*/refuser", "/api/demandes/*/transformer")
                         .hasAuthority("DEMANDE_EVALUER")
+                        // Bascule Actives | Archives : la vue appartient
+                        // aux deux acteurs de la page (ceux qui soumettent
+                        // comme ceux qui évaluent) — aucun nouveau droit.
+                        .requestMatchers(HttpMethod.PATCH, "/api/demandes/*/archive",
+                                "/api/demandes/*/restaurer")
+                        .hasAnyAuthority("DEMANDE_SOUMETTRE", "DEMANDE_EVALUER")
                         // Suppression d'une demande = ceux qui ont le droit
                         // d'en décider (DEMANDE_EVALUER : admin + responsable).
                         .requestMatchers(HttpMethod.DELETE, "/api/demandes/**")

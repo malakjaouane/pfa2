@@ -60,4 +60,13 @@ public class DemandeInitiative extends BaseAuditable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_initiative_liee")
     private Initiative initiativeLiee;
+
+    /**
+     * Vue « Archives » de la bascule Actives | Archives (mêmes règles que
+     * {@code initiative.archive}) : l'archivage masque la demande de la
+     * liste active SANS changer son statut de workflow, et reste
+     * réversible (« Restaurer »).
+     */
+    @Column(name = "archive", nullable = false)
+    private boolean archive;
 }

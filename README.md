@@ -213,7 +213,14 @@ n'est ni versionnée ni journalisée côté serveur.
   confirmation — chaque `DELETE` garde les garde-fous serveur (`DEMANDE_EVALUER`,
   400 si déjà transformée). Les lignes bloquées affichent un **cadenas
   « Verrouillée »** (infobulle avec la raison exacte) et, quand rien n'est
-  sélectionnable, un bandeau explicite — plus jamais de case muette.
+  sélectionnable, un bandeau explicite — plus jamais de case muette. La page
+  ouvre aussi une **bascule « Actives | Archives »** (`?archive=1`, dans la
+  page — aucune route ni entrée de menu) : seules les demandes terminées
+  (« Acceptée » ou « Refusée ») sont archivables, « Restaurer » les ramène,
+  la recherche fonctionne dans les deux vues et la purge (`DELETE`) reste
+  possible depuis les archives. Enfin le bouton **« Supprimer » est visible
+  sur toutes les lignes** : sur une demande transformée, le refus serveur
+  (400) s'affiche alors sous l'alerte.
 - **Historique des statuts** (`/historique`) : journal global de tous les
   changements de statut — recherche par code ou nom
   d'initiative (insensible à la casse et aux accents), filtres statut,
@@ -310,8 +317,11 @@ d'un compte : propre compte, dernier admin actif, compte porteur de demandes —
 trois refus 400) et `HistoriqueConnexionServiceTest` (écriture de chaque
 tentative de connexion, normalisation e-mail, filtres/tri/pagination, 404 et
 purge), `ObjectifServiceTest` (suppression d'objectif : parcours nominal,
-refus 400 quand l'objectif est référencé, 404) et la règle d'URL
-`DELETE /objectifs` dans `SecuriteApiTest`. **173 tests, 0 échec.**
+refus 400 quand l'objectif est référencé, 404), `DemandeServiceTest`
+(archivage des demandes : états terminaux seulement, refus 400 sur un
+« Brouillon », idempotence, 404, filtre de vue) et les règles d'URL
+`DELETE /objectifs` + `PATCH /demandes/{id}/archive|restaurer` dans
+`SecuriteApiTest`. **182 tests, 0 échec.**
 
 ### Tests fonctionnels de l'API
 
@@ -339,9 +349,13 @@ disponibilité, question réelle (200 + réponse, ou 503 explicite si non
 configuré), résumé d'inconnu → 404, journal accessible aux seuls
 administrateurs. Les sections 11 à 13 couvrent en outre la **recherche et la
 suppression des demandes** (401 anonyme, 403 visiteur, 404 après suppression,
-400 si déjà transformée), la **purge des initiatives archivées** (400 si non
-archivée, 204 puis 404 après purge) et le refus de la **purge du journal**
-hors administrateur (401 / 403). Les sections 14 et 15 couvrent la
+400 si déjà transformée), leur **archivage** (400 sur un « Brouillon »,
+parcours jusqu'à « Refusée » puis `archive=true`, vue exclusive
+`?archive=true`, recherche dans les archives, idempotence, 401/403,
+restauration 200 et suppression depuis les archives), la **purge des
+initiatives archivées** (400 si non archivée, 204 puis 404 après purge) et le
+refus de la **purge du journal** hors administrateur (401 / 403). Les sections
+14 et 15 couvrent la
 **suppression d'utilisateur** (401 anonyme, 403 visiteur et responsable, 404
 inconnu, 400 sur son propre compte, parcours nominal 201 → 204 → 404, 400 avec
 message quand le compte porte des demandes) et l'**historique des connexions**
@@ -351,7 +365,7 @@ e-mail, filtre « échouées » après une tentative réelle, période inversée
 administrateur), et la **suppression d'objectif** de la section 10 (401
 anonyme, 403 sans `INITIATIVE_MODIFIER`, 400 si l'objectif est référencé
 par une initiative, 404 id inconnu, 204 puis ré-DELETE 404).
-**211 scénarios, 0 échec.**
+**225 scénarios, 0 échec.**
 
 Après une campagne de tests, purgez les résidus (initiatives `TEST*` archivées,
 initiatives issues de demandes de test `DEM-*`, demandes `TEST-DEM*`, objectifs

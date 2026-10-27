@@ -60,11 +60,16 @@ public class DemandeService {
      * Liste des demandes, avec recherche libre facultative sur le titre,
      * la description du besoin ou la justification (joker construit ici).
      * Un mot vide ou absent = liste complète.
+     *
+     * <p>Les deux vues de la bascule « Actives | Archives » sont
+     * exclusives : {@code archive = true} ne renvoie que les demandes
+     * archivées, sinon (paramètre absent ou faux) que les actives.</p>
      */
-    public List<DemandeResponse> lister(String recherche) {
+    public List<DemandeResponse> lister(String recherche, Boolean archive) {
         String joker = (recherche == null || recherche.isBlank())
                 ? null : "%" + recherche.trim() + "%";
-        return demandeRepository.findAllFetch(joker).stream()
+        boolean vueArchives = Boolean.TRUE.equals(archive);
+        return demandeRepository.findAllFetch(joker, vueArchives).stream()
                 .map(DemandeService::toResponse)
                 .toList();
     }
@@ -218,6 +223,46 @@ public class DemandeService {
     }
 
     // ------------------------------------------------------------------
+    // Archivage (bascule « Actives | Archives »)
+    // ------------------------------------------------------------------
+
+    /**
+     * Archivage d'une demande : elle quitte la liste active pour la vue
+     * « Archives ». Comme pour une initiative (RM14), l'archivage n'est
+     * PAS un statut de workflow — le dossier ne change pas. Seules les
+     * demandes terminées (« Acceptée » ou « Refusée ») peuvent l'être :
+     * une demande en cours ne doit pas disparaître des files d'évaluation.
+     * Idempotent : déjà archivée = réponse sans écriture.
+     */
+    @Transactional
+    public DemandeResponse archiver(Long idDemande) {
+        DemandeInitiative demande = getDemande(idDemande);
+        if (demande.isArchive()) {
+            return toResponse(demande);
+        }
+        String statut = demande.getStatut().getLibelle();
+        if (!STATUT_ACCEPTEE.equals(statut) && !STATUT_REFUSEE.equals(statut)) {
+            throw new BadRequestException("Seules les demandes « " + STATUT_ACCEPTEE
+                    + " » ou « " + STATUT_REFUSEE + " » peuvent être archivées (statut actuel : « "
+                    + statut + " »).");
+        }
+        demande.setArchive(true);
+        return toResponse(demandeRepository.save(demande));
+    }
+
+    /**
+     * Retour d'une demande archivée vers la liste active. Aucune
+     * condition de statut : l'archivage des demandes est réversible à tout
+     * moment (contrairement à la purge des initiatives).
+     */
+    @Transactional
+    public DemandeResponse restaurer(Long idDemande) {
+        DemandeInitiative demande = getDemande(idDemande);
+        demande.setArchive(false);
+        return toResponse(demandeRepository.save(demande));
+    }
+
+    // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
 
@@ -262,6 +307,7 @@ public class DemandeService {
                         d.getStatut().getIdStatutDemande(),
                         d.getStatut().getLibelle(),
                         d.getStatut().getOrdre()),
-                liee);
+                liee,
+                d.isArchive());
     }
 }

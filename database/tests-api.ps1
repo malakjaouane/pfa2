@@ -559,6 +559,48 @@ Test-Check 'Suppression demande : responsable (DEMANDE_EVALUER) -> 204' ($demSup
 $demSupprDetail = Invoke-Api 'Get' "$Base/demandes/$idDemRech" $null $adminToken
 Test-Check 'Demande supprimée -> 404 au détail' ($demSupprDetail.OK -eq $false -and $demSupprDetail.Status -eq 404) "($($demSupprDetail.Status))"
 
+# Bascule « Actives | Archives » (colonne archive + ?archive=true) :
+# un « Brouillon » n'est pas archivable (400), une demande menée jusqu'à
+# « Refusée » l'est (200) ; elle disparaît de la vue active, revient
+# dans les archives (recherche incluse), « restaurer » inverse le tout
+# et la suppression marche aussi depuis les archives.
+$archCorps = $demCorps.Clone()
+$archCorps.titre = "TEST-DEM-ARCH-$suffixe"
+$demArch = Invoke-Api 'Post' "$Base/demandes" $archCorps $adminToken
+$idDemArch = $demArch.Body.idDemande
+Test-Check 'Archives demande : création pour le parcours' ($demArch.OK -and $idDemArch -gt 0) "($($demArch.Status))"
+$archBrouillon = Invoke-Api 'Patch' "$Base/demandes/$idDemArch/archive" $null $adminToken
+Test-Check 'Archives demande : archiver un « Brouillon » -> 400 (statut)' ($archBrouillon.OK -eq $false -and $archBrouillon.Status -eq 400 -and "$($archBrouillon.Body.message)" -match 'Acceptée') "($($archBrouillon.Status))"
+$ok = Invoke-Api 'Post' "$Base/demandes/$idDemArch/soumettre" $null $adminToken
+$ok = Invoke-Api 'Post' "$Base/demandes/$idDemArch/evaluer" $null $adminToken
+$refusArch = Invoke-Api 'Post' "$Base/demandes/$idDemArch/refuser" @{ motifRefus = 'Test archivage' } $adminToken
+Test-Check 'Archives demande : demande menée jusqu''à « Refusée »' ($refusArch.OK -and $refusArch.Body.statut.libelle -eq 'Refusée') "($($refusArch.Status))"
+$archOk = Invoke-Api 'Patch' "$Base/demandes/$idDemArch/archive" $null $adminToken
+Test-Check 'Archives demande : archiver une « Refusée » -> 200 archive=true' ($archOk.OK -and $archOk.Body.archive -eq $true) "($($archOk.Status))"
+$archDeux = Invoke-Api 'Patch' "$Base/demandes/$idDemArch/archive" $null $adminToken
+Test-Check 'Archives demande : second archivage idempotent -> 200' ($archDeux.OK -and $archDeux.Body.archive -eq $true) "($($archDeux.Status))"
+$vueActives = Invoke-Api 'Get' "$Base/demandes" $null $adminToken
+$encoreActives = @($vueActives.Body | Where-Object { $_.idDemande -eq $idDemArch }).Count
+Test-Check 'Archives demande : absente de la vue « Actives »' ($vueActives.OK -and $encoreActives -eq 0) "($encoreActives)"
+$vueArchives = Invoke-Api 'Get' "$Base/demandes?archive=true" $null $adminToken
+$dedansArchives = @($vueArchives.Body | Where-Object { $_.idDemande -eq $idDemArch }).Count
+Test-Check 'Archives demande : présente dans la vue « Archives »' ($vueArchives.OK -and $dedansArchives -eq 1) "($dedansArchives)"
+$rechArch = Invoke-Api 'Get' "$Base/demandes?archive=true&recherche=TEST-DEM-ARCH-$suffixe" $null $adminToken
+Test-Check 'Archives demande : la recherche fonctionne dans les archives' ($rechArch.OK -and @($rechArch.Body | Where-Object { $_.idDemande -eq $idDemArch }).Count -eq 1) "($(@($rechArch.Body).Count))"
+$rechActives = Invoke-Api 'Get' "$Base/demandes?recherche=TEST-DEM-ARCH-$suffixe" $null $adminToken
+Test-Check 'Archives demande : la recherche dans les actives ne la voit plus' ($rechActives.OK -and @($rechActives.Body | Where-Object { $_.idDemande -eq $idDemArch }).Count -eq 0) "($(@($rechActives.Body).Count))"
+$archAnonyme = Invoke-Api 'Patch' "$Base/demandes/$idDemArch/archive" $null $null
+Test-Check 'Archives demande : anonyme -> 401' ($archAnonyme.OK -eq $false -and $archAnonyme.Status -eq 401) "($($archAnonyme.Status))"
+$archVisiteur = Invoke-Api 'Patch' "$Base/demandes/$idDemArch/archive" $null $visiteurToken
+Test-Check 'Archives demande : visiteur -> 403' ($archVisiteur.OK -eq $false -and $archVisiteur.Status -eq 403) "($($archVisiteur.Status))"
+$restauree = Invoke-Api 'Patch' "$Base/demandes/$idDemArch/restaurer" $null $responsableToken
+Test-Check 'Archives demande : restaurer -> 200 archive=false (DEMANDE_EVALUER)' ($restauree.OK -and $restauree.Body.archive -eq $false) "($($restauree.Status))"
+$vueRetour = Invoke-Api 'Get' "$Base/demandes" $null $adminToken
+Test-Check 'Archives demande : de retour dans la vue « Actives »' (@($vueRetour.Body | Where-Object { $_.idDemande -eq $idDemArch }).Count -eq 1) "($(@($vueRetour.Body | Where-Object { $_.idDemande -eq $idDemArch }).Count))"
+$archBis = Invoke-Api 'Patch' "$Base/demandes/$idDemArch/archive" $null $adminToken
+$demArchSuppr = Invoke-Api 'Delete' "$Base/demandes/$idDemArch" $null $adminToken
+Test-Check 'Archives demande : suppression depuis les archives -> 204' ($archBis.Body.archive -eq $true -and $demArchSuppr.Status -eq 204) "($($demArchSuppr.Status))"
+
 Write-Output '=== 12. Historique des statuts (journal global, lecture + suppression admin) ==='
 # Une initiative dédiée enchaîne les trois origines possibles : création
 # (manuelle), transition explicite (manuelle), puis passage RM07-auto

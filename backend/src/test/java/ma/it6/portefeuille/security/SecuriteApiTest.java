@@ -61,6 +61,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -407,9 +408,9 @@ class SecuriteApiTest {
         }
 
         @Test
-        @DisplayName("demandes : recherche pour les acteurs, suppression DEMANDE_EVALUER")
+        @DisplayName("demandes : recherche + vue Archives pour les acteurs, suppression DEMANDE_EVALUER")
         void demandesRechercheEtSuppression() throws Exception {
-            when(demandeService.lister(any())).thenReturn(List.of());
+            when(demandeService.lister(any(), any())).thenReturn(List.of());
 
             // Recherche : ouverte à ceux qui soumettent ou évaluent.
             mockMvc.perform(get("/api/demandes"))
@@ -418,6 +419,10 @@ class SecuriteApiTest {
                     .andExpect(status().isForbidden());
             mockMvc.perform(get("/api/demandes").param("recherche", "cloud")
                             .with(auth("DEMANDE_SOUMETTRE")))
+                    .andExpect(status().isOk());
+            // Vue « Archives » : même droit que la vue « Actives » (GET).
+            mockMvc.perform(get("/api/demandes").param("archive", "true")
+                            .with(auth("DEMANDE_EVALUER")))
                     .andExpect(status().isOk());
 
             // Suppression : « juste qui a le droit » = DEMANDE_EVALUER.
@@ -429,6 +434,26 @@ class SecuriteApiTest {
                     .andExpect(status().isForbidden());
             mockMvc.perform(delete("/api/demandes/1").with(auth("DEMANDE_EVALUER")))
                     .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("demandes : archivage PATCH /archive et /restaurer pour les deux acteurs")
+        void demandesArchivage() throws Exception {
+            // Bascule Actives | Archives : ouverte aux deux acteurs de la
+            // page (ceux qui soumettent comme ceux qui évaluent) — aucun
+            // droit nouveau créé ; hors périmètre demandes -> 403.
+            mockMvc.perform(patch("/api/demandes/1/archive"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(patch("/api/demandes/1/archive").with(auth("VISITEUR")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(patch("/api/demandes/1/archive").with(auth("INITIATIVE_CREER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(patch("/api/demandes/1/archive").with(auth("DEMANDE_SOUMETTRE")))
+                    .andExpect(status().isOk());
+            mockMvc.perform(patch("/api/demandes/1/restaurer").with(auth("DEMANDE_EVALUER")))
+                    .andExpect(status().isOk());
+            mockMvc.perform(patch("/api/demandes/1/restaurer").with(auth("VISITEUR")))
+                    .andExpect(status().isForbidden());
         }
 
         @Test

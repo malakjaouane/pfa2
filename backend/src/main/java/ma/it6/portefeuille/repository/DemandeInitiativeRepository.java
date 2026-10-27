@@ -15,6 +15,10 @@ public interface DemandeInitiativeRepository extends JpaRepository<DemandeInitia
      * — le joker {@code %...%} est construit par le service ; {@code null}
      * = sans filtre. La collation {@code utf8mb4_unicode_ci} rend le
      * {@code LIKE} insensible à la casse et aux accents.
+     *
+     * <p>Les deux vues de la bascule « Actives | Archives » sont
+     * exclusives : {@code archive = true} ne renvoie que les demandes
+     * archivées, {@code false} que les actives.</p>
      */
     @Query("""
             select distinct d from DemandeInitiative d
@@ -23,13 +27,15 @@ public interface DemandeInitiativeRepository extends JpaRepository<DemandeInitia
             left join fetch d.priorite
             left join fetch d.statut
             left join fetch d.initiativeLiee
-            where (:recherche is null
+            where d.archive = :archive
+              and (:recherche is null
                    or d.titre like :recherche
                    or d.descriptionBesoin like :recherche
                    or d.justificationMetier like :recherche)
             order by d.dateSoumission desc, d.idDemande desc
             """)
-    List<DemandeInitiative> findAllFetch(@Param("recherche") String recherche);
+    List<DemandeInitiative> findAllFetch(@Param("recherche") String recherche,
+                                         @Param("archive") Boolean archive);
 
     /**
      * Nombre de demandes portées par un compte (demandeur) — garde-fou de

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import api, { messageErreur } from '../api';
 import { IconCadenas } from '../components/Icons';
 import { useAuth } from '../AuthContext';
@@ -42,6 +42,10 @@ export default function DemandesPage() {
   const ref = useReferentiels();
   const peutSoumettre = hasPermission('DEMANDE_SOUMETTRE');
   const peutEvaluer = hasPermission('DEMANDE_EVALUER');
+  // Bascule « Actives | Archives » portée par l'URL (?archive=1) :
+  // lien partagé, retour navigateur et rechargement automatique.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const voirArchives = searchParams.get('archive') === '1' || searchParams.get('archive') === 'true';
 
   const [demandes, setDemandes] = useState([]);
   const [entites, setEntites] = useState([]);
@@ -70,8 +74,13 @@ export default function DemandesPage() {
    */
   const charger = (motCle) => {
     const q = (motCle ?? rechercheAppliquee).trim();
+    // Les deux vues sont exclusives : archive=true bascule sur les
+    // demandes archivées, sinon le serveur renvoie la liste active.
+    const params = {};
+    if (q) params.recherche = q;
+    if (voirArchives) params.archive = 'true';
     Promise.all([
-      api.get('/demandes', q ? { params: { recherche: q } } : {}),
+      api.get('/demandes', { params }),
       api.get('/referentiels/entites'),
       api.get('/referentiels/priorites')
     ])
@@ -101,10 +110,15 @@ export default function DemandesPage() {
     charger('');
   };
 
+  // Rechargement au montage, puis à chaque bascule de vue : la liste
+  // dépend de « voirArchives » (porté par l'URL ?archive=1). L'indicateur
+  // de chargement est posé avant l'appel pour ne pas afficher, un instant,
+  // les lignes de l'autre vue sous le nouveau titre.
   useEffect(() => {
+    setChargement(true);
     charger();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [voirArchives]);
 
   const set = (champ) => (e) => setForm((f) => ({ ...f, [champ]: e.target.value }));
 
@@ -206,6 +220,42 @@ export default function DemandesPage() {
   };
 
   /**
+   * Bascule vers la vue « Archives » (ou retour aux « Actives ») :
+   * l'URL change, l'effet ci-dessus recharge la liste avec le bon filtre.
+   */
+  const basculerVue = (archives) => {
+    setSearchParams(archives ? { archive: '1' } : {}, { replace: false });
+  };
+
+  /**
+   * Archivage (depuis la vue « Actives ») : la demande quitte la liste
+   * active — seules les demandes terminées (« Acceptée » ou « Refusée »)
+   * sont archivables, le serveur répond 400 sinon. Réversible via
+   * « Restaurer » dans la vue « Archives ».
+   */
+  const archiver = async (d) => {
+    if (!window.confirm(t('demandes.confirmArchiver', { titre: d.titre }))) return;
+    try {
+      await api.patch(`/demandes/${d.idDemande}/archive`);
+      setInfo({ cle: 'demandes.infoArchivee' });
+      charger();
+    } catch (err) {
+      setErreur(messageErreur(err));
+    }
+  };
+
+  /** Retour dans la liste active — aucune condition de statut. */
+  const restaurer = async (d) => {
+    try {
+      await api.patch(`/demandes/${d.idDemande}/restaurer`);
+      setInfo({ cle: 'demandes.infoRestauree' });
+      charger();
+    } catch (err) {
+      setErreur(messageErreur(err));
+    }
+  };
+
+  /**
    * Une demande se coche si le compte peut l'évaluer ET si elle n'est pas
    * déjà transformée en initiative (le serveur refuserait en 400 : la
    * transformation lie les deux dossiers).
@@ -269,11 +319,23 @@ export default function DemandesPage() {
           <h2>{t('demandes.titre')}</h2>
           <p>{t('demandes.sousTitre')}</p>
         </div>
-        {peutSoumettre && (
-          <button className="btn btn-primaire" onClick={() => (formVisible ? setFormVisible(false) : ouvrirNouvelle())}>
-            {formVisible ? t('demandes.fermer') : t('demandes.nouvelle')}
-          </button>
-        )}
+        <div className="actions">
+          {/* Bascule dans la page (aucune route ni lien de menu) :
+              l'URL ?archive=1 documente la vue affichée. */}
+          <div className="vue-toggle">
+            <button type="button" className={!voirArchives ? 'actif' : ''} onClick={() => basculerVue(false)}>
+              {t('demandes.vueActives')}
+            </button>
+            <button type="button" className={voirArchives ? 'actif' : ''} onClick={() => basculerVue(true)}>
+              {t('demandes.vueArchives')}
+            </button>
+          </div>
+          {peutSoumettre && !voirArchives && (
+            <button className="btn btn-primaire" onClick={() => (formVisible ? setFormVisible(false) : ouvrirNouvelle())}>
+              {formVisible ? t('demandes.fermer') : t('demandes.nouvelle')}
+            </button>
+          )}
+        </div>
       </header>
 
       {info && <div className="alerte alerte-succes">{afficherMessage(t, info)}</div>}
@@ -388,7 +450,7 @@ export default function DemandesPage() {
           {chargement ? (
             <div className="center-page">{t('demandes.chargement')}</div>
           ) : demandes.length === 0 ? (
-            <p className="texte-muet">{t('demandes.aucune')}</p>
+            <p className="texte-muet">{t(voirArchives ? 'demandes.aucuneArchive' : 'demandes.aucune')}</p>
           ) : (
             <table className="table">
               <thead>
@@ -456,7 +518,7 @@ export default function DemandesPage() {
                       <td><span className={`badge ${STYLES_DEMANDE[d.statut?.libelle] ?? 'badge-gris'}`}>{libelleStatut(d.statut?.libelle)}</span></td>
                       <td>
                         <div className="actions">
-                          {d.statut?.libelle === 'Brouillon' && peutSoumettre && (
+                          {!d.archive && d.statut?.libelle === 'Brouillon' && peutSoumettre && (
                             <>
                               <button className="btn btn-petit btn-secondaire" onClick={() => ouvrirEdition(d)}>{t('demandes.modifier')}</button>
                               <button className="btn btn-petit btn-primaire" onClick={() => action(d.idDemande, 'soumettre', { cle: 'demandes.infoSoumise' })}>
@@ -464,12 +526,12 @@ export default function DemandesPage() {
                               </button>
                             </>
                           )}
-                          {d.statut?.libelle === 'Soumise' && peutEvaluer && (
+                          {!d.archive && d.statut?.libelle === 'Soumise' && peutEvaluer && (
                             <button className="btn btn-petit btn-primaire" onClick={() => action(d.idDemande, 'evaluer', { cle: 'demandes.infoEnEvaluation' })}>
                               {t('demandes.evaluer')}
                             </button>
                           )}
-                          {d.statut?.libelle === 'En évaluation' && peutEvaluer && (
+                          {!d.archive && d.statut?.libelle === 'En évaluation' && peutEvaluer && (
                             <>
                               <button className="btn btn-petit btn-primaire" onClick={() => action(d.idDemande, 'accepter', { cle: 'demandes.infoAcceptee' })}>
                                 {t('demandes.accepter')}
@@ -490,7 +552,7 @@ export default function DemandesPage() {
                               )}
                             </>
                           )}
-                          {d.statut?.libelle === 'Acceptée' && peutEvaluer && !d.initiativeLiee && (
+                          {!d.archive && d.statut?.libelle === 'Acceptée' && peutEvaluer && !d.initiativeLiee && (
                             <button className="btn btn-petit btn-primaire" onClick={() => transformer(d)}>
                               {t('demandes.transformer')}
                             </button>
@@ -498,7 +560,25 @@ export default function DemandesPage() {
                           {d.statut?.libelle === 'Acceptée' && d.initiativeLiee && (
                             <Link to={`/initiatives/${d.initiativeLiee.idInitiative}`} className="btn btn-petit btn-secondaire">{t('demandes.voirInitiative')}</Link>
                           )}
-                          {peutEvaluer && !d.initiativeLiee && (
+                          {/* Archivage : ouvert aux deux acteurs de la page
+                              (aucun droit nouveau) — « Archiver » sur les
+                              demandes terminées, « Restaurer » depuis la
+                              vue Archives. */}
+                          {!d.archive && (d.statut?.libelle === 'Acceptée' || d.statut?.libelle === 'Refusée') && (
+                            <button className="btn btn-petit btn-secondaire" onClick={() => archiver(d)}>
+                              {t('demandes.archiver')}
+                            </button>
+                          )}
+                          {d.archive && (
+                            <button className="btn btn-petit btn-primaire" onClick={() => restaurer(d)}>
+                              {t('demandes.restaurer')}
+                            </button>
+                          )}
+                          {/* Suppression : visible sur TOUTES les lignes —
+                              une demande transformée répond 400 côté
+                              serveur, son message est alors affiché tel
+                              quel sous l'alerte. */}
+                          {peutEvaluer && (
                             <button className="btn btn-petit btn-danger" onClick={() => supprimer(d)}>
                               {t('demandes.supprimer')}
                             </button>
