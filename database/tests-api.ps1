@@ -923,6 +923,82 @@ Test-Check 'Purge connexions : visiteur -> 403' ($hcPurgeVisiteur.OK -eq $false 
 $hcPurgeResp = Invoke-Api 'Delete' "$Base/historique-connexions" $null $responsableToken
 Test-Check 'Purge connexions : responsable sans UTILISATEUR_GERER -> 403' ($hcPurgeResp.OK -eq $false -and $hcPurgeResp.Status -eq 403) "($($hcPurgeResp.Status))"
 
+Write-Output '=== 16. Registre des risques (santé pondérée + widget dashboard) ==='
+# Initiative dédiée : la principale est archivée depuis la section 6.
+# Nettoyage de fin de bloc identique à TESTST (section 4) : « Annulée »
+# puis archivage, pour ne pas fausser les KPI des exécutions suivantes
+# (les risques sont supprimés en cascade avec l'initiative par le
+# cleanup-test-data.sql).
+$risqCorps = @{ code = "TESTRISQ-$suffixe"; nom = 'Risques de test'; description = ''; avancement = 0; idEntite = 1; idResponsable = 2; idStatut = 1; idPriorite = 1 }
+$risqIni = Invoke-Api 'Post' "$Base/initiatives" $risqCorps $adminToken
+Test-Check 'Risques : initiative de test créée' ($risqIni.OK -and $risqIni.Body.idInitiative -gt 0)
+$idRisqIni = $risqIni.Body.idInitiative
+
+# Création : santé pondérée = probabilité × impact, recalculée à chaque
+# lecture (jamais stockée). 3 × 3 = 9 -> critique (bande rouge).
+$rCritique = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = 'TESTRISQ fournisseur unique en retard'; probabilite = 3; impact = 3; planAction = 'Contracter un second fournisseur'; idResponsable = 2 } $adminToken
+Test-Check 'Risque : création 3×3 -> 201, score 9/9 critique (ROUGE)' ($rCritique.OK -and $rCritique.Body.score -eq 9 -and $rCritique.Body.niveau -eq 'ROUGE') "($($rCritique.Status)/$($rCritique.Body.score))"
+$idRisque = $rCritique.Body.idRisque
+
+$rMineur = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = 'TESTRISQ retard administratif mineur'; probabilite = 1; impact = 1 } $adminToken
+Test-Check 'Risque : création 1×1 -> 201, score 1/9 saine (VERTE)' ($rMineur.OK -and $rMineur.Body.score -eq 1 -and $rMineur.Body.niveau -eq 'VERTE') "($($rMineur.Body.score))"
+
+# Garde-fous de saisie : validation du contrôleur (400) et service (404).
+$rNote = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = 'TESTRISQ note hors bornes'; probabilite = 4; impact = 2 } $adminToken
+Test-Check 'Risque : probabilité 4 -> 400 (bornes 1-3)' ($rNote.OK -eq $false -and $rNote.Status -eq 400) "($($rNote.Status))"
+$rDesc = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = ''; probabilite = 2; impact = 2 } $adminToken
+Test-Check 'Risque : description vide -> 400' ($rDesc.OK -eq $false -and $rDesc.Status -eq 400) "($($rDesc.Status))"
+$rResp = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = 'TESTRISQ responsable inconnu'; probabilite = 2; impact = 2; idResponsable = 99999999 } $adminToken
+Test-Check 'Risque : responsable inexistant -> 404' ($rResp.OK -eq $false -and $rResp.Status -eq 404) "($($rResp.Status))"
+$rIni404 = Invoke-Api 'Post' "$Base/initiatives/99999999/risques" @{ description = 'TESTRISQ initiative fantome'; probabilite = 2; impact = 2 } $adminToken
+Test-Check 'Risque : initiative inexistante -> 404' ($rIni404.OK -eq $false -and $rIni404.Status -eq 404) "($($rIni404.Status))"
+
+# Registre : du plus critique au moins critique.
+$rListe = Invoke-Api 'Get' "$Base/initiatives/$idRisqIni/risques" $null $adminToken
+Test-Check 'Risque : registre trié par criticité décroissante (9 puis 1)' ($rListe.OK -and @($rListe.Body).Count -eq 2 -and $rListe.Body[0].score -eq 9 -and $rListe.Body[1].score -eq 1) "(@($rListe.Body).Count)"
+
+# Dashboard : le widget ne montre que les scores >= 6, sur les initiatives
+# actives de la sélection (InitiativeSpecifications exclut les archives).
+$dashAvant = Invoke-Api 'Get' "$Base/dashboard" $null $adminToken
+$widgetAvant = @($dashAvant.Body.risquesCritiques | Where-Object { $_.idRisque -eq $idRisque })
+Test-Check 'Dashboard : le risque critique 9/9 figure dans le widget' ($dashAvant.OK -and $widgetAvant.Count -eq 1 -and $widgetAvant[0].idInitiative -eq $idRisqIni) "($(@($dashAvant.Body.risquesCritiques).Count))"
+
+# Modification : les nouvelles notes recalculent le score immédiatement.
+$rMod = Invoke-Api 'Put' "$Base/risques/$idRisque" @{ description = 'TESTRISQ reevalue apres mitigation'; probabilite = 2; impact = 2; planAction = 'Plan revise' } $adminToken
+Test-Check 'Risque : modification 3×3 -> 2×2, score 9 -> 4 (ORANGE)' ($rMod.OK -and $rMod.Body.score -eq 4 -and $rMod.Body.niveau -eq 'ORANGE' -and $rMod.Body.planAction -eq 'Plan revise') "($($rMod.Body.score))"
+
+$dashApres = Invoke-Api 'Get' "$Base/dashboard" $null $adminToken
+$widgetApres = @($dashApres.Body.risquesCritiques | Where-Object { $_.idRisque -eq $idRisque })
+Test-Check 'Dashboard : le risque passé à 4/9 sort du widget' ($dashApres.OK -and $widgetApres.Count -eq 0) "($($widgetApres.Count))"
+
+# Droits : lecture = INITIATIVE_CONSULTER (rattrapée par /initiatives/**),
+# écriture = INITIATIVE_MODIFIER (aucun nouveau droit créé).
+$rAnonyme = Invoke-Api 'Get' "$Base/initiatives/$idRisqIni/risques" $null $null
+Test-Check 'Risque : anonyme -> 401' ($rAnonyme.OK -eq $false -and $rAnonyme.Status -eq 401) "($($rAnonyme.Status))"
+$rVisLect = Invoke-Api 'Get' "$Base/initiatives/$idRisqIni/risques" $null $visiteurToken
+Test-Check 'Risque : visiteur -> lecture 200' ($rVisLect.OK -and @($rVisLect.Body).Count -eq 2) "($($rVisLect.Status))"
+$rVisEcr = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = 'TESTRISQ tentative visiteur'; probabilite = 2; impact = 2 } $visiteurToken
+Test-Check 'Risque : visiteur -> écriture 403' ($rVisEcr.OK -eq $false -and $rVisEcr.Status -eq 403) "($($rVisEcr.Status))"
+
+# Suppression : 204, 404 si absent, registre mis à jour.
+$rSuppr = Invoke-Api 'Delete' "$Base/risques/$($rMineur.Body.idRisque)" $null $adminToken
+Test-Check 'Risque : suppression -> 204' ($rSuppr.OK -and $rSuppr.Status -eq 204) "($($rSuppr.Status))"
+$rSuppr404 = Invoke-Api 'Delete' "$Base/risques/99999999" $null $adminToken
+Test-Check 'Risque : suppression id inexistant -> 404' ($rSuppr404.OK -eq $false -and $rSuppr404.Status -eq 404) "($($rSuppr404.Status))"
+$rReste = Invoke-Api 'Get' "$Base/initiatives/$idRisqIni/risques" $null $adminToken
+Test-Check 'Risque : registre après suppression = 1' ($rReste.OK -and @($rReste.Body).Count -eq 1) "(@($rReste.Body).Count)"
+
+# Nettoyage : « À planifier » -> « Annulée » -> archivage (cycle admis),
+# puis vérification que l'écriture sur initiative archivée est refusée.
+$risqAnnulCorps = @{ code = "TESTRISQ-$suffixe"; nom = 'Risques de test'; description = ''; avancement = 0; idEntite = 1; idResponsable = 2; idStatut = 5; idPriorite = 1 }
+$risqAnnul = Invoke-Api 'Put' "$Base/initiatives/$idRisqIni" $risqAnnulCorps $adminToken
+$risqArch = Invoke-Api 'Patch' "$Base/initiatives/$idRisqIni/archive" $null $adminToken
+Test-Check 'Risque : initiative annulée puis archivée (nettoyage)' ($risqAnnul.OK -and $risqArch.OK -and $risqArch.Body.archive -eq $true) "($($risqAnnul.Status)/$($risqArch.Status))"
+$rPostArch = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = 'TESTRISQ apres archivage'; probabilite = 3; impact = 3 } $adminToken
+Test-Check 'Risque : écriture sur initiative archivée -> 400' ($rPostArch.OK -eq $false -and $rPostArch.Status -eq 400) "($($rPostArch.Status))"
+$rLectArch = Invoke-Api 'Get' "$Base/initiatives/$idRisqIni/risques" $null $adminToken
+Test-Check 'Risque : lecture sur initiative archivée -> 200' ($rLectArch.OK -and @($rLectArch.Body).Count -eq 1) "($($rLectArch.Status))"
+
 Write-Output ''
 Write-Output '------------------------------------------------------------'
 Write-Output "RESULTATS : $script:Pass reussis, $script:Fail echoues"

@@ -26,6 +26,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -46,6 +47,8 @@ class DashboardServiceTest {
     private JalonRepository jalonRepository;
     @Mock
     private CalculeurSante calculeurSante;
+    @Mock
+    private RisqueService risqueService;
 
     @InjectMocks
     private DashboardService service;
@@ -179,5 +182,41 @@ class DashboardServiceTest {
 
         assertThat(reponse.jalonsSemaine()).isEqualTo(3);
         assertThat(reponse.initiativesARisque()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Widget « risques critiques » : transmis avec les ids de la sélection")
+    void risquesCritiquesTransmis() {
+        List<Initiative> selection = List.of(
+                initiative(1L, "En cours", 2, 40, null, "IT6", "Karim Alaoui", null),
+                initiative(2L, "En cours", 2, 60, null, "IT6", "Karim Alaoui", null));
+        brancher(selection);
+        ma.it6.portefeuille.dto.RisqueCritiqueDto critique =
+                new ma.it6.portefeuille.dto.RisqueCritiqueDto(7L, "Panne du fournisseur",
+                        3, 3, 9, ma.it6.portefeuille.dto.SanteDto.ROUGE,
+                        1L, "I-1", "Initiative 1", null);
+        when(risqueService.listerCritiques(List.of(1L, 2L))).thenReturn(List.of(critique));
+
+        DashboardResponse reponse = service.calculer(new InitiativeFilterRequest(
+                null, null, null, null, null, null, null, null, null));
+
+        // Même sélection filtrée que les KPI : le widget suit les filtres.
+        verify(risqueService).listerCritiques(List.of(1L, 2L));
+        assertThat(reponse.risquesCritiques())
+                .extracting(ma.it6.portefeuille.dto.RisqueCritiqueDto::idRisque)
+                .containsExactly(7L);
+        assertThat(reponse.risquesCritiques().get(0).score()).isEqualTo(9);
+    }
+
+    @Test
+    @DisplayName("Portefeuille vide : aucun risque critique à afficher")
+    void aucunRisqueCritique() {
+        brancher(List.of());
+
+        DashboardResponse reponse = service.calculer(new InitiativeFilterRequest(
+                null, null, null, null, null, null, null, null, null));
+
+        verify(risqueService).listerCritiques(List.of());
+        assertThat(reponse.risquesCritiques()).isEmpty();
     }
 }

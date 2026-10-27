@@ -9,6 +9,9 @@ import java.util.List;
  *                           la semaine en cours (message d'accueil)
  * @param initiativesARisque initiatives dont le score de santé est ORANGE ou
  *                           ROUGE (message d'accueil « N initiatives à risque »)
+ * @param risquesCritiques   risques du registre dont la santé pondérée
+ *                           (probabilité × impact) atteint 6 sur 9 — widget
+ *                           « Risques critiques » de la page d'accueil
  */
 public record DashboardResponse(
         long totalInitiatives,
@@ -26,7 +29,8 @@ public record DashboardResponse(
         List<ChartDatum> parEntite,
         List<ChartDatum> parResponsable,
         List<ChartDatum> parObjectif,
-        List<InitiativeResponse> initiativesEnRetard
+        List<InitiativeResponse> initiativesEnRetard,
+        List<RisqueCritiqueDto> risquesCritiques
 ) {
 
     public record ChartDatum(String libelle, long count) {

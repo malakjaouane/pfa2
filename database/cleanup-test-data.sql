@@ -20,7 +20,8 @@
 -- plus rien en base (utf8mb4).
 SET NAMES utf8mb4;
 
--- Les étapes et jalons liés sont supprimés en cascade (ON DELETE CASCADE).
+-- Les étapes, jalons et risques liés sont supprimés en cascade
+-- (ON DELETE CASCADE) : le registre des risques suit son initiative.
 --
 -- On ne requiert PAS archive = 1 : une exécution interrompue (ex. refus
 -- d'archivage en fin de parcours) laisse une initiative de test non archivée,

@@ -4,6 +4,7 @@ import ma.it6.portefeuille.dto.DashboardResponse;
 import ma.it6.portefeuille.dto.DashboardResponse.ChartDatum;
 import ma.it6.portefeuille.dto.InitiativeFilterRequest;
 import ma.it6.portefeuille.dto.InitiativeResponse;
+import ma.it6.portefeuille.dto.RisqueCritiqueDto;
 import ma.it6.portefeuille.dto.SanteDto;
 import ma.it6.portefeuille.entity.Initiative;
 import ma.it6.portefeuille.mapper.InitiativeMapper;
@@ -54,13 +55,16 @@ public class DashboardService {
     private final InitiativeRepository initiativeRepository;
     private final JalonRepository jalonRepository;
     private final CalculeurSante calculeurSante;
+    private final RisqueService risqueService;
 
     public DashboardService(InitiativeRepository initiativeRepository,
                             JalonRepository jalonRepository,
-                            CalculeurSante calculeurSante) {
+                            CalculeurSante calculeurSante,
+                            RisqueService risqueService) {
         this.initiativeRepository = initiativeRepository;
         this.jalonRepository = jalonRepository;
         this.calculeurSante = calculeurSante;
+        this.risqueService = risqueService;
     }
 
     @Transactional(readOnly = true)
@@ -141,10 +145,16 @@ public class DashboardService {
                 .map(i -> InitiativeMapper.toResponse(i, santes.get(i.getIdInitiative())))
                 .toList();
 
+        // Risques critiques (santé pondérée ≥ 6) des mêmes initiatives
+        // filtrées : le widget du tableau de bord suit donc les filtres,
+        // exactement comme les KPI.
+        List<RisqueCritiqueDto> risquesCritiques = risqueService.listerCritiques(ids);
+
         return new DashboardResponse(total, enCours, terminees, enPause, enRetard, jalonsEnRetard,
                 jalonsSemaine, initiativesARisque,
                 budgetTotal, avancementMoyen,
-                parStatut, parPriorite, parEntite, parResponsable, parObjectif, enRetardReponses);
+                parStatut, parPriorite, parEntite, parResponsable, parObjectif, enRetardReponses,
+                risquesCritiques);
     }
 
     /** Dimanche (inclus) de la semaine civile contenant {@code date}. */

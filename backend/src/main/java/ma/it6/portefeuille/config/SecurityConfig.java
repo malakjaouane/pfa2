@@ -128,6 +128,13 @@ public class SecurityConfig {
                         // réservée à ETAPE_GERER / JALON_GERER.
                         .requestMatchers("/api/etapes/**", "/api/initiatives/*/etapes").hasAuthority("ETAPE_GERER")
                         .requestMatchers("/api/jalons/**", "/api/initiatives/*/jalons").hasAuthority("JALON_GERER")
+                        // Risques (registre par initiative) — lecture (GET)
+                        // déjà autorisée par le « /api/initiatives/** » en
+                        // INITIATIVE_CONSULTER ci-dessus (le visiteur lit le
+                        // registre). Écriture : le droit de modification de
+                        // l'initiative elle-même (pas de nouveau droit).
+                        .requestMatchers("/api/risques/**", "/api/initiatives/*/risques")
+                        .hasAuthority("INITIATIVE_MODIFIER")
                         // Gestion des permissions d'un rôle
                         .requestMatchers(HttpMethod.PUT, "/api/roles/*/permissions").hasAuthority("ROLE_GERER")
                         // Assistant IA (« Demande à ton portefeuille ») —

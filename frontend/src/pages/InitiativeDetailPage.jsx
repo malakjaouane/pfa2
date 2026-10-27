@@ -12,6 +12,11 @@ import { IconTarget, IconAlert, IconAssistant } from '../components/Icons';
 
 const etapeVide = { nom: '', description: '', ordre: '', dateDebut: '', dateFinPrevue: '', avancement: 0, idStatutEtape: '' };
 const jalonVide = { nom: '', description: '', datePrevue: '', dateRealisation: '', idStatutJalon: '' };
+const risqueVide = { description: '', probabilite: '2', impact: '2', planAction: '', idResponsable: '' };
+
+/** Couleur du badge de santé d'un risque (codes renvoyés par le serveur). */
+const badgeSanteRisque = (niveau) =>
+  niveau === 'ROUGE' ? 'badge badge-rouge' : niveau === 'ORANGE' ? 'badge badge-ambre' : 'badge badge-vert';
 
 /**
  * Fiche détaillée d'une initiative : informations, étapes et jalons.
@@ -31,6 +36,8 @@ export default function InitiativeDetailPage() {
   const [initiative, setInitiative] = useState(null);
   const [etapes, setEtapes] = useState([]);
   const [jalons, setJalons] = useState([]);
+  const [risques, setRisques] = useState([]);
+  const [responsables, setResponsables] = useState([]);
   const [historique, setHistorique] = useState([]);
   const [statutsEtape, setStatutsEtape] = useState([]);
   const [statutsJalon, setStatutsJalon] = useState([]);
@@ -42,6 +49,8 @@ export default function InitiativeDetailPage() {
   const [editionEtape, setEditionEtape] = useState(null); // { idEtape, ... }
   const [nouveauJalon, setNouveauJalon] = useState(jalonVide);
   const [editionJalon, setEditionJalon] = useState(null);
+  const [nouveauRisque, setNouveauRisque] = useState(risqueVide);
+  const [editionRisque, setEditionRisque] = useState(null); // { idRisque, ... }
 
   // Résumé IA (permission IA_UTILISER) — POST /api/ia/resume/{id}
   const [resumeIa, setResumeIa] = useState('');
@@ -71,6 +80,8 @@ export default function InitiativeDetailPage() {
     if (peutConsulter) {
       api.get(`/initiatives/${id}/etapes`).then((res) => setEtapes(res.data)).catch(() => {});
       api.get(`/initiatives/${id}/jalons`).then((res) => setJalons(res.data)).catch(() => {});
+      // Registre des risques : lecture avec INITIATIVE_CONSULTER, comme la fiche.
+      api.get(`/initiatives/${id}/risques`).then((res) => setRisques(res.data)).catch(() => {});
       // Journal des transitions : même permission que la fiche elle-même.
       api.get(`/initiatives/${id}/historique-statuts`).then((res) => setHistorique(res.data)).catch(() => {});
     }
@@ -83,6 +94,11 @@ export default function InitiativeDetailPage() {
         setStatutsJalon(sj.data);
       })
       .catch(() => {});
+    // Le sélecteur « responsable du plan d'action » a besoin des comptes :
+    // on ne le charge que si l'utilisateur peut écrire (INITIATIVE_MODIFIER).
+    if (peutModifier) {
+      api.get('/referentiels/responsables').then((r) => setResponsables(r.data)).catch(() => {});
+    }
     charger();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -154,6 +170,73 @@ export default function InitiativeDetailPage() {
     const cible = editionJalon ?? nouveauJalon;
     enregistrerJalon(cible).catch((err) => setErreur(messageErreur(err)));
   };
+
+  // ---------------- Risques ----------------
+
+  const enregistrerRisque = async (form) => {
+    const corps = {
+      description: form.description,
+      probabilite: Number(form.probabilite),
+      impact: Number(form.impact),
+      planAction: form.planAction || null,
+      idResponsable: form.idResponsable ? Number(form.idResponsable) : null
+    };
+    if (editionRisque) {
+      await api.put(`/risques/${editionRisque.idRisque}`, corps);
+    } else {
+      await api.post(`/initiatives/${id}/risques`, corps);
+    }
+    setNouveauRisque(risqueVide);
+    setEditionRisque(null);
+    charger();
+  };
+
+  const soumettreRisque = (e) => {
+    e.preventDefault();
+    const cible = editionRisque ?? nouveauRisque;
+    enregistrerRisque(cible).catch((err) => setErreur(messageErreur(err)));
+  };
+
+  const supprimerRisque = async (risque) => {
+    if (!window.confirm(t('initiativeDetail.confirmSupprimerRisque', { nom: risque.description }))) return;
+    try {
+      await api.delete(`/risques/${risque.idRisque}`);
+      charger();
+    } catch (err) {
+      setErreur(messageErreur(err));
+    }
+  };
+
+  /** Libellé d'une note 1-3 (Faible / Moyen / Élevé). */
+  const libelleNote = (n) =>
+    n === 3 ? t('initiativeDetail.noteEleve') : n === 2 ? t('initiativeDetail.noteMoyen') : t('initiativeDetail.noteFaible');
+
+  /** Champs communs aux formulaires d'ajout et d'édition d'un risque. */
+  const champsRisque = (form, setForm) => (
+    <>
+      <input value={form.description} required
+        onChange={(e) => setForm({ ...form, description: e.target.value })}
+        placeholder={t('initiativeDetail.descriptionRisque')}
+        aria-label={t('initiativeDetail.descriptionRisque')} />
+      <select aria-label={t('initiativeDetail.probabilite')} value={form.probabilite}
+        onChange={(e) => setForm({ ...form, probabilite: e.target.value })}>
+        {[1, 2, 3].map((n) => <option key={n} value={n}>{t('initiativeDetail.probabilite')} : {libelleNote(n)}</option>)}
+      </select>
+      <select aria-label={t('initiativeDetail.impact')} value={form.impact}
+        onChange={(e) => setForm({ ...form, impact: e.target.value })}>
+        {[1, 2, 3].map((n) => <option key={n} value={n}>{t('initiativeDetail.impact')} : {libelleNote(n)}</option>)}
+      </select>
+      <input value={form.planAction}
+        onChange={(e) => setForm({ ...form, planAction: e.target.value })}
+        placeholder={t('initiativeDetail.planAction')}
+        aria-label={t('initiativeDetail.planAction')} />
+      <select aria-label={t('initiativeDetail.responsableRisque')} value={form.idResponsable}
+        onChange={(e) => setForm({ ...form, idResponsable: e.target.value })}>
+        <option value="">{t('initiativeDetail.responsableRisque')}</option>
+        {responsables.map((u) => <option key={u.idUser} value={u.idUser}>{u.nomComplet}</option>)}
+      </select>
+    </>
+  );
 
   // ---------------- Suppression / réordonnancement ----------------
 
@@ -440,6 +523,74 @@ export default function InitiativeDetailPage() {
               <option value="">{t('initiativeDetail.statut')}</option>
               {statutsJalon.map((s) => <option key={s.idStatutJalon} value={s.idStatutJalon}>{ref.statutJalon(s.libelle)}</option>)}
             </select>
+            <button type="submit" className="btn btn-primaire btn-petit">{t('initiativeDetail.ajouter')}</button>
+          </form>
+        )}
+      </section>
+
+      {/* Registre des risques : description, probabilité et impact notés
+          1-3, responsable du plan d'action — la santé pondérée (score/9)
+          est recalculée par le serveur à chaque affichage. Lecture pour
+          tous les lecteurs de la fiche, écriture avec INITIATIVE_MODIFIER. */}
+      <section className="carte">
+        <div className="section-entete">
+          <h3>{t('initiativeDetail.risquesTitre', { nombre: risques.length })}</h3>
+          {risques.length > 0 && (
+            <span className={risques.some((r) => r.niveau === 'ROUGE') ? 'badge badge-rouge' : 'badge badge-vert'}>
+              {t('initiativeDetail.risquesCritiques', { nombre: risques.filter((r) => r.niveau === 'ROUGE').length })}
+            </span>
+          )}
+        </div>
+        {risques.length === 0 && <p className="texte-muet">{t('initiativeDetail.aucunRisque')}</p>}
+        <div className="etape-liste">
+          {risques.map((risque) => (
+            <div key={risque.idRisque} className="etape-item">
+              {editionRisque?.idRisque === risque.idRisque ? (
+                <form className="formulaire-inline" onSubmit={soumettreRisque}>
+                  {champsRisque(editionRisque, setEditionRisque)}
+                  <button type="submit" className="btn btn-primaire btn-petit">{t('initiativeDetail.ok')}</button>
+                  <button type="button" className="btn btn-secondaire btn-petit" onClick={() => setEditionRisque(null)}>{t('initiativeDetail.annuler')}</button>
+                </form>
+              ) : (
+                <>
+                  <div className="etape-texte">
+                    <strong>{risque.description}</strong>
+                    <span>
+                      <span className="badge badge-bleu">{t('initiativeDetail.probabilite')} : {libelleNote(risque.probabilite)}</span>
+                      <span className="badge badge-ambre">{t('initiativeDetail.impact')} : {libelleNote(risque.impact)}</span>
+                      <span className={badgeSanteRisque(risque.niveau)}>
+                        {t('initiativeDetail.santeRisque', { score: risque.score })}
+                      </span>
+                    </span>
+                    {risque.planAction && <small>{t('initiativeDetail.planAction')} : {risque.planAction}</small>}
+                    <span className="texte-muet">
+                      {t('initiativeDetail.responsableRisque')} : {risque.responsable?.nomComplet ?? t('initiativeDetail.nonAffecte')}
+                    </span>
+                  </div>
+                  {peutModifier && (
+                    <div className="etape-actions">
+                      <button className="btn btn-petit btn-secondaire"
+                        onClick={() => setEditionRisque({
+                          idRisque: risque.idRisque,
+                          description: risque.description,
+                          probabilite: String(risque.probabilite),
+                          impact: String(risque.impact),
+                          planAction: risque.planAction ?? '',
+                          idResponsable: risque.responsable?.idUser ?? ''
+                        })}>
+                        {t('initiativeDetail.editer')}
+                      </button>
+                      <button className="btn btn-petit btn-danger" onClick={() => supprimerRisque(risque)}>{t('initiativeDetail.supprimer')}</button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+        {peutModifier && (
+          <form className="formulaire-inline ajout" onSubmit={soumettreRisque}>
+            {champsRisque(nouveauRisque, setNouveauRisque)}
             <button type="submit" className="btn btn-primaire btn-petit">{t('initiativeDetail.ajouter')}</button>
           </form>
         )}

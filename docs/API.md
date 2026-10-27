@@ -57,7 +57,7 @@ Toute erreur renvoie un corps JSON :
 
 | Méthode | Route | Permission | Description |
 |---|---|---|---|
-| GET | `/dashboard` | `DASHBOARD_CONSULTER` | `totalInitiatives, enCours, terminees, enPause, enRetard, budgetTotal, avancementMoyen, parStatut[], parPriorite[], parEntite[], parResponsable[], parObjectif[], initiativesEnRetard[]` |
+| GET | `/dashboard` | `DASHBOARD_CONSULTER` | `totalInitiatives, enCours, terminees, enPause, enRetard, jalonsEnRetard, jalonsSemaine, initiativesARisque, budgetTotal, avancementMoyen, parStatut[], parPriorite[], parEntite[], parResponsable[], parObjectif[], initiativesEnRetard[], risquesCritiques[]` |
 
 ### Budgets (`GET /budget`, `/budget/entites`, `/budget/objectifs`)
 
@@ -436,3 +436,63 @@ L'e-mail saisi est copié en clair, indépendamment du compte : une
 tentative sur une adresse inexistante reste traçable. La clé étrangère
 `id_utilisateur` est en `ON DELETE SET NULL` : la suppression d'un
 compte n'efface pas le journal de ses tentatives.
+
+---
+
+## 15. Risques (registre par initiative)
+
+Chaque initiative porte un **registre de risques** : description libre,
+**probabilité** et **impact** notés de **1 à 3** (Faible / Moyen / Élevé),
+responsable du plan d'action et plan d'action.
+
+La **santé pondérée** (`score` = probabilité × impact, soit **1 à 9**) est
+**recalculée à chaque lecture** — jamais stockée — et renvoyée avec un
+`niveau` aux mêmes codes que `SanteDto` (`VERTE` = 1-2, `ORANGE` = 3-4,
+`ROUGE` = 6-9). **Critique = score ≥ 6** (bande rouge alignée sur
+`CalculeurSante`).
+
+**Lecture** : `INITIATIVE_CONSULTER`, rattrapée par la règle
+`GET /api/initiatives/**` (aucun droit spécifique).
+**Écriture** : `INITIATIVE_MODIFIER` — gérer les risques, c'est enrichir le
+dossier de l'initiative elle-même (aucun nouveau droit créé).
+
+| Méthode | Route | Permission | Description |
+|---|---|---|---|
+| GET | `/initiatives/{id}/risques` | `INITIATIVE_CONSULTER` | Registre, **trié du plus critique au moins critique** (score décroissant, puis ordre d'arrivée) |
+| POST | `/initiatives/{id}/risques` | `INITIATIVE_MODIFIER` | Création → `201` avec `score`/`niveau` calculés |
+| PUT | `/risques/{id}` | `INITIATIVE_MODIFIER` | Modification : les nouvelles notes recalculent immédiatement `score`/`niveau` |
+| DELETE | `/risques/{id}` | `INITIATIVE_MODIFIER` | Suppression → `204` |
+
+**Corps** (création et modification, `RisqueRequest`) :
+
+```json
+{
+  "description": "Fournisseur unique en retard",
+  "probabilite": 3,
+  "impact": 3,
+  "planAction": "Contracter un second fournisseur",
+  "idResponsable": 2
+}
+```
+
+`probabilite` et `impact` sont **bornés 1-3** par la validation
+(`@Min`/`@Max`, messages en français) ; `description` est obligatoire ;
+`planAction` et `idResponsable` sont facultatifs (un plan vidé est stocké
+`null`, pas `""`).
+
+**Garde-fous** (alignés sur les étapes) :
+
+| Cas | Réponse |
+|---|---|
+| Initiative inexistante | `404` |
+| Risque inexistant (`PUT`/`DELETE`) | `404` |
+| Responsable inexistant | `404` |
+| **Écriture sur initiative archivée** | `400` (« L'initiative est archivée : … refusé(e) ») |
+| Note hors bornes / description vide | `400` |
+| Lecture sur initiative archivée | `200` (le registre reste consultable) |
+
+**Tableau de bord** : `GET /dashboard` renvoie `risquesCritiques[]` — les
+risques des initiatives **actives** de la sélection dont `score ≥ 6`, avec
+`idInitiative`/`codeInitiative`/`nomInitiative` embarqués (widget
+« Risques critiques »). Le widget suit donc les mêmes filtres que les KPI
+et se vide dès qu'un risque repasse sous 6/9.

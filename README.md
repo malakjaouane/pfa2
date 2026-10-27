@@ -187,6 +187,15 @@ n'est ni versionnée ni journalisée côté serveur.
   des statuts contrôlé.
 - **Étapes et jalons** : suivi de l'avancement, dates, statuts dédiés, gestion de
   la date de réalisation des jalons.
+- **Risques** (registre par initiative) : description, **probabilité** et
+  **impact** notés de 1 à 3 (Faible / Moyen / Élevé), responsable du plan
+  d'action et plan d'action. La **santé pondérée** (probabilité × impact,
+  soit 1 à 9) est **recalculée à chaque affichage** — jamais stockée — et
+  affichée en badge `x/9` (verte 1-2, orange 3-4, **rouge 6-9 = critique**).
+  Section « Risques » dans la fiche (lecture pour tous les lecteurs,
+  écriture avec `INITIATIVE_MODIFIER`, refus 400 sur initiative archivée)
+  plus un widget **« Risques critiques »** sur le tableau de bord, qui suit
+  les mêmes filtres que les KPI.
 - **Recherche et filtres** combinables (texte, statut, priorité, entité,
   responsable, objectif, archivage).
 - **Kanban** : bascule Tableau / Kanban sur la page Initiatives (5 colonnes par
@@ -321,7 +330,14 @@ refus 400 quand l'objectif est référencé, 404), `DemandeServiceTest`
 (archivage des demandes : états terminaux seulement, refus 400 sur un
 « Brouillon », idempotence, 404, filtre de vue) et les règles d'URL
 `DELETE /objectifs` + `PATCH /demandes/{id}/archive|restaurer` dans
-`SecuriteApiTest`. **182 tests, 0 échec.**
+`SecuriteApiTest`. `RisqueServiceTest` (registre : tri par criticité,
+bandes de santé 1-2 / 3-4 / 6-9 sur la matrice 3 × 3, score jamais stocké,
+initiative archivée → 400, initiative ou responsable inconnus → 404,
+filtre des critiques du dashboard avec liste vide sans requête) et,
+dans `SecuriteApiTest`, les règles d'URL des risques (lecture
+`INITIATIVE_CONSULTER`, écriture `INITIATIVE_MODIFIER`, 403 sans le droit),
+plus `DashboardServiceTest` (widget `risquesCritiques` servi avec les ids
+de la sélection). **205 tests, 0 échec.**
 
 ### Tests fonctionnels de l'API
 
@@ -364,8 +380,14 @@ e-mail, filtre « échouées » après une tentative réelle, période inversée
 400, POST interdit, suppression de ligne 401/403/404/204, purge refusée hors
 administrateur), et la **suppression d'objectif** de la section 10 (401
 anonyme, 403 sans `INITIATIVE_MODIFIER`, 400 si l'objectif est référencé
-par une initiative, 404 id inconnu, 204 puis ré-DELETE 404).
-**225 scénarios, 0 échec.**
+par une initiative, 404 id inconnu, 204 puis ré-DELETE 404). La section 16
+couvre le **registre des risques** : création 3 × 3 → score 9/9 critique
+(ROUGE) et 1 × 1 → 1/9 saine (VERTE), notes hors bornes → 400, description
+vide → 400, responsable ou initiative inconnus → 404, registre trié du
+plus critique au moins critique, widget dashboard (le risque y entre à 9/9
+et en ressort dès qu'il passe à 4/9), droits 401 / 200 / 403, suppression
+204 et 404, puis initiative annulée + archivée : écriture refusée en 400
+et lecture toujours possible. **245 scénarios, 0 échec.**
 
 Après une campagne de tests, purgez les résidus (initiatives `TEST*` archivées,
 initiatives issues de demandes de test `DEM-*`, demandes `TEST-DEM*`, objectifs

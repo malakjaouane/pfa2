@@ -54,7 +54,20 @@ export default {
     'initiativeDetail.confirmSupprimerJalon': 'Supprimer le jalon « {nom} » ?',
     'initiativeDetail.monter': 'Monter',
     'initiativeDetail.descendre': 'Descendre',
-    'initiativeDetail.enRetardJalon': 'En retard'
+    'initiativeDetail.enRetardJalon': 'En retard',
+    'initiativeDetail.risquesTitre': 'Risques ({nombre})',
+    'initiativeDetail.risquesCritiques': '{nombre} critique(s)',
+    'initiativeDetail.aucunRisque': 'Aucun risque identifié.',
+    'initiativeDetail.descriptionRisque': 'Description du risque',
+    'initiativeDetail.probabilite': 'Probabilité',
+    'initiativeDetail.impact': 'Impact',
+    'initiativeDetail.noteFaible': 'Faible',
+    'initiativeDetail.noteMoyen': 'Moyen',
+    'initiativeDetail.noteEleve': 'Élevé',
+    'initiativeDetail.santeRisque': 'Santé pondérée {score}/9',
+    'initiativeDetail.planAction': 'Plan d\'action',
+    'initiativeDetail.responsableRisque': 'Responsable du plan d\'action',
+    'initiativeDetail.confirmSupprimerRisque': 'Supprimer le risque « {nom} » ?'
   },
 
   en: {
@@ -111,7 +124,20 @@ export default {
     'initiativeDetail.confirmSupprimerJalon': 'Delete the milestone "{nom}"?',
     'initiativeDetail.monter': 'Move up',
     'initiativeDetail.descendre': 'Move down',
-    'initiativeDetail.enRetardJalon': 'Late'
+    'initiativeDetail.enRetardJalon': 'Late',
+    'initiativeDetail.risquesTitre': 'Risks ({nombre})',
+    'initiativeDetail.risquesCritiques': '{nombre} critical',
+    'initiativeDetail.aucunRisque': 'No risk identified.',
+    'initiativeDetail.descriptionRisque': 'Risk description',
+    'initiativeDetail.probabilite': 'Probability',
+    'initiativeDetail.impact': 'Impact',
+    'initiativeDetail.noteFaible': 'Low',
+    'initiativeDetail.noteMoyen': 'Medium',
+    'initiativeDetail.noteEleve': 'High',
+    'initiativeDetail.santeRisque': 'Weighted score {score}/9',
+    'initiativeDetail.planAction': 'Action plan',
+    'initiativeDetail.responsableRisque': 'Action plan owner',
+    'initiativeDetail.confirmSupprimerRisque': 'Delete the risk "{nom}"?'
   },
 
   ar: {
@@ -168,7 +194,20 @@ export default {
     'initiativeDetail.confirmSupprimerJalon': 'حذف المعلم « {nom} »؟',
     'initiativeDetail.monter': 'نقل لأعلى',
     'initiativeDetail.descendre': 'نقل لأسفل',
-    'initiativeDetail.enRetardJalon': 'متأخر'
+    'initiativeDetail.enRetardJalon': 'متأخر',
+    'initiativeDetail.risquesTitre': 'المخاطر ({nombre})',
+    'initiativeDetail.risquesCritiques': '{nombre} حرجة',
+    'initiativeDetail.aucunRisque': 'لم يتم تحديد أي خطر.',
+    'initiativeDetail.descriptionRisque': 'وصف الخطر',
+    'initiativeDetail.probabilite': 'الاحتمال',
+    'initiativeDetail.impact': 'الأثر',
+    'initiativeDetail.noteFaible': 'ضعيف',
+    'initiativeDetail.noteMoyen': 'متوسط',
+    'initiativeDetail.noteEleve': 'مرتفع',
+    'initiativeDetail.santeRisque': 'الصحة المرجّحة {score}/9',
+    'initiativeDetail.planAction': 'خطة العمل',
+    'initiativeDetail.responsableRisque': 'مسؤول خطة العمل',
+    'initiativeDetail.confirmSupprimerRisque': 'حذف الخطر « {nom} »؟'
   },
 
   es: {
@@ -225,6 +264,19 @@ export default {
     'initiativeDetail.confirmSupprimerJalon': '¿Eliminar el hito « {nom} »?',
     'initiativeDetail.monter': 'Subir',
     'initiativeDetail.descendre': 'Bajar',
-    'initiativeDetail.enRetardJalon': 'Con retraso'
+    'initiativeDetail.enRetardJalon': 'Con retraso',
+    'initiativeDetail.risquesTitre': 'Riesgos ({nombre})',
+    'initiativeDetail.risquesCritiques': '{nombre} crítico(s)',
+    'initiativeDetail.aucunRisque': 'Ningún riesgo identificado.',
+    'initiativeDetail.descriptionRisque': 'Descripción del riesgo',
+    'initiativeDetail.probabilite': 'Probabilidad',
+    'initiativeDetail.impact': 'Impacto',
+    'initiativeDetail.noteFaible': 'Bajo',
+    'initiativeDetail.noteMoyen': 'Medio',
+    'initiativeDetail.noteEleve': 'Alto',
+    'initiativeDetail.santeRisque': 'Salud ponderada {score}/9',
+    'initiativeDetail.planAction': 'Plan de acción',
+    'initiativeDetail.responsableRisque': 'Responsable del plan de acción',
+    'initiativeDetail.confirmSupprimerRisque': '¿Eliminar el riesgo « {nom} »?'
   }
 };

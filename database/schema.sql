@@ -217,6 +217,29 @@ CREATE TABLE IF NOT EXISTS jalon (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------------
+-- RISQUE (registre des risques d'une initiative) : description,
+-- probabilité et impact notés de 1 à 3 (Faible / Moyen / Élevé),
+-- responsable du plan d'action et plan d'action. La santé pondérée
+-- = probabilité × impact (1 à 9) n'est JAMAIS stockée : elle est
+-- recalculée à chaque lecture (score ≥ 6 => « critique », bande
+-- rouge alignée sur CalculeurSante).
+-- ------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS risque (
+    id_risque       BIGINT       NOT NULL AUTO_INCREMENT,
+    description     TEXT         NOT NULL,
+    probabilite     INT          NOT NULL,
+    impact          INT          NOT NULL,
+    plan_action     TEXT         NULL,
+    id_initiative   BIGINT       NOT NULL,
+    id_responsable  BIGINT       NULL,
+    PRIMARY KEY (id_risque),
+    CONSTRAINT fk_risque_initiative  FOREIGN KEY (id_initiative)  REFERENCES initiative (id_initiative) ON DELETE CASCADE,
+    CONSTRAINT fk_risque_responsable FOREIGN KEY (id_responsable) REFERENCES utilisateur (id_user) ON DELETE SET NULL,
+    CONSTRAINT ck_risque_probabilite CHECK (probabilite BETWEEN 1 AND 3),
+    CONSTRAINT ck_risque_impact      CHECK (impact      BETWEEN 1 AND 3)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------
 -- STATUT_DEMANDE (workflow ServiceNow SPM :
 -- Brouillon -> Soumise -> En évaluation -> Acceptée / Refusée)
 -- ------------------------------------------------------------------
@@ -415,6 +438,16 @@ SET @col = (SELECT COUNT(*) FROM information_schema.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'demande_initiative' AND COLUMN_NAME = 'created_at');
 SET @sql_audit = IF(@col = 0,
         'ALTER TABLE demande_initiative ADD COLUMN created_at DATETIME NULL, ADD COLUMN updated_at DATETIME NULL, ADD COLUMN version BIGINT NOT NULL DEFAULT 0',
+        'SELECT 1');
+PREPARE stmt_audit FROM @sql_audit;
+EXECUTE stmt_audit;
+DEALLOCATE PREPARE stmt_audit;
+
+-- Table : risque
+SET @col = (SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'risque' AND COLUMN_NAME = 'created_at');
+SET @sql_audit = IF(@col = 0,
+        'ALTER TABLE risque ADD COLUMN created_at DATETIME NULL, ADD COLUMN updated_at DATETIME NULL, ADD COLUMN version BIGINT NOT NULL DEFAULT 0',
         'SELECT 1');
 PREPARE stmt_audit FROM @sql_audit;
 EXECUTE stmt_audit;

@@ -238,6 +238,7 @@ export default function DashboardPage() {
   const totalStatuts = statuts.reduce((s, d) => s + d.count, 0);
   const priorites = kpis.parPriorite.filter((d) => d.count > 0);
   const enRetard = kpis.initiativesEnRetard ?? [];
+  const risquesCritiques = kpis.risquesCritiques ?? [];
 
   const donneesStatut = {
     labels: statuts.map((d) => ref.statut(d.libelle)),
@@ -604,6 +605,61 @@ export default function DashboardPage() {
               </div>
             )}
           </section>
+
+          {/* Risques critiques du registre (santé pondérée ≥ 6/9) :
+              même sélection filtrée que les KPI, servie par /dashboard. */}
+          {peutConsulterInitiatives && (
+            <section className="section-dashboard">
+              <div className="section-dashboard-entete">
+                <div className="section-titre-icone">
+                  <h3>{t('dashboard.risques.titre')}</h3>
+                  {risquesCritiques.length > 0 && (
+                    <span className="badge badge-rouge">{risquesCritiques.length}</span>
+                  )}
+                </div>
+                <p className="texte-muet">{t('dashboard.risques.sousTitre')}</p>
+              </div>
+
+              {risquesCritiques.length === 0 ? (
+                <div className="carte etat-vide-ligne etat-vide-ok">
+                  <IconCheck size={18} />
+                  {t('dashboard.risques.aucun')}
+                </div>
+              ) : (
+                <div className="surveillance-liste">
+                  {risquesCritiques.map((r) => (
+                    <div
+                      key={r.idRisque}
+                      className="surveillance-item"
+                      onClick={() => navigate(`/initiatives/${r.idInitiative}`)}
+                    >
+                      <div className="surveillance-icone">
+                        <IconAlert size={18} />
+                      </div>
+                      <div className="surveillance-corps">
+                        <div className="surveillance-titre">
+                          <Link to={`/initiatives/${r.idInitiative}`} onClick={(e) => e.stopPropagation()}>
+                            {r.nomInitiative}
+                          </Link>
+                          <span className="badge badge-rouge">{t('dashboard.risques.score', { score: r.score })}</span>
+                        </div>
+                        <div className="surveillance-meta">
+                          <span className="cellule-code">{r.codeInitiative}</span>
+                          <span>{r.description}</span>
+                          {r.responsable && (
+                            <span className="texte-muet">
+                              {t('dashboard.risques.responsable', { nom: r.responsable.nomComplet })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <IconArrowRight size={18} className="surveillance-chevron" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </>
       )}
     </div>

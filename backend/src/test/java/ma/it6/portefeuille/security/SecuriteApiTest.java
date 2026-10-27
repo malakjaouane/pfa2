@@ -11,8 +11,10 @@ import ma.it6.portefeuille.controller.HistoriqueConnexionController;
 import ma.it6.portefeuille.controller.HistoriqueStatutController;
 import ma.it6.portefeuille.controller.InitiativeController;
 import ma.it6.portefeuille.controller.ObjectifController;
+import ma.it6.portefeuille.controller.RisqueController;
 import ma.it6.portefeuille.controller.UtilisateurController;
 import ma.it6.portefeuille.dto.AssistantIaResponse;
+import ma.it6.portefeuille.dto.RisqueResponse;
 import ma.it6.portefeuille.dto.StatutIaResponse;
 import ma.it6.portefeuille.entity.Permission;
 import ma.it6.portefeuille.entity.Role;
@@ -29,6 +31,7 @@ import ma.it6.portefeuille.service.HistoriqueConnexionService;
 import ma.it6.portefeuille.service.HistoriqueStatutService;
 import ma.it6.portefeuille.service.InitiativeService;
 import ma.it6.portefeuille.service.ObjectifService;
+import ma.it6.portefeuille.service.RisqueService;
 import ma.it6.portefeuille.service.UtilisateurService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -96,7 +99,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         BudgetController.class,
         AuthController.class,
         AssistantIaController.class,
-        DemandeController.class
+        DemandeController.class,
+        RisqueController.class
 })
 @Import({SecurityConfig.class, JwtService.class})
 class SecuriteApiTest {
@@ -140,6 +144,8 @@ class SecuriteApiTest {
     private AssistantIaService assistantIaService;
     @MockitoBean
     private DemandeService demandeService;
+    @MockitoBean
+    private RisqueService risqueService;
 
     // =================================================================
     // 0. Assistant IA : permission dédiée IA_UTILISER + journal admin
@@ -559,6 +565,58 @@ class SecuriteApiTest {
                             .with(auth("UTILISATEUR_GERER")))
                     .andExpect(status().isForbidden());
             mockMvc.perform(delete("/api/objectifs/7")
+                            .with(auth("INITIATIVE_MODIFIER")))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("risques : lecture INITIATIVE_CONSULTER, écriture INITIATIVE_MODIFIER")
+        void risques() throws Exception {
+            when(risqueService.lister(any())).thenReturn(List.of());
+            when(risqueService.creer(any(), any()))
+                    .thenReturn(new RisqueResponse(9L, "Panne fournisseur", 3, 3,
+                            null, null, 5L, 9, "ROUGE"));
+            when(risqueService.modifier(any(), any()))
+                    .thenReturn(new RisqueResponse(9L, "Panne fournisseur", 3, 2,
+                            null, null, 5L, 6, "ROUGE"));
+
+            // Registre : le GET est rattrapé par la règle /api/initiatives/**
+            // (INITIATIVE_CONSULTER) — le visiteur lit, il n'écrit pas.
+            mockMvc.perform(get("/api/initiatives/5/risques"))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(get("/api/initiatives/5/risques")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isOk());
+
+            // Création (POST initiative-scoped) : droit de modification de
+            // l'initiative elle-même, pas ETAPE_GERER et pas un nouveau droit.
+            mockMvc.perform(post("/api/initiatives/5/risques")
+                            .with(auth("INITIATIVE_CONSULTER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"description\":\"Panne fournisseur\",\"probabilite\":3,\"impact\":3}"))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(post("/api/initiatives/5/risques")
+                            .with(auth("ETAPE_GERER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(post("/api/initiatives/5/risques")
+                            .with(auth("INITIATIVE_MODIFIER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"description\":\"Panne fournisseur\",\"probabilite\":3,\"impact\":3}"))
+                    .andExpect(status().isCreated());
+
+            // Modification / suppression : mêmes règles sur /api/risques/**.
+            mockMvc.perform(put("/api/risques/9")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(put("/api/risques/9")
+                            .with(auth("INITIATIVE_MODIFIER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"description\":\"Panne fournisseur\",\"probabilite\":3,\"impact\":2}"))
+                    .andExpect(status().isOk());
+            mockMvc.perform(delete("/api/risques/9")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(delete("/api/risques/9")
                             .with(auth("INITIATIVE_MODIFIER")))
                     .andExpect(status().isNoContent());
         }
