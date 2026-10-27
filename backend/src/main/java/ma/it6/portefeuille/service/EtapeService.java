@@ -41,18 +41,18 @@ public class EtapeService {
     private final InitiativeRepository initiativeRepository;
     private final StatutEtapeRepository statutEtapeRepository;
     private final StatutInitiativeRepository statutInitiativeRepository;
-    private final HistoriqueStatutService historiqueStatutService;
+    private final HistoriqueModificationService historiqueService;
 
     public EtapeService(EtapeRepository etapeRepository,
                         InitiativeRepository initiativeRepository,
                         StatutEtapeRepository statutEtapeRepository,
                         StatutInitiativeRepository statutInitiativeRepository,
-                        HistoriqueStatutService historiqueStatutService) {
+                        HistoriqueModificationService historiqueService) {
         this.etapeRepository = etapeRepository;
         this.initiativeRepository = initiativeRepository;
         this.statutEtapeRepository = statutEtapeRepository;
         this.statutInitiativeRepository = statutInitiativeRepository;
-        this.historiqueStatutService = historiqueStatutService;
+        this.historiqueService = historiqueService;
     }
 
     @Transactional(readOnly = true)
@@ -96,6 +96,15 @@ public class EtapeService {
 
         validerEtape(etape, initiative);
         Etape sauvegardee = etapeRepository.save(etape);
+
+        // Journal : la création de l'étape laisse une trace dans le fil de
+        // la fiche (nouvelle valeur = le nom de l'étape).
+        historiqueService.ecrire(HistoriqueModificationService.TYPE_ETAPE,
+                sauvegardee.getIdEtape(), initiative,
+                HistoriqueModificationService.CHAMP_CREATION,
+                null, sauvegardee.getNom(),
+                "Création de l'étape", utilisateurCourant(), false);
+
         recalculerAvancement(initiative);
         return EtapeMapper.toResponse(sauvegardee);
     }
@@ -108,6 +117,10 @@ public class EtapeService {
         if (Boolean.TRUE.equals(initiative.getArchive())) {
             throw new BadRequestException("L'initiative est archivée : modification d'étape refusée.");
         }
+
+        // Journal : valeurs figées avant application, pour le diff champ à
+        // champ (nom, dates, ordre, avancement, statut).
+        Map<String, String> avant = valeursJournalisees(etape);
 
         StatutEtape statutChoisi = etape.getStatutEtape();
         if (request.idStatutEtape() != null) {
@@ -127,6 +140,15 @@ public class EtapeService {
 
         validerEtape(etape, initiative);
         Etape sauvegardee = etapeRepository.save(etape);
+
+        // Journal : une ligne par champ réellement modifié (y compris la
+        // réouverture d'une étape « Terminée » : c'est un changement de
+        // statut comme un autre).
+        historiqueService.diff(HistoriqueModificationService.TYPE_ETAPE,
+                sauvegardee.getIdEtape(), initiative,
+                avant, valeursJournalisees(sauvegardee),
+                utilisateurCourant(), false);
+
         recalculerAvancement(initiative);
         return EtapeMapper.toResponse(sauvegardee);
     }
@@ -145,9 +167,19 @@ public class EtapeService {
             throw new BadRequestException("L'initiative est archivée : suppression d'étape refusée.");
         }
 
+        String nomSupprimee = etape.getNom();
         etapeRepository.delete(etape);
         renumeroter(initiative.getIdInitiative());
         recalculerAvancement(initiative);
+
+        // Journal : la suppression reste traçable (ancienne valeur = le nom
+        // de l'étape partie). La ligne ne porte aucune clé étrangère sur
+        // l'étape : elle survit à la suppression, rattachée à l'initiative.
+        historiqueService.ecrire(HistoriqueModificationService.TYPE_ETAPE,
+                idEtape, initiative,
+                HistoriqueModificationService.CHAMP_SUPPRESSION,
+                nomSupprimee, null,
+                "Suppression de l'étape", utilisateurCourant(), false);
     }
 
     /**
@@ -235,7 +267,7 @@ public class EtapeService {
             }
             initiative.setAvancement(calcule);
             initiativeRepository.save(initiative);
-            historiqueStatutService.enregistrer(
+            historiqueService.enregistrer(
                     initiative, InitiativeService.STATUT_TERMINEE, cible,
                     "Réouverture automatique : les étapes ne sont plus toutes "
                             + "terminées (avancement recalculé à " + calcule + " %)",
@@ -281,18 +313,35 @@ public class EtapeService {
         // (true) alimente la colonne « automatique » de la page
         // « Historique des statuts ».
         if (passeATerminee) {
-            historiqueStatutService.enregistrer(initiative, statutActuel,
+            historiqueService.enregistrer(initiative, statutActuel,
                     InitiativeService.STATUT_TERMINEE,
                     "Passage automatique : toutes les étapes sont terminées",
                     utilisateurCourant(), true);
         }
         if (repasseAPlanifier) {
-            historiqueStatutService.enregistrer(initiative, statutActuel,
+            historiqueService.enregistrer(initiative, statutActuel,
                     InitiativeService.STATUT_A_PLANIFIER,
                     "Retour automatique : avancement à 0 %, l'initiative "
                             + "n'a pas commencé",
                     utilisateurCourant(), true);
         }
+    }
+
+    /**
+     * Valeurs affichables des champs d'une étape (nom, description, ordre,
+     * dates, avancement, statut) — le père du diff journalisé : la même
+     * carte est construite avant et après la modification.
+     */
+    private static Map<String, String> valeursJournalisees(Etape e) {
+        Map<String, String> valeurs = new HashMap<>();
+        valeurs.put("nom", e.getNom());
+        valeurs.put("description", e.getDescription());
+        valeurs.put("ordre", e.getOrdre() == null ? null : String.valueOf(e.getOrdre()));
+        valeurs.put("dateDebut", e.getDateDebut() == null ? null : e.getDateDebut().toString());
+        valeurs.put("dateFinPrevue", e.getDateFinPrevue() == null ? null : e.getDateFinPrevue().toString());
+        valeurs.put("avancement", e.getAvancement() == null ? null : e.getAvancement() + " %");
+        valeurs.put("statut", e.getStatutEtape() == null ? null : e.getStatutEtape().getLibelle());
+        return valeurs;
     }
 
     /** E-mail de l'utilisateur connecté, ou {@code null} hors contexte de sécurité. */

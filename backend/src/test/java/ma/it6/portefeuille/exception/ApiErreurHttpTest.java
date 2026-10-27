@@ -11,7 +11,7 @@ import ma.it6.portefeuille.service.BudgetService;
 import ma.it6.portefeuille.service.DashboardService;
 import ma.it6.portefeuille.service.EtapeService;
 import ma.it6.portefeuille.service.HistoriqueConnexionService;
-import ma.it6.portefeuille.service.HistoriqueStatutService;
+import ma.it6.portefeuille.service.HistoriqueModificationService;
 import ma.it6.portefeuille.service.InitiativeService;
 import ma.it6.portefeuille.service.UtilisateurService;
 import org.junit.jupiter.api.DisplayName;
@@ -80,7 +80,7 @@ class ApiErreurHttpTest {
     @MockitoBean
     private BudgetService budgetService;
     @MockitoBean
-    private HistoriqueStatutService historiqueStatutService;
+    private HistoriqueModificationService historiqueService;
     @MockitoBean
     private HistoriqueConnexionService historiqueConnexionService;
     @MockitoBean

@@ -109,14 +109,13 @@ public class SecurityConfig {
                         // droit que l'archivage (INITIATIVE_ARCHIVER).
                         .requestMatchers(HttpMethod.DELETE, "/api/initiatives/**")
                         .hasAuthority("INITIATIVE_ARCHIVER")
-                        // Journal des statuts : lecture = même permission que
-                        // la lecture des initiatives (pas de nouveau droit).
-                        // Suppression d'une ligne = administrateurs seulement
-                        // (UTILISATEUR_GERER, droit existant). Aucun POST/PUT.
-                        .requestMatchers(HttpMethod.GET, "/api/historique-statuts/**")
+                        // Journal des modifications (audit) : lecture =
+                        // même permission que la lecture des initiatives
+                        // (pas de nouveau droit). JOURNAL IMMUABLE : aucun
+                        // POST/PUT/PATCH/DELETE n'est déclaré sur ces
+                        // routes — l'envoi de ces verbes renvoie 405.
+                        .requestMatchers(HttpMethod.GET, "/api/historique/**")
                         .hasAuthority("INITIATIVE_CONSULTER")
-                        .requestMatchers(HttpMethod.DELETE, "/api/historique-statuts/**")
-                        .hasAuthority("UTILISATEUR_GERER")
                         // Réordonnancement des étapes : à placer avant la règle générale PUT
                         .requestMatchers(HttpMethod.PUT, "/api/initiatives/*/etapes/ordre")
                         .hasAuthority("ETAPE_GERER")

@@ -64,7 +64,7 @@ class EtapeServiceTest {
     @Mock
     private StatutInitiativeRepository statutInitiativeRepository;
     @Mock
-    private HistoriqueStatutService historiqueStatutService;
+    private HistoriqueModificationService historiqueService;
 
     @InjectMocks
     private EtapeService service;
@@ -116,7 +116,7 @@ class EtapeServiceTest {
             assertThat(initiative.getStatut()).isSameAs(terminee);
             assertThat(initiative.getAvancement()).isEqualTo(100);
             verify(initiativeRepository).save(initiative);
-            verify(historiqueStatutService).enregistrer(
+            verify(historiqueService).enregistrer(
                     eq(initiative), eq("En cours"), eq("Terminée"),
                     contains("toutes les étapes sont terminées"), isNull(), eq(true));
         }
@@ -130,7 +130,7 @@ class EtapeServiceTest {
 
             service.supprimer(ID_ETAPE);
 
-            verify(historiqueStatutService).enregistrer(
+            verify(historiqueService).enregistrer(
                     eq(initiative), eq("En cours"), eq("Terminée"),
                     contains("toutes les étapes"), eq("responsable@it6.ma"), eq(true));
         }
@@ -145,7 +145,7 @@ class EtapeServiceTest {
 
             assertThat(initiative.getStatut()).isSameAs(terminee);
             assertThat(initiative.getAvancement()).isEqualTo(100);
-            verify(historiqueStatutService).enregistrer(
+            verify(historiqueService).enregistrer(
                     eq(initiative), eq("En pause"), eq("Terminée"),
                     contains("toutes les étapes sont terminées"), isNull(), eq(true));
         }
@@ -160,7 +160,7 @@ class EtapeServiceTest {
 
             assertThat(initiative.getStatut()).isSameAs(terminee);
             assertThat(initiative.getAvancement()).isEqualTo(100);
-            verify(historiqueStatutService).enregistrer(
+            verify(historiqueService).enregistrer(
                     eq(initiative), eq("À planifier"), eq("Terminée"),
                     contains("toutes les étapes sont terminées"), isNull(), eq(true));
         }
@@ -174,7 +174,7 @@ class EtapeServiceTest {
             service.supprimer(ID_ETAPE);
 
             assertThat(initiative.getStatut()).isSameAs(enCours);
-            verify(historiqueStatutService, never())
+            verify(historiqueService, never())
                     .enregistrer(any(), any(), any(), any(), any(), anyBoolean());
         }
     }
@@ -205,7 +205,7 @@ class EtapeServiceTest {
 
             assertThat(initiative.getStatut()).isSameAs(enCoursStatut);
             assertThat(initiative.getAvancement()).isEqualTo(50);
-            verify(historiqueStatutService).enregistrer(
+            verify(historiqueService).enregistrer(
                     eq(initiative), eq("Terminée"), eq("En cours"),
                     contains("Réouverture automatique"), isNull(), eq(true));
         }
@@ -226,7 +226,7 @@ class EtapeServiceTest {
 
             assertThat(initiative.getStatut()).isSameAs(aPlanifier);
             assertThat(initiative.getAvancement()).isEqualTo(0);
-            verify(historiqueStatutService).enregistrer(
+            verify(historiqueService).enregistrer(
                     eq(initiative), eq("Terminée"), eq("À planifier"),
                     contains("Réouverture automatique"), isNull(), eq(true));
         }
@@ -241,7 +241,7 @@ class EtapeServiceTest {
 
             assertThat(initiative.getStatut()).isSameAs(terminee);
             assertThat(initiative.getAvancement()).isEqualTo(100);
-            verify(historiqueStatutService, never())
+            verify(historiqueService, never())
                     .enregistrer(any(), any(), any(), any(), any(), anyBoolean());
         }
     }
@@ -263,7 +263,7 @@ class EtapeServiceTest {
 
             assertThat(initiative.getStatut()).isSameAs(aPlanifier);
             assertThat(initiative.getAvancement()).isEqualTo(0);
-            verify(historiqueStatutService).enregistrer(
+            verify(historiqueService).enregistrer(
                     eq(initiative), eq("En cours"), eq("À planifier"),
                     contains("n'a pas commencé"), isNull(), eq(true));
         }
@@ -280,7 +280,7 @@ class EtapeServiceTest {
 
             assertThat(initiative.getStatut()).isSameAs(enPause);
             assertThat(initiative.getAvancement()).isEqualTo(0);
-            verify(historiqueStatutService, never())
+            verify(historiqueService, never())
                     .enregistrer(any(), any(), any(), any(), any(), anyBoolean());
         }
 
@@ -296,7 +296,7 @@ class EtapeServiceTest {
 
             assertThat(initiative.getStatut()).isSameAs(enCours);
             assertThat(initiative.getAvancement()).isEqualTo(0);
-            verify(historiqueStatutService, never())
+            verify(historiqueService, never())
                     .enregistrer(any(), any(), any(), any(), any(), anyBoolean());
         }
     }

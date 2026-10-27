@@ -26,15 +26,18 @@ public class RoleService {
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final SessionsService sessionsService;
+    private final HistoriqueModificationService historiqueService;
 
     public RoleService(RoleRepository roleRepository,
                        PermissionRepository permissionRepository,
                        RolePermissionRepository rolePermissionRepository,
-                       SessionsService sessionsService) {
+                       SessionsService sessionsService,
+                       HistoriqueModificationService historiqueService) {
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
         this.rolePermissionRepository = rolePermissionRepository;
         this.sessionsService = sessionsService;
+        this.historiqueService = historiqueService;
     }
 
     @Transactional(readOnly = true)
@@ -66,8 +69,18 @@ public class RoleService {
             throw new BadRequestException("Un rôle doit posséder au moins une permission.");
         }
 
+        // Journal : les permissions d'avant, triées pour une comparaison
+        // stable — c'est ce qui a changé qui part au journal, pas la liste
+        // entière à chaque enregistrement identique.
+        List<String> avant = rolePermissionRepository
+                .findByRoleIdRoleOrderByPermissionCodeAsc(idRole).stream()
+                .map(rp -> rp.getPermission().getCode())
+                .sorted()
+                .toList();
+
         rolePermissionRepository.deleteByRoleIdRole(idRole);
 
+        List<String> apres = new java.util.ArrayList<>();
         for (Long idPermission : ids) {
             var permission = permissionRepository.findById(idPermission)
                     .orElseThrow(() -> new ResourceNotFoundException("Permission introuvable : " + idPermission));
@@ -76,6 +89,19 @@ public class RoleService {
             rp.setRole(role);
             rp.setPermission(permission);
             rolePermissionRepository.save(rp);
+            apres.add(permission.getCode());
+        }
+        java.util.Collections.sort(apres);
+
+        // Journal : une ligne seulement si le jeu de permissions a réellement
+        // bougé (ancienne liste → nouvelle liste, séparées par des virgules).
+        if (!avant.equals(apres)) {
+            historiqueService.ecrire(HistoriqueModificationService.TYPE_ROLE,
+                    idRole, null,
+                    HistoriqueModificationService.CHAMP_PERMISSIONS,
+                    String.join(", ", avant), String.join(", ", apres),
+                    "Mise à jour des permissions du rôle",
+                    HistoriqueModificationService.auteurCourant(), false);
         }
 
         // Les permissions de tous les comptes portant ce rôle changent :

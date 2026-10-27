@@ -292,46 +292,76 @@ EXECUTE stmt_arch_dem;
 DEALLOCATE PREPARE stmt_arch_dem;
 
 -- ------------------------------------------------------------------
--- HISTORIQUE DES STATUTS : journal chronologique des transitions de
--- cycle de vie d'une initiative (RM10 : un comblement du planning
--- interdit toute modification). Permet d'afficher « qui, quand, et
--- pourquoi » sur la fiche détaillée.
+-- HISTORIQUE DES MODIFICATIONS : journal générique d'audit du
+-- portefeuille. Une ligne = un champ d'un objet qui a changé (ancienne
+-- valeur, nouvelle, auteur, date, origine manuelle/automatique). Le
+-- même journal absorbe les transitions de statut des initiatives
+-- (champ « statut »), la vie des étapes et jalons, le workflow des
+-- demandes, et l'administration (comptes, rôles, permissions).
 --
--- Les libellés sont stockés en clair et non par clé étrangère : le
--- journal doit survivre à une modification du référentiel de statuts.
+-- JOURNAL IMMUABLE : aucune écriture n'est exposée à l'interface et
+-- aucune suppression n'existe (plus de ligne, plus de purge). Les
+-- lignes de plus de 12 mois quittent la vue active par un calcul sur
+-- la date côté service — jamais de destruction.
+--
+-- Les valeurs sont stockées en clair et non par clé étrangère :
+-- le journal doit survivre à une modification des référentiels.
 -- ------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS historique_statut (
-    id_historique   BIGINT        NOT NULL AUTO_INCREMENT,
-    id_initiative   BIGINT        NOT NULL,
-    ancien_statut   VARCHAR(50)   NULL,
-    nouveau_statut  VARCHAR(50)   NOT NULL,
-    commentaire     VARCHAR(500)  NULL,
-    date_changement DATETIME      NOT NULL,
+CREATE TABLE IF NOT EXISTS historique_modification (
+    id_historique    BIGINT        NOT NULL AUTO_INCREMENT,
+    -- Type d'objet journalisé : initiative, etape, jalon, demande,
+    -- utilisateur, role (valeur en clair, code i18n côté interface).
+    type_objet       VARCHAR(30)   NOT NULL,
+    -- Identifiant de l'objet dans son propre référentiel.
+    id_objet         BIGINT        NOT NULL,
+    -- Champ modifié ou événement (statut, budget, creation, suppression…).
+    champ            VARCHAR(60)   NOT NULL,
+    ancienne_valeur  VARCHAR(500)  NULL,
+    nouvelle_valeur  VARCHAR(500)  NULL,
+    commentaire      VARCHAR(500)  NULL,
+    date_changement  DATETIME      NOT NULL,
     -- Origine du changement : FALSE = action manuelle d'un utilisateur,
-    -- TRUE = moteur de règles (RM07-auto, réouverture, RM17, alignement au
-    -- démarrage). Lecture seule depuis l'interface (page « Historique des
-    -- statuts ») : aucune écriture utilisateur n'est exposée.
-    automatique     BOOLEAN       NOT NULL DEFAULT FALSE,
-    id_utilisateur  BIGINT        NULL,
+    -- TRUE = moteur de règles (RM07-auto, réouverture, RM17, alignement
+    -- au démarrage). Lecture seule depuis l'interface.
+    automatique      BOOLEAN       NOT NULL DEFAULT FALSE,
+    id_utilisateur   BIGINT        NULL,
+    -- Initiative de rattachement (types initiative / etape / jalon
+    -- uniquement) : lien de navigation pour le fil de la fiche, en
+    -- ON DELETE CASCADE — l'objet parti, son fil part aussi. Les lignes
+    -- demande / utilisateur / rôle restent NULL et survivent à toute
+    -- suppression d'initiative.
+    id_initiative    BIGINT        NULL,
     PRIMARY KEY (id_historique),
-    CONSTRAINT fk_historique_initiative  FOREIGN KEY (id_initiative)  REFERENCES initiative (id_initiative) ON DELETE CASCADE,
-    CONSTRAINT fk_historique_utilisateur FOREIGN KEY (id_utilisateur) REFERENCES utilisateur (id_user) ON DELETE SET NULL
+    CONSTRAINT fk_histmod_utilisateur FOREIGN KEY (id_utilisateur) REFERENCES utilisateur (id_user) ON DELETE SET NULL,
+    CONSTRAINT fk_histmod_initiative  FOREIGN KEY (id_initiative)  REFERENCES initiative (id_initiative) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
--- L'ordre chronologique est ce qui est affiché : l'index accélère la lecture
--- du journal d'une initiative.
+-- L'ordre chronologique est ce qui est affiché : l'index accélère la
+-- lecture du fil d'une initiative (fiche détaillée).
 -- MySQL 8.0 n'accepte pas « CREATE INDEX IF NOT EXISTS » (c'est une
 -- extension MariaDB) : on garde donc l'index avec le même garde-fou
 -- information_schema que les migrations de colonnes, plus bas.
 SET @col = (SELECT COUNT(*) FROM information_schema.STATISTICS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'historique_statut'
-        AND INDEX_NAME = 'idx_historique_statut_initiative');
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'historique_modification'
+        AND INDEX_NAME = 'idx_histmod_initiative');
 SET @sql_index = IF(@col = 0,
-        'CREATE INDEX idx_historique_statut_initiative ON historique_statut (id_initiative, date_changement)',
+        'CREATE INDEX idx_histmod_initiative ON historique_modification (id_initiative, date_changement)',
         'SELECT 1');
 PREPARE stmt_index FROM @sql_index;
 EXECUTE stmt_index;
 DEALLOCATE PREPARE stmt_index;
+
+-- La page « Historique » lit le journal ENTIER trié par date et filtre
+-- sur la période : cet index sert le tri global et la vue d'archives.
+SET @col = (SELECT COUNT(*) FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'historique_modification'
+        AND INDEX_NAME = 'idx_histmod_date');
+SET @sql_date = IF(@col = 0,
+        'CREATE INDEX idx_histmod_date ON historique_modification (date_changement)',
+        'SELECT 1');
+PREPARE stmt_date FROM @sql_date;
+EXECUTE stmt_date;
+DEALLOCATE PREPARE stmt_date;
 
 -- ==================================================================
 -- MIGRATIONS DOUCES
@@ -453,9 +483,10 @@ PREPARE stmt_audit FROM @sql_audit;
 EXECUTE stmt_audit;
 DEALLOCATE PREPARE stmt_audit;
 
--- Table : historique_statut — origine du changement (manuel / automatique).
--- Colonne de la page « Historique des statuts » : FALSE = action explicite
--- d'un utilisateur, TRUE = moteur de règles. Lecture seule côté interface.
+-- Table : historique_statut (ANCIEN journal, à migrer) — origine du
+-- changement (manuel / automatique). Colonnes garanties AVANT la copie
+-- vers la table générique, pour les bases héritées qui ne l'ont pas
+-- encore.
 SET @col = (SELECT COUNT(*) FROM information_schema.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'historique_statut' AND COLUMN_NAME = 'automatique');
 SET @sql_origine = IF(@col = 0,
@@ -465,11 +496,32 @@ PREPARE stmt_origine FROM @sql_origine;
 EXECUTE stmt_origine;
 DEALLOCATE PREPARE stmt_origine;
 
--- Rétroactif : les lignes déjà au journal dont le MOTIF déclare un passage
+-- ------------------------------------------------------------------
+-- MIGRATION : l'ancien journal des statuts est absorbé par le journal
+-- générique — une transition de statut devient une ligne
+-- (type_objet = 'initiative', champ = 'statut', id_objet = id_initiative),
+-- pertes en clair zéro (ancien / nouveau statut, commentaire, auteur,
+-- date, origine). La colonne de rattachement reprend l'id de l'initiative.
+--
+-- Idempotent : la copie ne se déclenche que si l'ancienne table existe
+-- ET que la nouvelle est vide (l'INSERT étant atomique, une exécution
+-- interrompue après la copie ne rejoue jamais) ; DROP vient ensuite.
+-- ------------------------------------------------------------------
+SET @ancien_existe = (SELECT COUNT(*) FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'historique_statut');
+SET @nouvelles_lignes = (SELECT COUNT(*) FROM historique_modification);
+SET @sql_migration = IF(@ancien_existe = 1 AND @nouvelles_lignes = 0,
+        'INSERT INTO historique_modification (type_objet, id_objet, champ, ancienne_valeur, nouvelle_valeur, commentaire, date_changement, automatique, id_utilisateur, id_initiative) SELECT ''initiative'', h.id_initiative, ''statut'', h.ancien_statut, h.nouveau_statut, h.commentaire, h.date_changement, h.automatique, h.id_utilisateur, h.id_initiative FROM historique_statut h',
+        'SELECT 1');
+PREPARE stmt_migration FROM @sql_migration;
+EXECUTE stmt_migration;
+DEALLOCATE PREPARE stmt_migration;
+
+-- Rétroactif : les lignes déjà migrées dont le MOTIF déclare un passage
 -- automatique sont reclassées « automatique » (ces motifs sont posés par le
 -- code, jamais saisis librement). Idempotent : la garde `automatique = FALSE`
 -- rend toute seconde exécution sans effet sur les lignes déjà classées.
-UPDATE historique_statut
+UPDATE historique_modification
    SET automatique = TRUE
  WHERE automatique = FALSE
    AND (commentaire LIKE 'Passage automatique%'
@@ -477,18 +529,15 @@ UPDATE historique_statut
      OR commentaire LIKE 'Réouverture automatique%'
      OR commentaire LIKE 'Initiative antérieure%');
 
--- La page « Historique des statuts » lit le journal ENTIER trié par date et
--- filtre sur la période : contrairement à l'index (initiative, date) qui sert
--- la fiche, cet index sert le tri global.
-SET @col = (SELECT COUNT(*) FROM information_schema.STATISTICS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'historique_statut'
-        AND INDEX_NAME = 'idx_historique_statut_date');
-SET @sql_date = IF(@col = 0,
-        'CREATE INDEX idx_historique_statut_date ON historique_statut (date_changement)',
+-- L'ancienne table est désormais vide de sens : on la supprime pour qu'il
+-- n'existe qu'UN seul journal, une seule preuve. (Gardée en dernier pour
+-- que l'INSERT ci-dessus ait toujours son sourceur.)
+SET @sql_drop = IF(@ancien_existe = 1,
+        'DROP TABLE historique_statut',
         'SELECT 1');
-PREPARE stmt_date FROM @sql_date;
-EXECUTE stmt_date;
-DEALLOCATE PREPARE stmt_date;
+PREPARE stmt_drop FROM @sql_drop;
+EXECUTE stmt_drop;
+DEALLOCATE PREPARE stmt_drop;
 
 -- ------------------------------------------------------------------
 -- Journal des requêtes IA (assistant « Demande à ton portefeuille »).

@@ -20,7 +20,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Gestion des utilisateurs (profil ADMINISTRATEUR).
@@ -42,19 +44,22 @@ public class UtilisateurService {
     private final PasswordEncoder passwordEncoder;
     private final SessionsService sessionsService;
     private final DemandeInitiativeRepository demandeRepository;
+    private final HistoriqueModificationService historiqueService;
 
     public UtilisateurService(UtilisateurRepository utilisateurRepository,
                               RoleRepository roleRepository,
                               EntiteRepository entiteRepository,
                               PasswordEncoder passwordEncoder,
                               SessionsService sessionsService,
-                              DemandeInitiativeRepository demandeRepository) {
+                              DemandeInitiativeRepository demandeRepository,
+                              HistoriqueModificationService historiqueService) {
         this.utilisateurRepository = utilisateurRepository;
         this.roleRepository = roleRepository;
         this.entiteRepository = entiteRepository;
         this.passwordEncoder = passwordEncoder;
         this.sessionsService = sessionsService;
         this.demandeRepository = demandeRepository;
+        this.historiqueService = historiqueService;
     }
 
     @Transactional(readOnly = true)
@@ -94,7 +99,14 @@ public class UtilisateurService {
                 .entite(resoudreEntite(request.idEntite()))
                 .build();
 
-        return UtilisateurMapper.toResponse(utilisateurRepository.save(u));
+        Utilisateur enregistre = utilisateurRepository.save(u);
+
+        // Journal d'administration : la création d'un compte laisse une
+        // trace (nouvelle valeur = l'adresse, jamais le mot de passe).
+        journaliserCompte(enregistre, HistoriqueModificationService.CHAMP_CREATION,
+                null, enregistre.getEmail(), "Création du compte");
+
+        return UtilisateurMapper.toResponse(enregistre);
     }
 
     @Transactional
@@ -114,6 +126,11 @@ public class UtilisateurService {
         // Garde-fou : jamais sans administrateur actif (RM : continuité d'exploitation).
         verifierDernierAdministrateur(u, role, actifApres);
 
+        // Journal : valeurs figées avant application, pour le diff champ à
+        // champ (le mot de passe n'entre JAMAIS dans les valeurs).
+        Map<String, String> avant = valeursJournalisees(u);
+        boolean motDePasseChange = request.motDePasse() != null && !request.motDePasse().isBlank();
+
         u.setNom(request.nom().trim());
         u.setPrenom(request.prenom().trim());
         u.setEmail(nouvelEmail);
@@ -124,12 +141,21 @@ public class UtilisateurService {
 
         // Mot de passe optionnel à la modification : s'il est fourni, il est
         // validé par la politique puis ré-hashé.
-        if (request.motDePasse() != null && !request.motDePasse().isBlank()) {
+        if (motDePasseChange) {
             PolitiqueMotDePasse.valider(request.motDePasse(), nouvelEmail);
             u.setMotDePasse(passwordEncoder.encode(request.motDePasse()));
         }
 
         Utilisateur enregistre = utilisateurRepository.save(u);
+
+        // Journal d'administration : une ligne par champ réellement modifié
+        // (y compris le changement de rôle). Le mot de passe ne laisse qu'une
+        // ligne signal sans aucune valeur.
+        journaliserDiffCompte(enregistre, avant);
+        if (motDePasseChange) {
+            journaliserCompte(enregistre, HistoriqueModificationService.CHAMP_MOT_DE_PASSE,
+                    null, null, "Modification du mot de passe");
+        }
 
         // Le compte est immédiatement ré-authentifié à la requête suivante
         // (invalidation différée jusqu'au commit pour ne pas relire trop tôt).
@@ -195,6 +221,12 @@ public class UtilisateurService {
 
         utilisateurRepository.delete(cible);
 
+        // Journal d'administration : la suppression du compte reste inscrite
+        // (ancienne valeur = l'adresse). L'auteur est l'administrateur qui
+        // agit — jamais le compte parti.
+        journaliserCompte(cible, HistoriqueModificationService.CHAMP_SUPPRESSION,
+                cible.getEmail(), null, "Suppression du compte");
+
         // La suppression est immédiatement effective côté session (différée
         // jusqu'au commit pour ne pas relire un compte déjà parti).
         sessionsService.invaliderApresCommit(cible.getEmail());
@@ -223,7 +255,55 @@ public class UtilisateurService {
 
         u.setMotDePasse(passwordEncoder.encode(nouveauMotDePasse));
         utilisateurRepository.save(u);
+
+        // Journal : le CHANGEMENT est tracé, jamais la valeur.
+        journaliserCompte(u, HistoriqueModificationService.CHAMP_MOT_DE_PASSE,
+                null, null, "Changement de mot de passe (profil)");
+
         sessionsService.invaliderApresCommit(u.getEmail());
+    }
+
+    // ------------------------------------------------------------------
+    // Journal d'administration
+    // ------------------------------------------------------------------
+
+    /**
+     * Dépose une ligne du journal générique pour le compte {@code cible}
+     * (auteur = administrateur connecté). Aucun lien d'initiative : le
+     * compte n'appartient à personne.
+     */
+    private void journaliserCompte(Utilisateur cible,
+                                   String champ,
+                                   String ancienne,
+                                   String nouvelle,
+                                   String commentaire) {
+        historiqueService.ecrire(HistoriqueModificationService.TYPE_UTILISATEUR,
+                cible.getIdUser(), null, champ, ancienne, nouvelle,
+                commentaire, HistoriqueModificationService.auteurCourant(), false);
+    }
+
+    /** Diff champ à champ du compte après modification. */
+    private void journaliserDiffCompte(Utilisateur apres, Map<String, String> avant) {
+        historiqueService.diff(HistoriqueModificationService.TYPE_UTILISATEUR,
+                apres.getIdUser(), null, avant, valeursJournalisees(apres),
+                HistoriqueModificationService.auteurCourant(), false);
+    }
+
+    /**
+     * Valeurs affichables des champs du compte — le père du diff
+     * journalisé. Le <strong>mot de passe n'entre jamais ici</strong> :
+     * son changement ne laisse qu'une ligne signal sans valeur.
+     */
+    private static Map<String, String> valeursJournalisees(Utilisateur u) {
+        Map<String, String> valeurs = new LinkedHashMap<>();
+        valeurs.put("nom", u.getNom());
+        valeurs.put("prenom", u.getPrenom());
+        valeurs.put("email", u.getEmail());
+        valeurs.put("telephone", u.getTelephone());
+        valeurs.put("actif", u.getActif() == null ? null : (Boolean.TRUE.equals(u.getActif()) ? "Oui" : "Non"));
+        valeurs.put("role", u.getRole() == null ? null : u.getRole().getCode());
+        valeurs.put("entite", u.getEntite() == null ? null : u.getEntite().getNom());
+        return valeurs;
     }
 
     /**

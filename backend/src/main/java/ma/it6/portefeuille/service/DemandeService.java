@@ -39,17 +39,20 @@ public class DemandeService {
     private final EntiteRepository entiteRepository;
     private final PrioriteRepository prioriteRepository;
     private final InitiativeService initiativeService;
+    private final HistoriqueModificationService historiqueService;
 
     public DemandeService(DemandeInitiativeRepository demandeRepository,
                           StatutDemandeRepository statutDemandeRepository,
                           EntiteRepository entiteRepository,
                           PrioriteRepository prioriteRepository,
-                          InitiativeService initiativeService) {
+                          InitiativeService initiativeService,
+                          HistoriqueModificationService historiqueService) {
         this.demandeRepository = demandeRepository;
         this.statutDemandeRepository = statutDemandeRepository;
         this.entiteRepository = entiteRepository;
         this.prioriteRepository = prioriteRepository;
         this.initiativeService = initiativeService;
+        this.historiqueService = historiqueService;
     }
 
     // ------------------------------------------------------------------
@@ -98,6 +101,8 @@ public class DemandeService {
                             + demande.getInitiativeLiee().getCode()
                             + ") : suppression impossible.");
         }
+        journaliser(demande, HistoriqueModificationService.CHAMP_SUPPRESSION,
+                demande.getTitre(), null, "Suppression de la demande");
         demandeRepository.delete(demande);
     }
 
@@ -127,7 +132,10 @@ public class DemandeService {
                 .statut(statut(STATUT_BROUILLON))
                 .build();
 
-        return toResponse(demandeRepository.save(demande));
+        DemandeInitiative enregistree = demandeRepository.save(demande);
+        journaliser(enregistree, HistoriqueModificationService.CHAMP_CREATION,
+                null, enregistree.getTitre(), "Création de la demande");
+        return toResponse(enregistree);
     }
 
     /**
@@ -157,33 +165,54 @@ public class DemandeService {
     public DemandeResponse soumettre(Long idDemande) {
         DemandeInitiative demande = getDemande(idDemande);
         exigerStatut(demande, STATUT_BROUILLON, "soumise");
+        String ancien = demande.getStatut().getLibelle();
         demande.setStatut(statut(STATUT_SOUMISE));
-        return toResponse(demandeRepository.save(demande));
+        DemandeInitiative enregistree = demandeRepository.save(demande);
+        journaliser(enregistree, HistoriqueModificationService.CHAMP_STATUT,
+                ancien, STATUT_SOUMISE, null);
+        return toResponse(enregistree);
     }
 
     @Transactional
     public DemandeResponse evaluer(Long idDemande) {
         DemandeInitiative demande = getDemande(idDemande);
         exigerStatut(demande, STATUT_SOUMISE, "évaluée");
+        String ancien = demande.getStatut().getLibelle();
         demande.setStatut(statut(STATUT_EN_EVALUATION));
-        return toResponse(demandeRepository.save(demande));
+        DemandeInitiative enregistree = demandeRepository.save(demande);
+        journaliser(enregistree, HistoriqueModificationService.CHAMP_STATUT,
+                ancien, STATUT_EN_EVALUATION, null);
+        return toResponse(enregistree);
     }
 
     @Transactional
     public DemandeResponse accepter(Long idDemande) {
         DemandeInitiative demande = getDemande(idDemande);
         exigerStatut(demande, STATUT_EN_EVALUATION, "acceptée");
+        String ancien = demande.getStatut().getLibelle();
         demande.setStatut(statut(STATUT_ACCEPTEE));
-        return toResponse(demandeRepository.save(demande));
+        DemandeInitiative enregistree = demandeRepository.save(demande);
+        journaliser(enregistree, HistoriqueModificationService.CHAMP_STATUT,
+                ancien, STATUT_ACCEPTEE, null);
+        return toResponse(enregistree);
     }
 
+    /**
+     * Refus avec motif : le motif part AUSSI au journal — « pourquoi c'était
+     * refusé » reste consultable des mois plus tard, quand bien même la
+     * demande est archivée.
+     */
     @Transactional
     public DemandeResponse refuser(Long idDemande, String motifRefus) {
         DemandeInitiative demande = getDemande(idDemande);
         exigerStatut(demande, STATUT_EN_EVALUATION, "refusée");
+        String ancien = demande.getStatut().getLibelle();
         demande.setMotifRefus(motifRefus);
         demande.setStatut(statut(STATUT_REFUSEE));
-        return toResponse(demandeRepository.save(demande));
+        DemandeInitiative enregistree = demandeRepository.save(demande);
+        journaliser(enregistree, HistoriqueModificationService.CHAMP_STATUT,
+                ancien, STATUT_REFUSEE, "Motif du refus : " + motifRefus);
+        return toResponse(enregistree);
     }
 
     // ------------------------------------------------------------------
@@ -219,7 +248,11 @@ public class DemandeService {
 
         Initiative initiative = initiativeService.creerEnEntite(request);
         demande.setInitiativeLiee(initiative);
-        return toResponse(demandeRepository.save(demande));
+        DemandeInitiative enregistree = demandeRepository.save(demande);
+        journaliser(enregistree, HistoriqueModificationService.CHAMP_TRANSFORMATION,
+                null, initiative.getCode(),
+                "Transformation en initiative « " + initiative.getNom() + " »");
+        return toResponse(enregistree);
     }
 
     // ------------------------------------------------------------------
@@ -247,7 +280,10 @@ public class DemandeService {
                     + statut + " »).");
         }
         demande.setArchive(true);
-        return toResponse(demandeRepository.save(demande));
+        DemandeInitiative enregistree = demandeRepository.save(demande);
+        journaliser(enregistree, HistoriqueModificationService.CHAMP_ARCHIVE,
+                "Active", "Archivée", null);
+        return toResponse(enregistree);
     }
 
     /**
@@ -259,12 +295,31 @@ public class DemandeService {
     public DemandeResponse restaurer(Long idDemande) {
         DemandeInitiative demande = getDemande(idDemande);
         demande.setArchive(false);
-        return toResponse(demandeRepository.save(demande));
+        DemandeInitiative enregistree = demandeRepository.save(demande);
+        journaliser(enregistree, HistoriqueModificationService.CHAMP_ARCHIVE,
+                "Archivée", "Active", null);
+        return toResponse(enregistree);
     }
 
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
+
+    /**
+     * Dépose une ligne d'audit de type {@code demande} dans le journal
+     * générique — auteur = utilisateur connecté, aucun lien d'initiative
+     * (la demande n'en a un qu'une fois transformée, et ce n'est pas le
+     * journal de celle-ci). Écrit dans la transaction de la modification.
+     */
+    private void journaliser(DemandeInitiative demande,
+                             String champ,
+                             String ancienne,
+                             String nouvelle,
+                             String commentaire) {
+        historiqueService.ecrire(HistoriqueModificationService.TYPE_DEMANDE,
+                demande.getIdDemande(), null, champ, ancienne, nouvelle,
+                commentaire, HistoriqueModificationService.auteurCourant(), false);
+    }
 
     private StatutDemande statut(String libelle) {
         return statutDemandeRepository.findByLibelle(libelle)

@@ -37,6 +37,14 @@ DELETE ini FROM initiative ini
 JOIN demande_initiative d ON d.id_initiative_liee = ini.id_initiative
 WHERE d.titre LIKE 'TEST-DEM%';
 
+-- Journal des modifications (audit immuable) : les lignes qui traçaient
+-- des demandes de test partent AVANT les demandes elles-mêmes — passé ce
+-- point, l'id_objet ne référencer plus rien et la ligne serait orpheline.
+-- Les lignes de démonstration restent : leur demande existe toujours.
+DELETE FROM historique_modification
+WHERE type_objet = 'demande'
+  AND id_objet IN (SELECT id_demande FROM demande_initiative WHERE titre LIKE 'TEST-DEM%');
+
 DELETE FROM demande_initiative
 WHERE titre LIKE 'TEST-DEM%';
 
@@ -56,5 +64,27 @@ WHERE demande LIKE 'TEST%'
 DELETE FROM historique_connexion
 WHERE email LIKE 'test%@it6.ma';
 
+-- Journal des modifications écrit PAR des comptes de test (objet de
+-- démonstration ou autre) : à retirer AVANT les comptes, sinon l'auteur
+-- passe en NULL (ON DELETE SET NULL) et la ligne devient introuvable.
+DELETE FROM historique_modification
+WHERE id_utilisateur IN (SELECT id_user FROM utilisateur WHERE email LIKE 'test%@it6.ma');
+
+-- Journal des modifications ÉCRIT SUR des comptes de test (création,
+-- modification, suppression du compte par l'administrateur de la suite) :
+-- id_objet = compte de test, auteur = admin — même impératif d'ordre.
+DELETE FROM historique_modification
+WHERE type_objet = 'utilisateur'
+  AND id_objet IN (SELECT id_user FROM utilisateur WHERE email LIKE 'test%@it6.ma');
+
 DELETE FROM utilisateur
 WHERE email LIKE 'test%@it6.ma';
+
+-- Filet de sécurité : toute ligne de journal encore orpheline d'une
+-- exécution antérieure (demande ou compte déjà disparu). Les objets de
+-- démonstration existent toujours — leurs lignes ne sont pas touchées.
+DELETE FROM historique_modification
+WHERE (type_objet = 'demande'
+       AND id_objet NOT IN (SELECT id_demande FROM demande_initiative))
+   OR (type_objet = 'utilisateur'
+       AND id_objet NOT IN (SELECT id_user FROM utilisateur));

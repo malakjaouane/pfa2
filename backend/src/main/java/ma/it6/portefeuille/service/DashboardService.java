@@ -2,6 +2,7 @@ package ma.it6.portefeuille.service;
 
 import ma.it6.portefeuille.dto.DashboardResponse;
 import ma.it6.portefeuille.dto.DashboardResponse.ChartDatum;
+import ma.it6.portefeuille.dto.HistoriqueModificationResponse;
 import ma.it6.portefeuille.dto.InitiativeFilterRequest;
 import ma.it6.portefeuille.dto.InitiativeResponse;
 import ma.it6.portefeuille.dto.RisqueCritiqueDto;
@@ -56,15 +57,18 @@ public class DashboardService {
     private final JalonRepository jalonRepository;
     private final CalculeurSante calculeurSante;
     private final RisqueService risqueService;
+    private final HistoriqueModificationService historiqueService;
 
     public DashboardService(InitiativeRepository initiativeRepository,
                             JalonRepository jalonRepository,
                             CalculeurSante calculeurSante,
-                            RisqueService risqueService) {
+                            RisqueService risqueService,
+                            HistoriqueModificationService historiqueService) {
         this.initiativeRepository = initiativeRepository;
         this.jalonRepository = jalonRepository;
         this.calculeurSante = calculeurSante;
         this.risqueService = risqueService;
+        this.historiqueService = historiqueService;
     }
 
     @Transactional(readOnly = true)
@@ -150,11 +154,16 @@ public class DashboardService {
         // exactement comme les KPI.
         List<RisqueCritiqueDto> risquesCritiques = risqueService.listerCritiques(ids);
 
+        // Activité récente : les dernières lignes du journal des
+        // modifications (tous objets confondus, vue active) — même fenêtre
+        // d'archivage que la page « Historique ».
+        List<HistoriqueModificationResponse> activiteRecente = historiqueService.activiteRecente();
+
         return new DashboardResponse(total, enCours, terminees, enPause, enRetard, jalonsEnRetard,
                 jalonsSemaine, initiativesARisque,
                 budgetTotal, avancementMoyen,
                 parStatut, parPriorite, parEntite, parResponsable, parObjectif, enRetardReponses,
-                risquesCritiques);
+                risquesCritiques, activiteRecente);
     }
 
     /** Dimanche (inclus) de la semaine civile contenant {@code date}. */

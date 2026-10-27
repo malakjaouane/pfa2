@@ -30,13 +30,16 @@ public class JalonService {
     private final JalonRepository jalonRepository;
     private final InitiativeRepository initiativeRepository;
     private final StatutJalonRepository statutJalonRepository;
+    private final HistoriqueModificationService historiqueService;
 
     public JalonService(JalonRepository jalonRepository,
                         InitiativeRepository initiativeRepository,
-                        StatutJalonRepository statutJalonRepository) {
+                        StatutJalonRepository statutJalonRepository,
+                        HistoriqueModificationService historiqueService) {
         this.jalonRepository = jalonRepository;
         this.initiativeRepository = initiativeRepository;
         this.statutJalonRepository = statutJalonRepository;
+        this.historiqueService = historiqueService;
     }
 
     @Transactional(readOnly = true)
@@ -68,7 +71,17 @@ public class JalonService {
                 .build();
         appliquerRegleStatut(jalon);
 
-        return JalonMapper.toResponse(jalonRepository.save(jalon));
+        Jalon enregistre = jalonRepository.save(jalon);
+
+        // Journal : la création du jalon laisse une trace dans le fil de la
+        // fiche (nouvelle valeur = le nom du jalon).
+        historiqueService.ecrire(HistoriqueModificationService.TYPE_JALON,
+                enregistre.getIdJalon(), initiative,
+                HistoriqueModificationService.CHAMP_CREATION,
+                null, enregistre.getNom(),
+                "Création du jalon", HistoriqueModificationService.auteurCourant(), false);
+
+        return JalonMapper.toResponse(enregistre);
     }
 
     @Transactional
@@ -80,6 +93,11 @@ public class JalonService {
         }
         verifierDateDansIntervalle(jalon.getInitiative(), request.datePrevue());
 
+        // Journal : valeurs figées avant application, pour le diff champ à
+        // champ — il couvre aussi la réouverture (retrait du statut
+        // « Atteint »), simple changement de statut comme un autre.
+        var avant = valeursJournalisees(jalon);
+
         jalon.setNom(request.nom().trim());
         jalon.setDescription(request.description());
         jalon.setDatePrevue(request.datePrevue());
@@ -89,7 +107,14 @@ public class JalonService {
         }
         appliquerRegleStatut(jalon);
 
-        return JalonMapper.toResponse(jalonRepository.save(jalon));
+        Jalon enregistre = jalonRepository.save(jalon);
+
+        historiqueService.diff(HistoriqueModificationService.TYPE_JALON,
+                enregistre.getIdJalon(), enregistre.getInitiative(),
+                avant, valeursJournalisees(enregistre),
+                HistoriqueModificationService.auteurCourant(), false);
+
+        return JalonMapper.toResponse(enregistre);
     }
 
     /**
@@ -103,7 +128,32 @@ public class JalonService {
         if (Boolean.TRUE.equals(jalon.getInitiative().getArchive())) {
             throw new BadRequestException("L'initiative est archivée : suppression de jalon refusée.");
         }
+        String nomSupprime = jalon.getNom();
+        Initiative initiative = jalon.getInitiative();
         jalonRepository.delete(jalon);
+
+        // Journal : la trace de suppression survit à la disparition du
+        // jalon (aucune clé étrangère sur celui-ci, lien sur l'initiative).
+        historiqueService.ecrire(HistoriqueModificationService.TYPE_JALON,
+                idJalon, initiative,
+                HistoriqueModificationService.CHAMP_SUPPRESSION,
+                nomSupprime, null,
+                "Suppression du jalon", HistoriqueModificationService.auteurCourant(), false);
+    }
+
+    /**
+     * Valeurs affichables des champs d'un jalon — le père du diff
+     * journalisé : la même carte est construite avant et après la
+     * modification.
+     */
+    private static java.util.Map<String, String> valeursJournalisees(Jalon j) {
+        java.util.Map<String, String> valeurs = new java.util.LinkedHashMap<>();
+        valeurs.put("nom", j.getNom());
+        valeurs.put("description", j.getDescription());
+        valeurs.put("datePrevue", j.getDatePrevue() == null ? null : j.getDatePrevue().toString());
+        valeurs.put("dateRealisation", j.getDateRealisation() == null ? null : j.getDateRealisation().toString());
+        valeurs.put("statut", j.getStatutJalon() == null ? null : j.getStatutJalon().getLibelle());
+        return valeurs;
     }
 
     /**

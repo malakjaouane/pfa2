@@ -12,6 +12,9 @@ import java.util.List;
  * @param risquesCritiques   risques du registre dont la santé pondérée
  *                           (probabilité × impact) atteint 6 sur 9 — widget
  *                           « Risques critiques » de la page d'accueil
+ * @param activiteRecente    dernières lignes du journal des modifications
+ *                           (tous objets confondus, vue active) — widget
+ *                           « Activité récente » de la page d'accueil
  */
 public record DashboardResponse(
         long totalInitiatives,
@@ -30,7 +33,8 @@ public record DashboardResponse(
         List<ChartDatum> parResponsable,
         List<ChartDatum> parObjectif,
         List<InitiativeResponse> initiativesEnRetard,
-        List<RisqueCritiqueDto> risquesCritiques
+        List<RisqueCritiqueDto> risquesCritiques,
+        List<HistoriqueModificationResponse> activiteRecente
 ) {
 
     public record ChartDatum(String libelle, long count) {

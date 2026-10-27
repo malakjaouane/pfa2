@@ -47,7 +47,7 @@ public class InitiativeService {
     private final UtilisateurRepository utilisateurRepository;
     private final ObjectifStrategiqueRepository objectifRepository;
     private final EtapeRepository etapeRepository;
-    private final HistoriqueStatutService historiqueStatutService;
+    private final HistoriqueModificationService historiqueService;
     private final CalculeurSante calculeurSante;
 
     public InitiativeService(InitiativeRepository initiativeRepository,
@@ -57,7 +57,7 @@ public class InitiativeService {
                              UtilisateurRepository utilisateurRepository,
                              ObjectifStrategiqueRepository objectifRepository,
                              EtapeRepository etapeRepository,
-                             HistoriqueStatutService historiqueStatutService,
+                             HistoriqueModificationService historiqueService,
                              CalculeurSante calculeurSante) {
         this.initiativeRepository = initiativeRepository;
         this.statutInitiativeRepository = statutInitiativeRepository;
@@ -66,7 +66,7 @@ public class InitiativeService {
         this.utilisateurRepository = utilisateurRepository;
         this.objectifRepository = objectifRepository;
         this.etapeRepository = etapeRepository;
-        this.historiqueStatutService = historiqueStatutService;
+        this.historiqueService = historiqueService;
         this.calculeurSante = calculeurSante;
     }
 
@@ -239,7 +239,7 @@ public class InitiativeService {
         Initiative enregistree = initiativeRepository.save(initiative);
 
         // Journal : première entrée du cycle de vie (ancienStatut = null).
-        historiqueStatutService.enregistrer(enregistree, null, statutCreation,
+        historiqueService.enregistrer(enregistree, null, statutCreation,
                 "Création de l'initiative", utilisateurCourant());
 
         return enregistree;
@@ -311,6 +311,11 @@ public class InitiativeService {
         // depuis n'importe quel état actif.
         verifierTransition(statutActuel, statutDemande, passageAutoTerminee);
 
+        // Journal : on fige les valeurs d'avant pour le diff champ à champ
+        // (budget, dates, responsable, priorité, entité, objectif,
+        // avancement…) une fois la requête validée, juste avant les setters.
+        Map<String, String> avant = valeursJournalisees(initiative);
+
         initiative.setCode(request.code().trim());
         initiative.setNom(request.nom().trim());
         initiative.setDescription(request.description());
@@ -336,12 +341,21 @@ public class InitiativeService {
             // Origine portée par la ligne : un passage forcé par RM07-auto
             // (100 % atteint) est « automatique », une transition choisie au
             // formulaire reste « manuelle ».
-            historiqueStatutService.enregistrer(enregistree, statutActuel, statutDemande,
+            historiqueService.enregistrer(enregistree, statutActuel, statutDemande,
                     passageAutoTerminee
                             ? "Passage automatique : avancement atteint 100 %"
                             : "Modification de l'initiative",
                     utilisateurCourant(), passageAutoTerminee);
         }
+
+        // Journal : une ligne par champ RÉELLEMENT modifié — les valeurs
+        // identiques ne produisent rien (pas d'événement « En cours →
+        // En cours » à chaque retouche). Le statut est traité ci-dessus,
+        // l'archivage a son événement dédié.
+        historiqueService.diff(HistoriqueModificationService.TYPE_INITIATIVE,
+                enregistree.getIdInitiative(), enregistree,
+                avant, valeursJournalisees(enregistree),
+                utilisateurCourant(), passageAutoTerminee);
 
         return InitiativeMapper.toResponse(enregistree);
     }
@@ -391,7 +405,7 @@ public class InitiativeService {
 
         initiative.setStatut(statutCible);
         Initiative enregistree = initiativeRepository.save(initiative);
-        historiqueStatutService.enregistrer(enregistree, statutActuel, statutDemande,
+        historiqueService.enregistrer(enregistree, statutActuel, statutDemande,
                 request.commentaire(), utilisateurCourant());
 
         return InitiativeMapper.toResponse(enregistree);
@@ -421,10 +435,14 @@ public class InitiativeService {
         Initiative enregistree = initiativeRepository.save(initiative);
 
         // L'archivage n'est PAS un statut (RM14) : le statut lui-même ne
-        // change pas. On journalise quand même l'événement, car « qui a
-        // archivé et quand » fait partie de la traçabilité attendue.
-        historiqueStatutService.enregistrer(enregistree, statut, statut,
-                "Archivage de l'initiative", utilisateurCourant());
+        // change pas. On journalise quand même l'événement sur son champ
+        // dédié, car « qui a archivé et quand » fait partie de la
+        // traçabilité attendue.
+        historiqueService.ecrire(HistoriqueModificationService.TYPE_INITIATIVE,
+                enregistree.getIdInitiative(), enregistree,
+                HistoriqueModificationService.CHAMP_ARCHIVE,
+                "Active", "Archivée",
+                "Archivage de l'initiative", utilisateurCourant(), false);
 
         return InitiativeMapper.toResponse(enregistree);
     }
@@ -444,6 +462,33 @@ public class InitiativeService {
                     "Seules les initiatives archivées peuvent être supprimées définitivement.");
         }
         initiativeRepository.delete(initiative);
+    }
+
+    /**
+     * Valeurs affichables des champs éditables d'une initiative, sous forme
+     * de chaînes — le père du diff journalisé : la même carte est construite
+     * avant et après application de la modification, et une ligne part pour
+     * chaque clé dont la valeur a bougé.
+     *
+     * <p>Hors carte : le <strong>statut</strong> (transition journalisée à
+     * part, avec son motif et son origine) et l'<strong>archivage</strong>
+     * (événement dédié sur le champ {@code archive}).</p>
+     */
+    private static Map<String, String> valeursJournalisees(Initiative i) {
+        Map<String, String> valeurs = new LinkedHashMap<>();
+        valeurs.put("code", i.getCode());
+        valeurs.put("nom", i.getNom());
+        valeurs.put("description", i.getDescription());
+        valeurs.put("dateDebut", i.getDateDebut() == null ? null : i.getDateDebut().toString());
+        valeurs.put("dateFinPrevue", i.getDateFinPrevue() == null ? null : i.getDateFinPrevue().toString());
+        valeurs.put("budget", i.getBudget() == null ? null : i.getBudget().toPlainString());
+        valeurs.put("avancement", i.getAvancement() == null ? null : i.getAvancement() + " %");
+        valeurs.put("entite", i.getEntite() == null ? null : i.getEntite().getNom());
+        valeurs.put("responsable", i.getResponsable() == null ? null
+                : (i.getResponsable().getPrenom() + " " + i.getResponsable().getNom()).trim());
+        valeurs.put("priorite", i.getPriorite() == null ? null : i.getPriorite().getLibelle());
+        valeurs.put("objectif", i.getObjectif() == null ? null : i.getObjectif().getLibelle());
+        return valeurs;
     }
 
     /**

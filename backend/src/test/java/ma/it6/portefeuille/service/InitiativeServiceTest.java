@@ -73,7 +73,7 @@ class InitiativeServiceTest {
     @Mock
     private EtapeRepository etapeRepository;
     @Mock
-    private HistoriqueStatutService historiqueStatutService;
+    private HistoriqueModificationService historiqueService;
     @Mock
     private CalculeurSante calculeurSante;
 
@@ -420,7 +420,7 @@ class InitiativeServiceTest {
 
             assertThat(response.statut().libelle()).isEqualTo(InitiativeService.STATUT_EN_COURS);
             assertThat(response.avancement()).isEqualTo(0);
-            verify(historiqueStatutService).enregistrer(
+            verify(historiqueService).enregistrer(
                     any(Initiative.class), anyString(), anyString(),
                     contains("Modification de l'initiative"), any(), eq(false));
         }

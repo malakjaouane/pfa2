@@ -8,7 +8,7 @@ import ma.it6.portefeuille.controller.DashboardController;
 import ma.it6.portefeuille.controller.DemandeController;
 import ma.it6.portefeuille.controller.EtapeController;
 import ma.it6.portefeuille.controller.HistoriqueConnexionController;
-import ma.it6.portefeuille.controller.HistoriqueStatutController;
+import ma.it6.portefeuille.controller.HistoriqueController;
 import ma.it6.portefeuille.controller.InitiativeController;
 import ma.it6.portefeuille.controller.ObjectifController;
 import ma.it6.portefeuille.controller.RisqueController;
@@ -28,7 +28,7 @@ import ma.it6.portefeuille.service.DashboardService;
 import ma.it6.portefeuille.service.DemandeService;
 import ma.it6.portefeuille.service.EtapeService;
 import ma.it6.portefeuille.service.HistoriqueConnexionService;
-import ma.it6.portefeuille.service.HistoriqueStatutService;
+import ma.it6.portefeuille.service.HistoriqueModificationService;
 import ma.it6.portefeuille.service.InitiativeService;
 import ma.it6.portefeuille.service.ObjectifService;
 import ma.it6.portefeuille.service.RisqueService;
@@ -90,7 +90,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(controllers = {
         InitiativeController.class,
-        HistoriqueStatutController.class,
+        HistoriqueController.class,
         HistoriqueConnexionController.class,
         EtapeController.class,
         UtilisateurController.class,
@@ -129,7 +129,7 @@ class SecuriteApiTest {
     @MockitoBean
     private BudgetService budgetService;
     @MockitoBean
-    private HistoriqueStatutService historiqueStatutService;
+    private HistoriqueModificationService historiqueService;
     @MockitoBean
     private HistoriqueConnexionService historiqueConnexionService;
     @MockitoBean
@@ -356,61 +356,59 @@ class SecuriteApiTest {
         }
 
         @Test
-        @DisplayName("journal des statuts : lecture INITIATIVE_CONSULTER, suppression UTILISATEUR_GERER")
-        void journalDesStatuts() throws Exception {
-            when(historiqueStatutService.lister(any(), anyInt(), anyInt(), anyBoolean()))
-                    .thenReturn(List.of());
-            when(historiqueStatutService.compter(any())).thenReturn(0L);
-            when(historiqueStatutService.auteurs()).thenReturn(List.of());
+        @DisplayName("journal des modifications : lecture INITIATIVE_CONSULTER, aucune écriture possible")
+        void journalDesModifications() throws Exception {
+            when(historiqueService.lister(any(), anyInt(), anyInt(), anyBoolean()))
+                    .thenReturn(new HistoriqueModificationService.PageJournal(List.of(), 0L));
+            when(historiqueService.auteurs()).thenReturn(List.of());
+            when(historiqueService.exporter(any())).thenReturn(List.of());
 
             // Sans jeton : le journal est une ressource protégée.
-            mockMvc.perform(get("/api/historique-statuts"))
+            mockMvc.perform(get("/api/historique"))
                     .andExpect(status().isUnauthorized());
 
             // Lecture ouverte à qui consulte les initiatives : aucun nouveau
-            // droit n'est créé pour la page « Historique des statuts ».
-            mockMvc.perform(get("/api/historique-statuts")
+            // droit n'est créé pour la page « Historique ».
+            mockMvc.perform(get("/api/historique")
                             .with(auth("INITIATIVE_CONSULTER")))
                     .andExpect(status().isOk())
                     .andExpect(header().string("X-Total-Count", "0"));
 
-            mockMvc.perform(get("/api/historique-statuts/auteurs")
+            mockMvc.perform(get("/api/historique/auteurs")
+                            .with(auth("INITIATIVE_CONSULTER")))
+                    .andExpect(status().isOk());
+
+            // Export complet : mêmes droits que la lecture, aucun droit ouvert.
+            mockMvc.perform(get("/api/historique/export")
                             .with(auth("INITIATIVE_CONSULTER")))
                     .andExpect(status().isOk());
 
             // Une permission qui n'est PAS la consultation ne suffit pas.
-            mockMvc.perform(get("/api/historique-statuts")
+            mockMvc.perform(get("/api/historique")
                             .with(auth("DEMANDE_SOUMETTRE")))
                     .andExpect(status().isForbidden());
 
             // Création/Modification : aucun POST/PUT n'est déclaré sur le journal.
-            mockMvc.perform(post("/api/historique-statuts")
+            mockMvc.perform(post("/api/historique")
                             .with(auth("INITIATIVE_CONSULTER"))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
                     .andExpect(status().isMethodNotAllowed());
 
-            // Suppression : réservée aux administrateurs (UTILISATEUR_GERER,
-            // droit existant) — la consultation seule ne suffit pas.
-            mockMvc.perform(delete("/api/historique-statuts/1"))
+            // JOURNAL IMMUABLE : aucune suppression n'existe — même un
+            // administrateur (UTILISATEUR_GERER) reçoit un refus explicite,
+            // pas un 204 : la preuve d'audit ne se retouche pas.
+            mockMvc.perform(delete("/api/historique"))
                     .andExpect(status().isUnauthorized());
-            mockMvc.perform(delete("/api/historique-statuts/1")
+            mockMvc.perform(delete("/api/historique")
                             .with(auth("INITIATIVE_CONSULTER")))
-                    .andExpect(status().isForbidden());
-            mockMvc.perform(delete("/api/historique-statuts/1")
+                    .andExpect(status().isMethodNotAllowed());
+            mockMvc.perform(delete("/api/historique")
                             .with(auth("UTILISATEUR_GERER")))
-                    .andExpect(status().isNoContent());
-
-            // Purge TOUT le journal (bouton admin) : mêmes règles que la
-            // suppression d'une ligne, sur la collection sans identifiant.
-            mockMvc.perform(delete("/api/historique-statuts"))
-                    .andExpect(status().isUnauthorized());
-            mockMvc.perform(delete("/api/historique-statuts")
-                            .with(auth("INITIATIVE_CONSULTER")))
-                    .andExpect(status().isForbidden());
-            mockMvc.perform(delete("/api/historique-statuts")
+                    .andExpect(status().isMethodNotAllowed());
+            mockMvc.perform(delete("/api/historique/1")
                             .with(auth("UTILISATEUR_GERER")))
-                    .andExpect(status().isNoContent());
+                    .andExpect(status().isNotFound());
         }
 
         @Test
@@ -802,16 +800,18 @@ class SecuriteApiTest {
         }
 
         @Test
-        @DisplayName("journal des statuts : lecture seule, via la consultation des initiatives")
-        void historiqueStatuts() throws Exception {
+        @DisplayName("fil d'activité de la fiche : lecture seule, via la consultation des initiatives")
+        void historiqueFiche() throws Exception {
             when(initiativeService.trouver(any())).thenReturn(null);
-            when(historiqueStatutService.historique(any())).thenReturn(List.of());
+            when(historiqueService.historiqueInitiative(any(), any(), anyInt(), anyInt()))
+                    .thenReturn(new HistoriqueModificationService.PageJournal(List.of(), 0L));
 
-            mockMvc.perform(get("/api/initiatives/1/historique-statuts")
+            mockMvc.perform(get("/api/initiatives/1/historique")
                             .with(auth("INITIATIVE_CONSULTER")))
-                    .andExpect(status().isOk());
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("X-Total-Count", "0"));
 
-            mockMvc.perform(get("/api/initiatives/1/historique-statuts"))
+            mockMvc.perform(get("/api/initiatives/1/historique"))
                     .andExpect(status().isUnauthorized());
         }
 

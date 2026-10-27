@@ -49,6 +49,8 @@ class DashboardServiceTest {
     private CalculeurSante calculeurSante;
     @Mock
     private RisqueService risqueService;
+    @Mock
+    private HistoriqueModificationService historiqueService;
 
     @InjectMocks
     private DashboardService service;
@@ -218,5 +220,26 @@ class DashboardServiceTest {
 
         verify(risqueService).listerCritiques(List.of());
         assertThat(reponse.risquesCritiques()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Widget « activité récente » : les dernières lignes du journal sont transmises")
+    void activiteRecenteTransmise() {
+        brancher(List.of());
+        ma.it6.portefeuille.dto.HistoriqueModificationResponse ligne =
+                new ma.it6.portefeuille.dto.HistoriqueModificationResponse(
+                        42L, "initiative", 1L, "budget", "1000", "2500", null,
+                        java.time.LocalDateTime.of(2026, 10, 27, 10, 0), false, null, null);
+        when(historiqueService.activiteRecente()).thenReturn(List.of(ligne));
+
+        DashboardResponse reponse = service.calculer(new InitiativeFilterRequest(
+                null, null, null, null, null, null, null, null, null));
+
+        verify(historiqueService).activiteRecente();
+        assertThat(reponse.activiteRecente())
+                .extracting(ma.it6.portefeuille.dto.HistoriqueModificationResponse::id)
+                .containsExactly(42L);
+        assertThat(reponse.activiteRecente().get(0).champ()).isEqualTo("budget");
+        assertThat(reponse.activiteRecente().get(0).nouvelleValeur()).isEqualTo("2500");
     }
 }

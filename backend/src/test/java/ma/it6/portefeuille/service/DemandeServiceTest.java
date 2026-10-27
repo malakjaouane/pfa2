@@ -51,6 +51,8 @@ class DemandeServiceTest {
     private PrioriteRepository prioriteRepository;
     @Mock
     private InitiativeService initiativeService;
+    @Mock
+    private HistoriqueModificationService historiqueService;
 
     @InjectMocks
     private DemandeService service;

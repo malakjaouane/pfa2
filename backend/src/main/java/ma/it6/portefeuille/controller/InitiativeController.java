@@ -2,11 +2,11 @@ package ma.it6.portefeuille.controller;
 
 import jakarta.validation.Valid;
 import ma.it6.portefeuille.dto.ChangerStatutRequest;
-import ma.it6.portefeuille.dto.HistoriqueStatutResponse;
+import ma.it6.portefeuille.dto.HistoriqueModificationResponse;
 import ma.it6.portefeuille.dto.InitiativeFilterRequest;
 import ma.it6.portefeuille.dto.InitiativeRequest;
 import ma.it6.portefeuille.dto.InitiativeResponse;
-import ma.it6.portefeuille.service.HistoriqueStatutService;
+import ma.it6.portefeuille.service.HistoriqueModificationService;
 import ma.it6.portefeuille.service.InitiativeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,12 +28,12 @@ import java.util.List;
 public class InitiativeController {
 
     private final InitiativeService initiativeService;
-    private final HistoriqueStatutService historiqueStatutService;
+    private final HistoriqueModificationService historiqueService;
 
     public InitiativeController(InitiativeService initiativeService,
-                                HistoriqueStatutService historiqueStatutService) {
+                                HistoriqueModificationService historiqueService) {
         this.initiativeService = initiativeService;
-        this.historiqueStatutService = historiqueStatutService;
+        this.historiqueService = historiqueService;
     }
 
     /**
@@ -72,15 +72,37 @@ public class InitiativeController {
     }
 
     /**
-     * Journal chronologique des transitions de statut de l'initiative :
-     * création, modifications, glisser-déposer sur le Kanban, archivage.
+     * Fil d'activité complet de la fiche : lignes de l'initiative elle-même
+     * et de ses étapes / jalons, du plus récent au plus ancien, avec filtre
+     * par type d'objet et chargement progressif (« Charger plus »).
+     *
+     * @param type filtre facultatif : {@code initiative}, {@code etape} ou
+     *             {@code jalon} (400 sinon)
+     * @param page numéro de page (0-indexé), 0 par défaut
+     * @param size lignes par page, plafonnée à
+     *             {@value HistoriqueModificationService#TAILLE_MAXIMALE}
+     * @return la page courante + le total des lignes du fil dans
+     *         {@code X-Total-Count}
      */
-    @GetMapping("/{id}/historique-statuts")
-    public ResponseEntity<List<HistoriqueStatutResponse>> historiqueStatuts(@PathVariable Long id) {
+    @GetMapping("/{id}/historique")
+    public ResponseEntity<List<HistoriqueModificationResponse>> historique(
+            @PathVariable Long id,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
         // Fait échouer l'appel si l'initiative n'existe pas, plutôt que de
         // renvoyer un journal vide ambigu.
         initiativeService.trouver(id);
-        return ResponseEntity.ok(historiqueStatutService.historique(id));
+
+        int numeroPage = page == null ? 0 : Math.max(0, page);
+        int taille = size == null || size <= 0
+                ? HistoriqueModificationService.TAILLE_PAR_DEFAUT
+                : size;
+        HistoriqueModificationService.PageJournal resultat =
+                historiqueService.historiqueInitiative(id, type, numeroPage, taille);
+        return ResponseEntity.ok()
+                .header("X-Total-Count", String.valueOf(resultat.total()))
+                .body(resultat.lignes());
     }
 
     /**

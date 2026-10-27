@@ -60,6 +60,8 @@ class UtilisateurServiceTest {
     private SessionsService sessionsService;
     @Mock
     private DemandeInitiativeRepository demandeRepository;
+    @Mock
+    private HistoriqueModificationService historiqueService;
 
     @InjectMocks
     private UtilisateurService service;

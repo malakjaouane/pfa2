@@ -3,7 +3,7 @@ package ma.it6.portefeuille.config;
 import ma.it6.portefeuille.entity.*;
 import ma.it6.portefeuille.repository.*;
 import ma.it6.portefeuille.service.CalculeurAvancement;
-import ma.it6.portefeuille.service.HistoriqueStatutService;
+import ma.it6.portefeuille.service.HistoriqueModificationService;
 import ma.it6.portefeuille.service.InitiativeService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,7 +44,7 @@ public class DataInitializer implements CommandLineRunner {
     private final JalonRepository jalonRepository;
     private final StatutJalonRepository statutJalonRepository;
     private final ObjectifStrategiqueRepository objectifRepository;
-    private final HistoriqueStatutService historiqueStatutService;
+    private final HistoriqueModificationService historiqueService;
     private final PasswordEncoder passwordEncoder;
     private final String emailAdmin;
     private final String motDePasseAdmin;
@@ -60,7 +60,7 @@ public class DataInitializer implements CommandLineRunner {
                            JalonRepository jalonRepository,
                            StatutJalonRepository statutJalonRepository,
                            ObjectifStrategiqueRepository objectifRepository,
-                           HistoriqueStatutService historiqueStatutService,
+                           HistoriqueModificationService historiqueService,
                            PasswordEncoder passwordEncoder,
                            @Value("${app.admin.email}") String emailAdmin,
                            @Value("${app.admin.password}") String motDePasseAdmin) {
@@ -75,7 +75,7 @@ public class DataInitializer implements CommandLineRunner {
         this.jalonRepository = jalonRepository;
         this.statutJalonRepository = statutJalonRepository;
         this.objectifRepository = objectifRepository;
-        this.historiqueStatutService = historiqueStatutService;
+        this.historiqueService = historiqueService;
         this.passwordEncoder = passwordEncoder;
         this.emailAdmin = emailAdmin;
         this.motDePasseAdmin = motDePasseAdmin;
@@ -111,11 +111,14 @@ public class DataInitializer implements CommandLineRunner {
      */
     private void alignerHistorique() {
         for (Initiative initiative : initiativeRepository.findAll()) {
-            if (!historiqueStatutService.historique(initiative.getIdInitiative()).isEmpty()) {
+            // Une seule ligne suffit pour savoir si l'initiative est tracée
+            // (le fil complet n'est pas chargé pour un simple garde-fou).
+            if (historiqueService.historiqueInitiative(
+                    initiative.getIdInitiative(), null, 0, 1).total() > 0) {
                 continue;
             }
             String statut = initiative.getStatut() == null ? null : initiative.getStatut().getLibelle();
-            historiqueStatutService.enregistrer(
+            historiqueService.enregistrer(
                     initiative,
                     null,
                     statut == null ? "Non défini" : statut,
@@ -192,7 +195,7 @@ public class DataInitializer implements CommandLineRunner {
                         .ifPresent(terminee -> {
                             initiative.setStatut(terminee);
                             initiativeRepository.save(initiative);
-                            historiqueStatutService.enregistrer(
+                            historiqueService.enregistrer(
                                     initiative, statut, InitiativeService.STATUT_TERMINEE,
                                     "Passage automatique : avancement atteint 100 % "
                                             + "(RM07, alignement au démarrage)",
@@ -209,7 +212,7 @@ public class DataInitializer implements CommandLineRunner {
                         .ifPresent(aPlanifier -> {
                             initiative.setStatut(aPlanifier);
                             initiativeRepository.save(initiative);
-                            historiqueStatutService.enregistrer(
+                            historiqueService.enregistrer(
                                     initiative, statut, InitiativeService.STATUT_A_PLANIFIER,
                                     "Retour automatique : avancement à 0 %, "
                                             + "l'initiative n'a pas commencé "
@@ -389,26 +392,26 @@ public class DataInitializer implements CommandLineRunner {
         // bloc : il ne tourne que lorsque la table initiative était vide.
         String auteur = "admin@it6.ma";
 
-        historiqueStatutService.enregistrer(digitalisation, null, "À planifier",
+        historiqueService.enregistrer(digitalisation, null, "À planifier",
                 "Création de l'initiative", auteur);
-        historiqueStatutService.enregistrer(digitalisation, "À planifier", "En cours",
+        historiqueService.enregistrer(digitalisation, "À planifier", "En cours",
                 "Cadrage validé, ouverture du chantier", auteur);
 
-        historiqueStatutService.enregistrer(portailRh, null, "À planifier",
+        historiqueService.enregistrer(portailRh, null, "À planifier",
                 "Création de l'initiative", auteur);
-        historiqueStatutService.enregistrer(portailRh, "À planifier", "En cours",
+        historiqueService.enregistrer(portailRh, "À planifier", "En cours",
                 "Démarrage des travaux", auteur);
-        historiqueStatutService.enregistrer(portailRh, "En cours", "Terminée",
+        historiqueService.enregistrer(portailRh, "En cours", "Terminée",
                 "Recette signée par les RH", auteur);
 
-        historiqueStatutService.enregistrer(mobile, null, "À planifier",
+        historiqueService.enregistrer(mobile, null, "À planifier",
                 "Création de l'initiative", auteur);
-        historiqueStatutService.enregistrer(mobile, "À planifier", "En cours",
+        historiqueService.enregistrer(mobile, "À planifier", "En cours",
                 "Démarrage des travaux", auteur);
-        historiqueStatutService.enregistrer(mobile, "En cours", "En pause",
+        historiqueService.enregistrer(mobile, "En cours", "En pause",
                 "En attente de la mise à disposition des terminaux terrain", auteur);
 
-        historiqueStatutService.enregistrer(cloud, null, "À planifier",
+        historiqueService.enregistrer(cloud, null, "À planifier",
                 "Création de l'initiative", auteur);
     }
 }
