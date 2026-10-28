@@ -4,6 +4,7 @@ import api, { messageErreur } from '../api';
 import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import { afficherMessage } from '../i18n/message';
+import { badgeTypeJournal, libelleType, texteEvenement } from '../i18n/journal';
 import { useReferentiels } from '../i18n/referentiels';
 import StatutBadge from '../components/StatutBadge';
 import SanteBadge from '../components/SanteBadge';
@@ -13,6 +14,9 @@ import { IconTarget, IconAlert, IconAssistant } from '../components/Icons';
 const etapeVide = { nom: '', description: '', ordre: '', dateDebut: '', dateFinPrevue: '', avancement: 0, idStatutEtape: '' };
 const jalonVide = { nom: '', description: '', datePrevue: '', dateRealisation: '', idStatutJalon: '' };
 const risqueVide = { description: '', probabilite: '2', impact: '2', planAction: '', idResponsable: '' };
+
+/** Taille de page du fil de fiche : « Charger plus » remonte la suivante. */
+const TAILLE_HISTORIQUE = 10;
 
 /** Couleur du badge de santé d'un risque (codes renvoyés par le serveur). */
 const badgeSanteRisque = (niveau) =>
@@ -39,6 +43,9 @@ export default function InitiativeDetailPage() {
   const [risques, setRisques] = useState([]);
   const [responsables, setResponsables] = useState([]);
   const [historique, setHistorique] = useState([]);
+  const [historiqueTotal, setHistoriqueTotal] = useState(0);
+  const [historiquePage, setHistoriquePage] = useState(0);
+  const [historiqueType, setHistoriqueType] = useState('');
   const [statutsEtape, setStatutsEtape] = useState([]);
   const [statutsJalon, setStatutsJalon] = useState([]);
   const [erreur, setErreur] = useState('');
@@ -69,6 +76,26 @@ export default function InitiativeDetailPage() {
     }
   };
 
+  /**
+   * Fil paginé du journal de l'initiative (page/size + X-Total-Count) :
+   * page 0 = recharge (filtre courant), page suivante = « Charger plus »
+   * (on ajoute à la suite sans repartir de zéro). Le backend filtre les
+   * types ∈ {initiative, etape, jalon} — 400 au-delà, donc jamais.
+   */
+  const chargerHistorique = (page = 0, type = historiqueType) => {
+    const params = new URLSearchParams({ page: String(page), size: String(TAILLE_HISTORIQUE) });
+    if (type) params.set('type', type);
+    api
+      .get(`/initiatives/${id}/historique?${params.toString()}`)
+      .then((res) => {
+        const compte = parseInt(res.headers['x-total-count'] ?? '', 10);
+        setHistoriqueTotal(Number.isNaN(compte) ? res.data.length : compte);
+        setHistorique((precedent) => (page === 0 ? res.data : [...precedent, ...res.data]));
+        setHistoriquePage(page);
+      })
+      .catch(() => {});
+  };
+
   const charger = () => {
     api
       .get(`/initiatives/${id}`)
@@ -82,8 +109,8 @@ export default function InitiativeDetailPage() {
       api.get(`/initiatives/${id}/jalons`).then((res) => setJalons(res.data)).catch(() => {});
       // Registre des risques : lecture avec INITIATIVE_CONSULTER, comme la fiche.
       api.get(`/initiatives/${id}/risques`).then((res) => setRisques(res.data)).catch(() => {});
-      // Journal des transitions : même permission que la fiche elle-même.
-      api.get(`/initiatives/${id}/historique-statuts`).then((res) => setHistorique(res.data)).catch(() => {});
+      // Journal des modifications : même permission que la fiche elle-même.
+      chargerHistorique();
     }
   };
 
@@ -596,24 +623,29 @@ export default function InitiativeDetailPage() {
         )}
       </section>
 
-      {/* Journal des transitions : qui a changé quoi, quand et pourquoi.
-          Lisible par tous ceux qui peuvent voir la fiche (INITIATIVE_CONSULTER),
-          y compris le Visiteur : c'est le suivi, pas une écriture. */}
+      {/* Journal des modifications : qui a changé quoi, quand et pourquoi —
+          toutes les lignes de l'initiative (initiative, étapes, jalons),
+          filtrables par type et paginées « Charger plus ». Lisible par tous
+          ceux qui peuvent voir la fiche (INITIATIVE_CONSULTER), y compris le
+          Visiteur : c'est le suivi, pas une écriture. */}
       <section className="carte">
         <div className="section-entete">
           <h3>{t('initiativeDetail.historiqueTitre')}</h3>
-          {historique.length > 0 && (
-            <span className="badge badge-gris">{historique.length}</span>
+          {historiqueTotal > 0 && (
+            <span className="badge badge-gris">{historiqueTotal}</span>
           )}
         </div>
-        {historique.length === 0 ? (
-          <p className="texte-muet">{t('initiativeDetail.aucunHistorique')}</p>
-        ) : (
+        {/* Les commandes (filtres + « Voir tout ») restent affichées même
+            quand le filtre courant ne ramène rien : sinon la pastille
+            active devient une impasse — aucun moyen de revenir à
+            « Tous ». Elles ne disparaissent que sur une fiche sans aucun
+            historique et sans filtre posé. */}
+        {(historiqueTotal > 0 || historiqueType) && (
           <>
             <div className="section-entete-actions">
               <p className="texte-muet historique-resume">{t('initiativeDetail.historiqueResume')}</p>
               {/* Le journal complet vit sur sa propre page : cette fiche ne
-                  garde qu'un résumé, avec un filtre déjà posé sur elle. */}
+                  garde qu'un fil de lecture, avec un filtre déjà posé sur lui. */}
               <Link
                 to={`/historique?initiative=${id}`}
                 className="btn btn-petit btn-secondaire"
@@ -621,9 +653,45 @@ export default function InitiativeDetailPage() {
                 {t('initiativeDetail.voirToutHistorique')}
               </Link>
             </div>
+            <div className="historique-filtres">
+              <div
+                className="vue-toggle"
+                role="group"
+                aria-label={t('initiativeDetail.historiqueAriaFiltre')}
+              >
+                {[
+                  ['', t('initiativeDetail.historiqueFiltreTous')],
+                  ['initiative', t('historique.type.initiative')],
+                  ['etape', t('initiativeDetail.historiqueFiltreEtapes')],
+                  ['jalon', t('initiativeDetail.historiqueFiltreJalons')]
+                ].map(([cle, libelle]) => (
+                  <button
+                    key={cle || 'tous'}
+                    type="button"
+                    className={historiqueType === cle ? 'actif' : ''}
+                    onClick={() => {
+                      setHistoriqueType(cle);
+                      chargerHistorique(0, cle);
+                    }}
+                  >
+                    {libelle}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+        {historique.length === 0 ? (
+          <p className="texte-muet">
+            {historiqueType
+              ? t('initiativeDetail.aucunHistoriqueFiltre')
+              : t('initiativeDetail.aucunHistorique')}
+          </p>
+        ) : (
+          <>
             <ol className="historique">
-              {historique.slice(0, 5).map((ev) => (
-                <li key={ev.idHistorique} className="historique-item">
+              {historique.map((ev) => (
+                <li key={ev.id} className="historique-item">
                   <span className="historique-date">
                     {new Date(ev.dateChangement).toLocaleString(langue, {
                       day: '2-digit', month: 'short', year: 'numeric',
@@ -631,19 +699,31 @@ export default function InitiativeDetailPage() {
                     })}
                   </span>
                   <span className="historique-transition">
-                    {ev.ancienStatut
-                      ? t('initiativeDetail.transition', { de: ev.ancienStatut, vers: ev.nouveauStatut })
-                      : t('initiativeDetail.transitionCreation', { statut: ev.nouveauStatut })}
+                    <span className={`badge ${badgeTypeJournal(ev.typeObjet)}`}>
+                      {libelleType(t, ev.typeObjet)}
+                    </span>
+                    {texteEvenement(t, ev)}
                   </span>
                   {ev.commentaire && (
                     <span className="historique-commentaire">{ev.commentaire}</span>
                   )}
                   <span className="historique-auteur">
                     {ev.utilisateur?.nomComplet ?? t('initiativeDetail.auteurInconnu')}
+                    {ev.automatique ? ` · ${t('historique.origineAutomatique')}` : ''}
                   </span>
                 </li>
               ))}
             </ol>
+            {historique.length < historiqueTotal && (
+              <button
+                type="button"
+                className="btn btn-petit btn-secondaire historique-plus"
+                onClick={() => chargerHistorique(historiquePage + 1)}
+                disabled={historiquePage + 1 >= Math.ceil(historiqueTotal / TAILLE_HISTORIQUE)}
+              >
+                {t('initiativeDetail.historiqueChargerPlus')}
+              </button>
+            )}
           </>
         )}
       </section>

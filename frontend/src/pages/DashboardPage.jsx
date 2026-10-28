@@ -14,6 +14,7 @@ import api, { messageErreur } from '../api';
 import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import { useReferentiels } from '../i18n/referentiels';
+import { badgeTypeJournal, libelleType, texteEvenement } from '../i18n/journal';
 import KpiCard from '../components/KpiCard';
 import StatutBadge from '../components/StatutBadge';
 import SanteBadge from '../components/SanteBadge';
@@ -131,7 +132,7 @@ const construireParams = (f) => {
  */
 export default function DashboardPage() {
   const { user, hasPermission } = useAuth();
-  const { t } = useI18n();
+  const { t, langue } = useI18n();
   const ref = useReferentiels();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -239,6 +240,8 @@ export default function DashboardPage() {
   const priorites = kpis.parPriorite.filter((d) => d.count > 0);
   const enRetard = kpis.initiativesEnRetard ?? [];
   const risquesCritiques = kpis.risquesCritiques ?? [];
+  // Journal des modifications : 10 dernières lignes servies par /dashboard.
+  const activite = kpis.activiteRecente ?? [];
 
   const donneesStatut = {
     labels: statuts.map((d) => ref.statut(d.libelle)),
@@ -660,6 +663,60 @@ export default function DashboardPage() {
               )}
             </section>
           )}
+
+          {/* Activité récente : les 10 dernières lignes du journal des
+              modifications (mêmes droits que la page, INITIATIVE_CONSULTER).
+              Ligne = badge de type + événement traduit + auteur, avec le
+              lien vers la fiche quand la ligne est rattachée à une
+              initiative ; le fil complet vit sur /historique. */}
+          <section className="section-dashboard">
+            <div className="section-dashboard-entete">
+              <div className="section-titre-icone">
+                <h3>{t('dashboard.activite.titre')}</h3>
+                {activite.length > 0 && <span className="badge badge-gris">{activite.length}</span>}
+              </div>
+              <p className="texte-muet">{t('dashboard.activite.sousTitre')}</p>
+            </div>
+
+            {activite.length === 0 ? (
+              <div className="carte etat-vide-ligne etat-vide-ok">
+                <IconCheck size={18} />
+                {t('dashboard.activite.aucune')}
+              </div>
+            ) : (
+              <div className="carte">
+                <ol className="historique">
+                  {activite.map((ev) => (
+                    <li key={ev.id} className="historique-item">
+                      <span className="historique-date">
+                        {new Date(ev.dateChangement).toLocaleString(langue, {
+                          day: '2-digit', month: 'short', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit'
+                        })}
+                      </span>
+                      <span className="historique-transition">
+                        <span className={`badge ${badgeTypeJournal(ev.typeObjet)}`}>
+                          {libelleType(t, ev.typeObjet)}
+                        </span>
+                        {texteEvenement(t, ev)}
+                        {ev.initiative && (
+                          <Link to={`/initiatives/${ev.initiative.idInitiative}`}>
+                            {' · '}{ev.initiative.code}
+                          </Link>
+                        )}
+                      </span>
+                      <span className="historique-auteur">
+                        {ev.utilisateur?.nomComplet ?? t('initiativeDetail.auteurInconnu')}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+                <Link to="/historique" className="btn btn-petit btn-secondaire historique-plus">
+                  {t('dashboard.activite.voirTout')}
+                </Link>
+              </div>
+            )}
+          </section>
         </>
       )}
     </div>

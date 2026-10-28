@@ -1381,7 +1381,26 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   font-size: 12.5px;
 }
 
-/* ---------- Page Â« Historique des statuts Â» (journal global) ---------- */
+/* Filtres par type d'objet du fil de fiche (segments Â« Tous | Initiative |
+   Ã‰tapes | Jalons Â») puis bouton Â« Charger plus Â» sous le fil paginÃ©. */
+.historique-filtres {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.historique-plus { margin-top: 12px; }
+
+/* Ligne du fil de fiche : badge de type avant l'Ã©vÃ©nement lui-mÃªme. */
+.historique-item .historique-transition .badge {
+  margin-inline-end: 6px;
+  vertical-align: 1px;
+}
+
+/* ---------- Page Â« Historique Â» (journal global des modifications) ---------- */
 .pagination {
   display: flex;
   align-items: center;
@@ -4391,10 +4410,10 @@ a:hover { color: #00566D; }
 
 
 /* ============================================================ */
-/* ---------- Page « Assistant IA » (chat réel) ---------------- */
-/* Conversation « Demande à ton portefeuille » + résumé IA de   */
-/* la fiche initiative. Bubbles alignées en flex : le mode RTL  */
-/* (ar) est respecté automatiquement via direction: rtl.        */
+/* ---------- Page ï¿½ Assistant IA ï¿½ (chat rï¿½el) ---------------- */
+/* Conversation ï¿½ Demande ï¿½ ton portefeuille ï¿½ + rï¿½sumï¿½ IA de   */
+/* la fiche initiative. Bubbles alignï¿½es en flex : le mode RTL  */
+/* (ar) est respectï¿½ automatiquement via direction: rtl.        */
 /* ============================================================ */
 .ia-page {
   max-width: 880px;
@@ -4452,7 +4471,7 @@ a:hover { color: #00566D; }
   color: var(--accent);
 }
 
-/* Indicateur « l'assistant rédige… » (trois points). */
+/* Indicateur ï¿½ l'assistant rï¿½digeï¿½ ï¿½ (trois points). */
 .ia-attente {
   align-items: center;
   color: var(--n700);
@@ -4540,13 +4559,13 @@ a:hover { color: #00566D; }
   margin: 4px 0 0;
 }
 
-/* CTA « Essayer l'assistant » de la page d'accueil. */
+/* CTA ï¿½ Essayer l'assistant ï¿½ de la page d'accueil. */
 .sn-ia-cta {
   margin-top: 6px;
   display: inline-block;
 }
 
-/* Résumé IA sur la fiche initiative. */
+/* Rï¿½sumï¿½ IA sur la fiche initiative. */
 .carte-resume-ia {
   border-inline-start: 3px solid var(--accent);
 }
@@ -4571,8 +4590,8 @@ a:hover { color: #00566D; }
   .ia-suggestions { flex-direction: column; align-items: flex-start; }
 }
 
-/* Mouvement réduit : les points de l'indicateur restent visibles
-   (pleine opacité) mais ne bougent plus. */
+/* Mouvement rï¿½duit : les points de l'indicateur restent visibles
+   (pleine opacitï¿½) mais ne bougent plus. */
 @media (prefers-reduced-motion: reduce) {
   .ia-points i {
     animation: none;

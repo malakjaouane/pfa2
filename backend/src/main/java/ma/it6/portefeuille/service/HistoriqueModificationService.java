@@ -242,14 +242,29 @@ public class HistoriqueModificationService {
                      boolean automatique) {
         for (Map.Entry<String, String> entree : avant.entrySet()) {
             String champ = entree.getKey();
-            String valeurAvant = entree.getValue();
-            String valeurApres = apres.get(champ);
+            String valeurAvant = normaliserDiff(entree.getValue());
+            String valeurApres = normaliserDiff(apres.get(champ));
             if (Objects.equals(valeurAvant, valeurApres)) {
                 continue;
             }
             ecrire(typeObjet, idObjet, initiative, champ,
                     valeurAvant, valeurApres, null, email, automatique);
         }
+    }
+
+    /**
+     * Normalisation d'une valeur de diff : l'absence et le vide sont la
+     * même chose (« description » nulle à la création face à « » envoyée
+     * par le formulaire) et on ignore les espaces de bord. Sans cela, le
+     * journal se remplit de lignes parasites qui ne racontent aucun vrai
+     * changement — la preuve d'audit ne doit montrer que ce qui a bougé.
+     */
+    private static String normaliserDiff(String valeur) {
+        if (valeur == null) {
+            return null;
+        }
+        String nettoyee = valeur.trim();
+        return nettoyee.isEmpty() ? null : nettoyee;
     }
 
     /**

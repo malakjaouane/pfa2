@@ -230,20 +230,28 @@ n'est ni versionnée ni journalisée côté serveur.
   possible depuis les archives. Enfin le bouton **« Supprimer » est visible
   sur toutes les lignes** : sur une demande transformée, le refus serveur
   (400) s'affiche alors sous l'alerte.
-- **Historique des statuts** (`/historique`) : journal global de tous les
-  changements de statut — recherche par code ou nom
-  d'initiative (insensible à la casse et aux accents), filtres statut,
-  utilisateur et période, tri (récent / ancien), pagination et export CSV de
-  l'affichage. Chaque ligne porte son **origine** (manuelle ou automatique,
-  colonne `historique_statut.automatique` alimentée par le moteur de règles).
-  Les événements sont écrits en base dans la même transaction que le
-  changement (aucune donnée fictive) ; la fiche initiative n'en garde qu'un
-  résumé (5 derniers changements) plus un bouton « Voir tout l'historique »
-  qui ouvre la page déjà filtrée. Lecture soumise à `INITIATIVE_CONSULTER`
-  (aucun nouveau droit) ; les **administrateurs** (`UTILISATEUR_GERER`,
-  droit existant) peuvent supprimer une entrée erronée via la colonne
-  « Actions » (confirmation systématique, `DELETE` refusée aux autres
-  profils) — aucune autre écriture n'est exposée.
+- **Historique des modifications** (`/historique`) : journal **immuable** de
+  tous les changements, **champ à champ** (ancienne / nouvelle valeur),
+  toutes données confondues — initiatives, étapes, jalons, demandes,
+  utilisateurs, rôles. Recherche par code ou nom d'initiative (insensible
+  à la casse et aux accents), filtres type d'objet, champ, utilisateur et
+  période (du/au), tri (récent / ancien), pagination, et bascule
+  **« Actives | Archives »** : la vue active montre les 12 derniers mois,
+  les archives donnent les événements plus anciens (calcul de dates, aucune
+  table de plus). L'**export CSV** est servi par le backend (BOM UTF-8,
+  point-virgule, toutes les lignes filtrées, `historique-modifications.csv`).
+  Chaque ligne porte son **origine** (manuelle ou automatique, colonne
+  `automatique` alimentée par le moteur de règles — RM07-auto, réouverture,
+  RM17…), et les valeurs identiques après normalisation ne créent jamais de
+  ligne parasite. Les événements sont écrits en base dans la même
+  transaction que le changement (aucune donnée fictive) ; la fiche initiative
+  n'en garde qu'un **fil paginé** (10 par page, filtres « Tous / Initiative /
+  Étapes / Jalons », bouton « Charger plus »), le tableau de bord affiche
+  l'**activité récente** (10 derniers événements). Lecture soumise à
+  `INITIATIVE_CONSULTER` (aucun nouveau droit) ; **aucune écriture n'est
+  exposée** : `POST`/`DELETE` sur la collection renvoient 405, `DELETE /{id}`
+  renvoie 404, l'anonyme est rejeté en 401 — la preuve d'audit ne se
+  retoupe pas.
 - **Historique des connexions** (`/historique-connexions`) : journal de
   contrôle d'accès (loi 09-08) alimenté à **chaque tentative de
   connexion**, réussie ou échouée (mauvais mot de passe, compte désactivé,
@@ -308,14 +316,18 @@ butor / jalons en retard / écart planning-avancement, et chargement en lot des
 jalons sans N+1),
 `BudgetService` (consommé / effectif / écart), `DemandeService`
 (workflow des demandes, transformation en initiative), `EtapeService`
-(étapes et jalons), `HistoriqueStatutService` (origine manuelle/automatique des
-lignes du journal, filtres/tri/pagination de la lecture globale, suppression
-d'une entrée avec 404 si elle n'existe pas, purge totale en un seul
-`DELETE`), `DemandeService` (recherche `%…%` sur titre/besoin/justification
+(étapes et jalons), `HistoriqueModificationService` (23 tests : diff champ à
+champ **normalisé** — vide = nul, espaces de bord retirés, échelle `BigDecimal`
+— donc aucune ligne parasite, origine manuelle/automatique, filtres/tri/
+pagination de la lecture globale, fenêtre « Actives | Archives » de 12 mois,
+export CSV, fil de fiche paginé, immuabilité), `DemandeService` (recherche
+`%…%` sur titre/besoin/justification
 et suppression refusée à 400 si la demande est déjà transformée),
-`InitiativeService` (purge définitive réservée aux initiatives archivées),
-`SecuriteApiTest` (règles d'URL et filtrage JWT, dont lecture et suppression du
-journal, purge totale du journal, suppression des demandes `DEMANDE_EVALUER`,
+`InitiativeService` (purge définitive réservée aux initiatives archivées,
+26 tests dont le budget comparé à l'identique quelle que soit l'échelle),
+`SecuriteApiTest` (30 tests — règles d'URL et filtrage JWT, dont lecture +
+export du journal en 401/403/200, immuabilité `POST`/`DELETE` → 405 et
+`DELETE /{id}` → 404, filtre de fiche, suppression des demandes `DEMANDE_EVALUER`,
 purge des initiatives `INITIATIVE_ARCHIVER`, **suppression d'utilisateur
 `UTILISATEUR_GERER`** et **accès admin unique à l'historique des connexions**,
 tous verbes) et
@@ -337,7 +349,7 @@ filtre des critiques du dashboard avec liste vide sans requête) et,
 dans `SecuriteApiTest`, les règles d'URL des risques (lecture
 `INITIATIVE_CONSULTER`, écriture `INITIATIVE_MODIFIER`, 403 sans le droit),
 plus `DashboardServiceTest` (widget `risquesCritiques` servi avec les ids
-de la sélection). **205 tests, 0 échec.**
+de la sélection). **216 tests, 0 échec.**
 
 ### Tests fonctionnels de l'API
 
@@ -350,10 +362,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File database\tests-api.ps1
 Suite idempotente (codes/emails uniques par exécution) qui couvre
 l'authentification, les KPI, les filtres, les règles métier, le cycle de vie,
 les autorisations, les utilisateurs, les rôles, les **objectifs stratégiques**,
-le **workflow des demandes**, l'**historique des statuts** (sections 10, 11 et
-12 : page globale, origine manuelle/automatique, recherche, filtres statut /
-utilisateur / période, pagination, tri, permissions, création interdite et
-suppression administrative 401/403/404/204) et le **score de santé** (niveau et
+le **workflow des demandes**, l'**historique complet** (section 12 : scénario
+création → transition manuelle → étape à 100 % → passage RM07-auto = 5 lignes
+exactement, fil de fiche avec filtres `type` et 400 hors jeu, page globale :
+recherche, filtres type / champ / utilisateur / période, pagination, tri,
+validation des paramètres, vue « Actives | Archives », export CSV servi par
+le backend, permissions 401/200 et **immuabilité** : `POST`/`DELETE` → 405,
+`DELETE /{id}` → 404, aucun test de purge) et le **score de santé** (niveau et
 motif sur chaque ligne de la liste, de la fiche et de la surveillance du
 dashboard, rouge sur une initiative en retard, absent des écritures). Les KPI
 sont comparés à un recalcul indépendant issu de la liste réelle des initiatives
@@ -369,8 +384,7 @@ suppression des demandes** (401 anonyme, 403 visiteur, 404 après suppression,
 parcours jusqu'à « Refusée » puis `archive=true`, vue exclusive
 `?archive=true`, recherche dans les archives, idempotence, 401/403,
 restauration 200 et suppression depuis les archives), la **purge des
-initiatives archivées** (400 si non archivée, 204 puis 404 après purge) et le
-refus de la **purge du journal** hors administrateur (401 / 403). Les sections
+initiatives archivées** (400 si non archivée, 204 puis 404 après purge). Les sections
 14 et 15 couvrent la
 **suppression d'utilisateur** (401 anonyme, 403 visiteur et responsable, 404
 inconnu, 400 sur son propre compte, parcours nominal 201 → 204 → 404, 400 avec
@@ -387,7 +401,7 @@ vide → 400, responsable ou initiative inconnus → 404, registre trié du
 plus critique au moins critique, widget dashboard (le risque y entre à 9/9
 et en ressort dès qu'il passe à 4/9), droits 401 / 200 / 403, suppression
 204 et 404, puis initiative annulée + archivée : écriture refusée en 400
-et lecture toujours possible. **245 scénarios, 0 échec.**
+et lecture toujours possible. **255 scénarios, 0 échec.**
 
 Après une campagne de tests, purgez les résidus (initiatives `TEST*` archivées,
 initiatives issues de demandes de test `DEM-*`, demandes `TEST-DEM*`, objectifs

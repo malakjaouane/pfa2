@@ -96,7 +96,7 @@ et la note sous le budget de la fiche d'une initiative.
 | POST | `/initiatives` | `INITIATIVE_CREER` | Création (statut dérivé par le domaine : « À planifier », ou « Terminée » si avancement 100 %) |
 | PUT | `/initiatives/{id}` | `INITIATIVE_MODIFIER` | Modification + contrôle du cycle de vie |
 | PUT | `/initiatives/{id}/statut` | `INITIATIVE_MODIFIER` | Changement de statut seul (Kanban, glisser-déposer) : `{ idStatut, commentaire? }`, mêmes règles de cycle de vie que la modification |
-| GET | `/initiatives/{id}/historique-statuts` | `INITIATIVE_CONSULTER` | Historique des changements de statut |
+| GET | `/initiatives/{id}/historique` | `INITIATIVE_CONSULTER` | Journal des modifications de la fiche (paginé, `X-Total-Count`, filtre `type` ∈ `initiative`/`etape`/`jalon`) |
 | PATCH | `/initiatives/{id}/archive` | `INITIATIVE_ARCHIVER` | Archivage (réservé à « Terminée » / « Annulée », RC03) |
 | DELETE | `/initiatives/{id}` | `INITIATIVE_ARCHIVER` | Purge définitive d'une initiative **archivée** uniquement (**400** sinon) : étapes, jalons et lignes d'historique partent en `ON DELETE CASCADE`, la demande liée et le journal IA basculent en `NULL` |
 
@@ -205,9 +205,9 @@ Trois garde-fous renvoient **400** avec un message explicite :
    `demande_initiative.demandeur` est sans cascade : on conseille la
    désactivation (les demandes restent attachées au compte).
 
-Les autres liens (initiatives en charge, historique des statuts,
+Les autres liens (initiatives en charge, historique des modifications,
 connexions) sont en `ON DELETE SET NULL` : le compte part, ses œuvres
-restent. La session en cache du compte supprimé est invalidée pour couper
+restent — et ses lignes de journal gardent leur auteur anonymisé en `NULL`. La session en cache du compte supprimé est invalidée pour couper
 son accès à la requête suivante.
 
 ---
@@ -373,34 +373,45 @@ Points d'assurance :
 - **aucune donnée sensible** : la clé n'est ni journalisée ni renvoyée ;
   seules les questions et métadonnées (modèle, durée, statut) sont tracées.
 
-## 13. Historique des statuts (journal global)
+## 13. Historique des modifications (journal immuable)
 
-La page « Historique des statuts » agrège, toutes initiatives confondues,
-les changements de statut enregistrés dans la table `historique_statut`.
+Le journal `historique_modification` enregistre **chaque changement champ à
+champ** de toute donnée suivie (initiative, étape, jalon, demande,
+utilisateur, rôle) : `champ`, `ancienneValeur`, `nouvelleValeur`, auteur,
+horodatage et origine (`automatique` = moteur de règles, sinon manuel).
+Il remplace l'ancienne table `historique_statut` (migration `INSERT … SELECT`
+puis `DROP` au premier démarrage — les 50 lignes de démonstration ont été
+reprises sans perte).
 
 | Méthode | Route | Permission | Description |
 |---|---|---|---|
-| GET | `/historique-statuts` | `INITIATIVE_CONSULTER` | Liste paginée, en-tête `X-Total-Count` = total hors pagination |
-| GET | `/historique-statuts/auteurs` | `INITIATIVE_CONSULTER` | Utilisateurs déjà présents dans le journal (options du filtre déroulant) |
-| DELETE | `/historique-statuts/{id}` | `UTILISATEUR_GERER` | Suppression d'une ligne (nettoyage administratif), **404** si absente |
-| DELETE | `/historique-statuts` | `UTILISATEUR_GERER` | **Purge totale** du journal (bouton « Purger tout ») : un seul `DELETE` en base via `deleteAllInBatch()`, efficace même après des années d'historique |
+| GET | `/historique` | `INITIATIVE_CONSULTER` | Liste paginée, en-tête `X-Total-Count` = total hors pagination |
+| GET | `/historique/auteurs` | `INITIATIVE_CONSULTER` | Auteurs déjà présents dans le journal (options du filtre déroulant) |
+| GET | `/historique/export` | `INITIATIVE_CONSULTER` | Export CSV de **toutes** les lignes filtrées (BOM UTF-8, `;`, en-tête `Date;Objet;…`, `text/csv;charset=UTF-8`, `historique-modifications.csv`) |
+| GET | `/initiatives/{id}/historique` | `INITIATIVE_CONSULTER` | Journal de la fiche : filtre `type` ∈ `initiative`/`etape`/`jalon` (autre valeur → **400**), `page`/`size`, `X-Total-Count` |
 
-Paramètres de `GET /historique-statuts` (tous facultatifs) :
+Paramètres de `GET /historique` (tous facultatifs) :
 
 | Paramètre | Type | Exemple |
 |---|---|---|
 | `recherche` | `string` | `recherche=MOB` — code ou nom de l'initiative (jokers `%…%`) |
-| `statut` | `string` | `statut=En cours` — ancien ou nouveau statut |
+| `type` | `string` | `type=etape` — type d'objet (`initiative`, `etape`, `jalon`, `demande`, `utilisateur`, `role`) ; valeur inconnue → **400** |
+| `champ` | `string` | `champ=avancement` — nom du champ modifié |
 | `utilisateur` | `long` | `utilisateur=1` |
-| `initiative` | `long` | `initiative=3` — filtre posé par la fiche d'initiative |
+| `initiative` | `long` | `initiative=3` — filtre posé par le lien « Voir tout » de la fiche |
 | `du` / `au` | `date` | `du=2026-01-01&au=2026-12-31` (ISO ; `du > au` → **400**) |
+| `archives` | `boolean` | `archives=true` — vue « archives » (événements de plus de 12 mois) ; les deux vues forment une partition du journal |
 | `direction` | `string` | `asc` / `desc` (défaut `desc`) ; valeur inconnue → **400** |
 | `page`, `size` | `int` | pagination (`page` à partir de 0) |
 
-Aucun `POST` ni `PUT` n'existe sur cette ressource : le journal est en
-lecture seule, seule l'écriture métier (services de transition) y ajoute
-des lignes, colonne `automatique` distinguant les clôtures RM07-auto des
-actions manuelles.
+**Journal immuable** : aucun `POST`, `PUT`, `PATCH` ni `DELETE` n'est déclaré
+sur cette ressource — `POST`/`DELETE` sur la collection renvoient **405**,
+`DELETE /{id}` renvoie **404** (aucune route), l'anonyme est rejeté en **401**.
+Seule l'écriture métier (services de domaine, même transaction que la
+modification) y ajoute des lignes. Deux garde-fous de justesse : les valeurs
+strictement identiques après normalisation (vide = nul, espaces de bord
+retirés, `BigDecimal` sans zéros de queue) ne produisent **jamais** de ligne
+parasite, et les valeurs sont tronquées à la taille de colonne.
 
 ---
 

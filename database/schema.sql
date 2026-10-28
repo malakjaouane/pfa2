@@ -486,10 +486,13 @@ DEALLOCATE PREPARE stmt_audit;
 -- Table : historique_statut (ANCIEN journal, à migrer) — origine du
 -- changement (manuel / automatique). Colonnes garanties AVANT la copie
 -- vers la table générique, pour les bases héritées qui ne l'ont pas
--- encore.
+-- encore. La garde exige que la table EXISTE : après migration, elle a
+-- été supprimée et la colonne est « manquante » sur rien (l'ALTER échouerait).
+SET @ancien_existe = (SELECT COUNT(*) FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'historique_statut');
 SET @col = (SELECT COUNT(*) FROM information_schema.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'historique_statut' AND COLUMN_NAME = 'automatique');
-SET @sql_origine = IF(@col = 0,
+SET @sql_origine = IF(@ancien_existe = 1 AND @col = 0,
         'ALTER TABLE historique_statut ADD COLUMN automatique BOOLEAN NOT NULL DEFAULT FALSE',
         'SELECT 1');
 PREPARE stmt_origine FROM @sql_origine;

@@ -481,7 +481,12 @@ public class InitiativeService {
         valeurs.put("description", i.getDescription());
         valeurs.put("dateDebut", i.getDateDebut() == null ? null : i.getDateDebut().toString());
         valeurs.put("dateFinPrevue", i.getDateFinPrevue() == null ? null : i.getDateFinPrevue().toString());
-        valeurs.put("budget", i.getBudget() == null ? null : i.getBudget().toPlainString());
+        // stripTrailingZeros : la valeur venue de la base porte l'échelle
+        // DECIMAL(15,2) (« 0.00 ») quand celle du formulaire est à « 0 » —
+        // sans normalisation, chaque modification journaliserait un faux
+        // changement de budget identique en clair.
+        valeurs.put("budget", i.getBudget() == null ? null
+                : i.getBudget().stripTrailingZeros().toPlainString());
         valeurs.put("avancement", i.getAvancement() == null ? null : i.getAvancement() + " %");
         valeurs.put("entite", i.getEntite() == null ? null : i.getEntite().getNom());
         valeurs.put("responsable", i.getResponsable() == null ? null

@@ -208,6 +208,41 @@ class HistoriqueModificationServiceTest {
 
             verify(historiqueRepository, never()).save(any(HistoriqueModification.class));
         }
+
+        @Test
+        @DisplayName("le vide, l'absence et les espaces de bord ne valent aucun changement")
+        void diffIgnoreVideEtEspaces() {
+            // Rejet de sonde : la création stocke « description » nulle, le
+            // formulaire suivant renvoie « » — comparer tel quel produisait
+            // une ligne parasite à chaque retouche.
+            Map<String, String> avant = new java.util.LinkedHashMap<>();
+            avant.put("description", null);       // jamais renseignée
+            avant.put("nom", "  Portail RH  ");   // espaces de bord du formulaire
+            Map<String, String> apres = new java.util.LinkedHashMap<>();
+            apres.put("description", "");         // vide = absence
+            apres.put("nom", "Portail RH");       // même valeur nettoyée
+
+            service.diff("initiative", 1L, initiative, avant, apres,
+                    "dupont@it6.ma", false);
+
+            verify(historiqueRepository, never()).save(any(HistoriqueModification.class));
+        }
+
+        @Test
+        @DisplayName("un vrai changement est journalisé en valeurs normalisées (sans espaces de bord)")
+        void diffNormaliseValeursJournalisees() {
+            Map<String, String> avant = Map.of("description", "  Ancien texte  ");
+            Map<String, String> apres = Map.of("description", "Nouveau texte ");
+
+            service.diff("initiative", 1L, initiative, avant, apres,
+                    "dupont@it6.ma", false);
+
+            ArgumentCaptor<HistoriqueModification> captor =
+                    ArgumentCaptor.forClass(HistoriqueModification.class);
+            verify(historiqueRepository).save(captor.capture());
+            assertThat(captor.getValue().getAncienneValeur()).isEqualTo("Ancien texte");
+            assertThat(captor.getValue().getNouvelleValeur()).isEqualTo("Nouveau texte");
+        }
     }
 
     // ------------------------------------------------------------------

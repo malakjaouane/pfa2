@@ -601,70 +601,91 @@ $archBis = Invoke-Api 'Patch' "$Base/demandes/$idDemArch/archive" $null $adminTo
 $demArchSuppr = Invoke-Api 'Delete' "$Base/demandes/$idDemArch" $null $adminToken
 Test-Check 'Archives demande : suppression depuis les archives -> 204' ($archBis.Body.archive -eq $true -and $demArchSuppr.Status -eq 204) "($($demArchSuppr.Status))"
 
-Write-Output '=== 12. Historique des statuts (journal global, lecture + suppression admin) ==='
-# Une initiative dédiée enchaîne les trois origines possibles : création
-# (manuelle), transition explicite (manuelle), puis passage RM07-auto
-# déclenché par les étapes (automatique). Chaque ligne du journal doit
-# porter sa colonne « automatique » — c'est ce qu'affiche la page dédiée.
-$histCorps = @{ code = "TESTHIST-$suffixe"; nom = 'Journal des statuts'; idEntite = 1; idStatut = 1; idPriorite = 1 }
+Write-Output '=== 12. Historique (journal immuable : lecture, filtres, export, aucune écriture) ==='
+# Une initiative dédiée enchaîne les origines possibles : création
+# (manuelle), modification (diff de champ « avancement » + transition
+# manuelle), puis passage RM07-auto déclenché par l'étape (automatique) —
+# plus la création de l'étape elle-même. Cinq lignes au total : les
+# valeurs strictement identiques (budget, description) ne produisent rien.
+$histCorps = @{ code = "TESTHIST-$suffixe"; nom = 'Journal des modifications'; idEntite = 1; idStatut = 1; idPriorite = 1 }
 $histCree = Invoke-Api 'Post' "$Base/initiatives" $histCorps $adminToken
 Test-Check 'Historique : initiative de test créée' ($histCree.OK -and $histCree.Body.idInitiative -gt 0) "($($histCree.Status))"
 $idHist = $histCree.Body.idInitiative
 $codeHist = $histCree.Body.code
 
-$histBase = @{ code = $codeHist; nom = 'Journal des statuts'; description = ''; dateDebut = $null; dateFinPrevue = $null; budget = 0; idEntite = 1; idResponsable = $null; idPriorite = 1 }
+$histBase = @{ code = $codeHist; nom = 'Journal des modifications'; description = ''; dateDebut = $null; dateFinPrevue = $null; budget = 0; idEntite = 1; idResponsable = $null; idPriorite = 1 }
 $histManuel = Invoke-Api 'Put' "$Base/initiatives/$idHist" (@{ idStatut = 2; avancement = 10 } + $histBase) $adminToken
 Test-Check 'Historique : transition manuelle « À planifier » -> « En cours »' ($histManuel.OK -and $histManuel.Body.statut.libelle -eq 'En cours') "($($histManuel.Body.statut.libelle))"
 
 # L'étape à 100 % déclenche le recalcule : RM07-auto porte l'initiative à
-# « Terminée ». La modification qui suit garantit le recalcul même si la
-# création ne le déclenchait pas (idempotent : aucun doublon de journal).
+# « Terminée ». La modification d'étape qui suit est idempotente : aucune
+# ligne supplémentaire au journal.
 $histEtape = Invoke-Api 'Post' "$Base/initiatives/$idHist/etapes" @{ nom = 'Livraison'; ordre = 1; avancement = 100; idStatutEtape = 3 } $adminToken
 Test-Check 'Historique : étape créée à 100 %' ($histEtape.OK -and $histEtape.Body.idEtape -gt 0) "($($histEtape.Status))"
 $null = Invoke-Api 'Put' "$Base/etapes/$($histEtape.Body.idEtape)" @{ nom = 'Livraison'; ordre = 1; avancement = 100; idStatutEtape = 3 } $adminToken
 $histAuto = Invoke-Api 'Get' "$Base/initiatives/$idHist" $null $adminToken
 Test-Check 'Historique : passage automatique « En cours » -> « Terminée » (RM07)' ($histAuto.OK -and $histAuto.Body.statut.libelle -eq 'Terminée') "($($histAuto.Body.statut.libelle))"
 
-# Journal de la fiche : origine de chaque ligne + rattachement à l'initiative.
-$histDetail = Invoke-Api 'Get' "$Base/initiatives/$idHist/historique-statuts" $null $adminToken
+# Fiche : fil complet paginé (page/size + X-Total-Count) — 5 lignes.
+$histDetail = Invoke-Api 'Get' "$Base/initiatives/$idHist/historique?size=25" $null $adminToken
 $histLignes = @($histDetail.Body)
-$histCreation = @($histLignes | Where-Object { $null -eq $_.ancienStatut }) | Select-Object -First 1
-Test-Check 'Journal détail : création présente, origine manuelle' ($histDetail.OK -and $null -ne $histCreation -and $histCreation.automatique -eq $false) "($($histLignes.Count) lignes)"
-$histManLigne = @($histLignes | Where-Object { $_.nouveauStatut -eq 'En cours' }) | Select-Object -First 1
-Test-Check 'Journal détail : transition choisie, origine manuelle' ($null -ne $histManLigne -and $histManLigne.automatique -eq $false)
-$histAutoLigne = @($histLignes | Where-Object { $_.nouveauStatut -eq 'Terminée' }) | Select-Object -First 1
-Test-Check 'Journal détail : passage RM07, origine automatique' ($null -ne $histAutoLigne -and $histAutoLigne.automatique -eq $true)
-Test-Check 'Journal détail : chaque ligne porte le code de l''initiative' (@($histLignes | Where-Object { $_.initiative.code -eq $codeHist }).Count -eq $histLignes.Count)
-$histDetailChamps = @($histLignes[0].PSObject.Properties.Name)
-Test-Check 'Journal détail : champs utilisateur + initiative + origine' (($histDetailChamps -contains 'utilisateur') -and ($histDetailChamps -contains 'initiative') -and ($histDetailChamps -contains 'automatique'))
+$histDetailTotal = 0
+if ($histDetail.OK) { $histDetailTotal = [int](@($histDetail.Headers['X-Total-Count'])[0]) }
+Test-Check 'Journal fiche : 200, 5 lignes (création, avancement, 2 transitions, étape)' ($histDetail.OK -and $histDetailTotal -eq 5 -and $histLignes.Count -eq 5) "($($histDetail.Status)/$histDetailTotal/$($histLignes.Count))"
+$histCreation = @($histLignes | Where-Object { $_.champ -eq 'statut' -and $null -eq $_.ancienneValeur }) | Select-Object -First 1
+Test-Check 'Journal fiche : création présente, origine manuelle' ($null -ne $histCreation -and $histCreation.automatique -eq $false)
+$histManLigne = @($histLignes | Where-Object { $_.nouvelleValeur -eq 'En cours' }) | Select-Object -First 1
+Test-Check 'Journal fiche : transition choisie, origine manuelle' ($null -ne $histManLigne -and $histManLigne.automatique -eq $false)
+$histAutoLigne = @($histLignes | Where-Object { $_.nouvelleValeur -eq 'Terminée' }) | Select-Object -First 1
+Test-Check 'Journal fiche : passage RM07, origine automatique' ($null -ne $histAutoLigne -and $histAutoLigne.automatique -eq $true)
+$histAvancement = @($histLignes | Where-Object { $_.champ -eq 'avancement' -and $_.ancienneValeur -eq '0 %' -and $_.nouvelleValeur -eq '10 %' }) | Select-Object -First 1
+Test-Check 'Journal fiche : diff de champ avancement « 0 % » -> « 10 % »' ($null -ne $histAvancement)
+$histEtapeLigne = @($histLignes | Where-Object { $_.typeObjet -eq 'etape' -and $_.champ -eq 'creation' -and $_.nouvelleValeur -eq 'Livraison' }) | Select-Object -First 1
+Test-Check 'Journal fiche : création d''étape journalisée (type etape)' ($null -ne $histEtapeLigne)
+Test-Check 'Journal fiche : chaque ligne porte le code de l''initiative' (@($histLignes | Where-Object { $_.initiative.code -eq $codeHist }).Count -eq $histLignes.Count)
+
+# Filtres de la fiche : types admissibles uniquement (400 au-delà).
+$histFiltreInit = Invoke-Api 'Get' "$Base/initiatives/$idHist/historique?type=initiative" $null $adminToken
+Test-Check 'Journal fiche : type=initiative -> 4 lignes' (@($histFiltreInit.Body).Count -eq 4) "($(@($histFiltreInit.Body).Count))"
+$histFiltreEtape = Invoke-Api 'Get' "$Base/initiatives/$idHist/historique?type=etape" $null $adminToken
+Test-Check 'Journal fiche : type=etape -> 1 ligne' (@($histFiltreEtape.Body).Count -eq 1) "($(@($histFiltreEtape.Body).Count))"
+$histFiltreHors = Invoke-Api 'Get' "$Base/initiatives/$idHist/historique?type=utilisateur" $null $adminToken
+Test-Check 'Journal fiche : type hors fiche -> 400' ($histFiltreHors.OK -eq $false -and $histFiltreHors.Status -eq 400) "($($histFiltreHors.Status))"
+$histFiltreAlien = Invoke-Api 'Get' "$Base/initiatives/$idHist/historique?type=alien" $null $adminToken
+Test-Check 'Journal fiche : type inconnu -> 400' ($histFiltreAlien.OK -eq $false -and $histFiltreAlien.Status -eq 400) "($($histFiltreAlien.Status))"
 
 # Page globale : colonnes, compte total (X-Total-Count) et pagination.
-$histGlobal = Invoke-Api 'Get' "$Base/historique-statuts" $null $adminToken
+$histGlobal = Invoke-Api 'Get' "$Base/historique" $null $adminToken
 $histTotal = 0
 if ($histGlobal.OK) { $histTotal = [int](@($histGlobal.Headers['X-Total-Count'])[0]) }
 Test-Check 'Page globale : 200 + X-Total-Count ≥ lignes' ($histGlobal.OK -and $histTotal -ge @($histGlobal.Body).Count -and @($histGlobal.Body).Count -gt 0) "($($histGlobal.Status)/$histTotal)"
-Test-Check 'Page globale : lignes avec code, nom et origine' (@($histGlobal.Body | Where-Object { $_.initiative.code -and $_.initiative.nom -and $null -ne $_.automatique }).Count -eq @($histGlobal.Body).Count)
+Test-Check 'Page globale : lignes typées, champées et horodatées' (@($histGlobal.Body | Where-Object { $_.typeObjet -and $_.champ -and $_.dateChangement -and $null -ne $_.automatique }).Count -eq @($histGlobal.Body).Count)
 
-$histPage = Invoke-Api 'Get' "$Base/historique-statuts?page=0&size=2" $null $adminToken
+$histPage = Invoke-Api 'Get' "$Base/historique?page=0&size=2" $null $adminToken
 $histPageTotal = 0
 if ($histPage.OK) { $histPageTotal = [int](@($histPage.Headers['X-Total-Count'])[0]) }
 Test-Check 'Pagination : taille 2 respectée, total hors page' ($histPage.OK -and @($histPage.Body).Count -le 2 -and $histPageTotal -gt @($histPage.Body).Count) "($(@($histPage.Body).Count)/$histPageTotal)"
 
-# Recherche par code ou nom, et filtres combinés.
-$histRech = Invoke-Api 'Get' "$Base/historique-statuts?recherche=$codeHist" $null $adminToken
-Test-Check 'Recherche par code : au moins les 3 lignes du test, rien d''autre' (@($histRech.Body).Count -ge 3 -and @($histRech.Body | Where-Object { $_.initiative.code -like 'TESTHIST-*' }).Count -eq @($histRech.Body).Count) "($(@($histRech.Body).Count))"
+# Recherche par code : seules les lignes du test, au moins les 5 attendues.
+$histRech = Invoke-Api 'Get' "$Base/historique?recherche=$codeHist" $null $adminToken
+Test-Check 'Recherche par code : que des lignes TESTHIST, ≥ 5' (@($histRech.Body).Count -ge 5 -and @($histRech.Body | Where-Object { $_.initiative.code -like 'TESTHIST-*' }).Count -eq @($histRech.Body).Count) "($(@($histRech.Body).Count))"
 
-$histInit = Invoke-Api 'Get' "$Base/historique-statuts?initiative=$idHist" $null $adminToken
-Test-Check 'Filtre initiative (lien « Voir tout ») : 3 événements' (@($histInit.Body).Count -eq 3) "($(@($histInit.Body).Count))"
+$histInit = Invoke-Api 'Get' "$Base/historique?initiative=$idHist" $null $adminToken
+Test-Check 'Filtre initiative (lien « Voir tout ») : 5 événements' (@($histInit.Body).Count -eq 5) "($(@($histInit.Body).Count))"
 
-$histStatut = Invoke-Api 'Get' "$Base/historique-statuts?statut=Terminée" $null $adminToken
-Test-Check 'Filtre statut « Terminée » : que des lignes « Terminée »' (@($histStatut.Body).Count -gt 0 -and @($histStatut.Body | Where-Object { $_.nouveauStatut -eq 'Terminée' }).Count -eq @($histStatut.Body).Count) "($(@($histStatut.Body).Count))"
+# Filtres de la page globale : type d'objet et champ (le code inconnu part en 400).
+$histTypeEtape = Invoke-Api 'Get' "$Base/historique?type=etape" $null $adminToken
+Test-Check 'Filtre type=etape : que des lignes etape' (@($histTypeEtape.Body).Count -gt 0 -and @($histTypeEtape.Body | Where-Object { $_.typeObjet -eq 'etape' }).Count -eq @($histTypeEtape.Body).Count) "($(@($histTypeEtape.Body).Count))"
+$histTypeBad = Invoke-Api 'Get' "$Base/historique?type=inconnu" $null $adminToken
+Test-Check 'Type d''objet inconnu -> 400' ($histTypeBad.OK -eq $false -and $histTypeBad.Status -eq 400) "($($histTypeBad.Status))"
+$histChamp = Invoke-Api 'Get' "$Base/historique?champ=avancement" $null $adminToken
+Test-Check 'Filtre champ=avancement : que des lignes avancement' (@($histChamp.Body).Count -gt 0 -and @($histChamp.Body | Where-Object { $_.champ -eq 'avancement' }).Count -eq @($histChamp.Body).Count) "($(@($histChamp.Body).Count))"
 
-$auteursHist = Invoke-Api 'Get' "$Base/historique-statuts/auteurs" $null $adminToken
+$auteursHist = Invoke-Api 'Get' "$Base/historique/auteurs" $null $adminToken
 Test-Check 'Auteurs du journal : liste non vide' ($auteursHist.OK -and @($auteursHist.Body).Count -ge 1)
 $idAuteurHist = 0
 if ($auteursHist.OK -and @($auteursHist.Body).Count -ge 1) { $idAuteurHist = @($auteursHist.Body)[0].idUser }
-$histParUtil = Invoke-Api 'Get' "$Base/historique-statuts?utilisateur=$idAuteurHist" $null $adminToken
+$histParUtil = Invoke-Api 'Get' "$Base/historique?utilisateur=$idAuteurHist" $null $adminToken
 Test-Check 'Filtre utilisateur : lignes toutes du même auteur' (@($histParUtil.Body).Count -gt 0 -and @($histParUtil.Body | Where-Object { $_.utilisateur.idUser -eq $idAuteurHist }).Count -eq @($histParUtil.Body).Count) "($(@($histParUtil.Body).Count))"
 
 $jour = Get-Date -Format 'yyyy-MM-dd'
@@ -672,64 +693,80 @@ $hier = (Get-Date).AddDays(-1).ToString('yyyy-MM-dd')
 # Les événements sont horodatés en UTC côté serveur : la fenêtre couvre hier
 # ET aujourd'hui pour rester valide de part et d'autre de minuit (minuit
 # local peut encore être la veille en UTC).
-$histJour = Invoke-Api 'Get' "$Base/historique-statuts?du=$hier&au=$jour" $null $adminToken
-Test-Check 'Filtre période du/au = aujourd''hui : événements du jour' (
-    @($histJour.Body).Count -ge 3 -and
+$histJour = Invoke-Api 'Get' "$Base/historique?du=$hier&au=$jour" $null $adminToken
+Test-Check 'Filtre période du/au = aujourd''hui : ≥ 5 événements du jour' (
+    @($histJour.Body).Count -ge 5 -and
     @($histJour.Body | Where-Object {
         $_.dateChangement -like "$jour*" -or $_.dateChangement -like "$hier*"
     }).Count -eq @($histJour.Body).Count) "($(@($histJour.Body).Count))"
-$histFutur = Invoke-Api 'Get' "$Base/historique-statuts?du=2099-01-01&au=2099-01-02" $null $adminToken
+$histFutur = Invoke-Api 'Get' "$Base/historique?du=2099-01-01&au=2099-01-02" $null $adminToken
 Test-Check 'Filtre période future : aucune ligne' ($histFutur.OK -and @($histFutur.Body).Count -eq 0) "($(@($histFutur.Body).Count))"
 
 # Tri et validation des paramètres.
-$histAsc = Invoke-Api 'Get' "$Base/historique-statuts?initiative=$idHist&direction=asc" $null $adminToken
+$histAsc = Invoke-Api 'Get' "$Base/historique?initiative=$idHist&direction=asc" $null $adminToken
 $ascPremier = @($histAsc.Body)[0]
 $ascDernier = @($histAsc.Body)[-1]
-Test-Check 'Tri « plus ancien d''abord » : première ligne ≤ dernière' ($histAsc.OK -and @($histAsc.Body).Count -eq 3 -and ([datetime]$ascPremier.dateChangement) -le ([datetime]$ascDernier.dateChangement))
-$histSensBad = Invoke-Api 'Get' "$Base/historique-statuts?direction=sens-interdit" $null $adminToken
+Test-Check 'Tri « plus ancien d''abord » : première ligne ≤ dernière' ($histAsc.OK -and @($histAsc.Body).Count -eq 5 -and ([datetime]$ascPremier.dateChangement) -le ([datetime]$ascDernier.dateChangement))
+$histSensBad = Invoke-Api 'Get' "$Base/historique?direction=sens-interdit" $null $adminToken
 Test-Check 'Direction de tri inconnue -> 400' ($histSensBad.OK -eq $false -and $histSensBad.Status -eq 400) "($($histSensBad.Status))"
-$histPeriodeBad = Invoke-Api 'Get' "$Base/historique-statuts?du=$jour&au=2020-01-01" $null $adminToken
+$histPeriodeBad = Invoke-Api 'Get' "$Base/historique?du=$jour&au=2020-01-01" $null $adminToken
 Test-Check 'Période inversée (du > au) -> 400' ($histPeriodeBad.OK -eq $false -and $histPeriodeBad.Status -eq 400) "($($histPeriodeBad.Status))"
 
+# Vue « Actives | Archives » : les lignes fraîches vivent dans la vue
+# active, jamais dans les archives de plus de 12 mois.
+$histArchInit = Invoke-Api 'Get' "$Base/historique?initiative=$idHist&archives=true" $null $adminToken
+Test-Check 'Vue Archives : aucune ligne fraîche archivée' ($histArchInit.OK -and @($histArchInit.Body).Count -eq 0) "($(@($histArchInit.Body).Count))"
+$histActives = Invoke-Api 'Get' "$Base/historique?size=1" $null $adminToken
+$histActivesTotal = 0
+if ($histActives.OK) { $histActivesTotal = [int](@($histActives.Headers['X-Total-Count'])[0]) }
+Test-Check 'Vue active : au moins les 5 lignes du test' ($histActives.OK -and $histActivesTotal -ge 5) "($histActivesTotal)"
+
+# Export CSV côté serveur : TOUTES les lignes filtrées (pas la page),
+# BOM UTF-8 + point-virgule, en-tête « Date;Objet;… ».
+$histExportOk = $false
+$histExportDetail = ''
+try {
+    $histExport = Invoke-WebRequest -UseBasicParsing -Uri "$Base/historique/export?type=initiative" `
+        -Headers @{ Authorization = "Bearer $adminToken" } -ErrorAction Stop
+    $histExportTexte = [System.Text.Encoding]::UTF8.GetString($histExport.RawContentStream.ToArray())
+    $histExportLignes = @($histExportTexte -split "`n").Count
+    $histExportOk = ($histExport.StatusCode -eq 200) `
+        -and ((-join $histExport.Headers['Content-Type']) -like 'text/csv*') `
+        -and ($histExportTexte -like '*Date;Objet;Id objet*') `
+        -and ($histExportTexte -like "*$codeHist*")
+    $histExportDetail = "($($histExport.StatusCode)/$histExportLignes lignes)"
+} catch {
+    $histExportDetail = "($($_.Exception.Message))"
+}
+Test-Check 'Export CSV serveur : 200 text/csv + en-tête + lignes du test' $histExportOk $histExportDetail
+
 # Permissions : INITIATIVE_CONSULTER suffit, rien n'est ouvert en plus.
-$histAnonyme = Invoke-Api 'Get' "$Base/historique-statuts" $null $null
+$histAnonyme = Invoke-Api 'Get' "$Base/historique" $null $null
 Test-Check 'Anonyme : journal global interdit -> 401' ($histAnonyme.OK -eq $false -and $histAnonyme.Status -eq 401) "($($histAnonyme.Status))"
-$histVisiteur = Invoke-Api 'Get' "$Base/historique-statuts" $null $visiteurToken
+$histVisiteur = Invoke-Api 'Get' "$Base/historique" $null $visiteurToken
 Test-Check 'Visiteur : lecture du journal autorisée -> 200' ($histVisiteur.OK -and $histVisiteur.Status -eq 200) "($($histVisiteur.Status))"
 
-# Écriture : aucune création ni modification sur le journal (pas de POST/PUT).
-# La suppression d'une ligne existe mais reste réservée aux administrateurs
-# (UTILISATEUR_GERER) — la consultation seule ne suffit pas.
-$histEcriture = Invoke-Api 'Post' "$Base/historique-statuts" @{ nouveauStatut = 'Terminée' } $adminToken
-Test-Check 'Écriture sur le journal refusée (POST -> 4xx)' ($histEcriture.OK -eq $false -and $histEcriture.Status -ge 400 -and $histEcriture.Status -lt 500) "($($histEcriture.Status))"
-
-$histLigneASuppr = @($histInit.Body)[0].idHistorique
-$histSupprVisiteur = Invoke-Api 'Delete' "$Base/historique-statuts/$histLigneASuppr" $null $visiteurToken
-Test-Check 'Suppression journal : visiteur interdit -> 403' ($histSupprVisiteur.OK -eq $false -and $histSupprVisiteur.Status -eq 403) "($($histSupprVisiteur.Status))"
-$histSupprAnonyme = Invoke-Api 'Delete' "$Base/historique-statuts/$histLigneASuppr" $null $null
+# Journal IMMUABLE : aucun verbe d'écriture n'existe — 405 sur la
+# collection (POST/DELETE), 404 sur une ligne inconnue (aucune route
+# /{id}), 401 pour l'anonyme avant tout. Aucune purge, aucune
+# suppression : la preuve d'audit ne se retouche pas, jamais.
+$histEcriture = Invoke-Api 'Post' "$Base/historique" @{ champ = 'statut' } $adminToken
+Test-Check 'Écriture sur le journal refusée (POST -> 405)' ($histEcriture.OK -eq $false -and $histEcriture.Status -eq 405) "($($histEcriture.Status))"
+$histSuppr = Invoke-Api 'Delete' "$Base/historique" $null $adminToken
+Test-Check 'Suppression du journal refusée (DELETE collection -> 405)' ($histSuppr.OK -eq $false -and $histSuppr.Status -eq 405) "($($histSuppr.Status))"
+$histSupprLigne = Invoke-Api 'Delete' "$Base/historique/1" $null $adminToken
+Test-Check 'Suppression d''une ligne refusée (DELETE /{id} -> 404)' ($histSupprLigne.OK -eq $false -and $histSupprLigne.Status -eq 404) "($($histSupprLigne.Status))"
+$histEcritureAnonyme = Invoke-Api 'Post' "$Base/historique" @{ champ = 'statut' } $null
+Test-Check 'Écriture journal : anonyme -> 401' ($histEcritureAnonyme.OK -eq $false -and $histEcritureAnonyme.Status -eq 401) "($($histEcritureAnonyme.Status))"
+$histSupprAnonyme = Invoke-Api 'Delete' "$Base/historique" $null $null
 Test-Check 'Suppression journal : anonyme -> 401' ($histSupprAnonyme.OK -eq $false -and $histSupprAnonyme.Status -eq 401) "($($histSupprAnonyme.Status))"
-$histSupprInconnue = Invoke-Api 'Delete' "$Base/historique-statuts/999999999" $null $adminToken
-Test-Check 'Suppression journal : id inexistant -> 404' ($histSupprInconnue.OK -eq $false -and $histSupprInconnue.Status -eq 404) "($($histSupprInconnue.Status))"
+$histSupprVisiteur = Invoke-Api 'Delete' "$Base/historique" $null $visiteurToken
+Test-Check 'Suppression journal : visiteur (lecture seule) -> 405' ($histSupprVisiteur.OK -eq $false -and $histSupprVisiteur.Status -eq 405) "($($histSupprVisiteur.Status))"
 
-# Purge TOUT le journal (nouveau bouton admin) : mêmes règles que la
-# suppression d'une ligne. La suite n'exécute jamais la purge admin pour
-# préserver l'historique réel des initiatives de démonstration — le
-# chemin administrateur est couvert par SecuriteApiTest (JUnit).
-$purgeJournalAnonyme = Invoke-Api 'Delete' "$Base/historique-statuts" $null $null
-Test-Check 'Purge journal : anonyme -> 401' ($purgeJournalAnonyme.OK -eq $false -and $purgeJournalAnonyme.Status -eq 401) "($($purgeJournalAnonyme.Status))"
-$purgeJournalVisiteur = Invoke-Api 'Delete' "$Base/historique-statuts" $null $visiteurToken
-Test-Check 'Purge journal : visiteur (lecture seule) -> 403' ($purgeJournalVisiteur.OK -eq $false -and $purgeJournalVisiteur.Status -eq 403) "($($purgeJournalVisiteur.Status))"
-$purgeJournalResp = Invoke-Api 'Delete' "$Base/historique-statuts" $null $responsableToken
-Test-Check 'Purge journal : responsable sans UTILISATEUR_GERER -> 403' ($purgeJournalResp.OK -eq $false -and $purgeJournalResp.Status -eq 403) "($($purgeJournalResp.Status))"
-
-$histAvantSuppr = Invoke-Api 'Get' "$Base/historique-statuts" $null $adminToken
-$histTotalAvant = 0
-if ($histAvantSuppr.OK) { $histTotalAvant = [int](@($histAvantSuppr.Headers['X-Total-Count'])[0]) }
-$histSuppr = Invoke-Api 'Delete' "$Base/historique-statuts/$histLigneASuppr" $null $adminToken
-$histApresSuppr = Invoke-Api 'Get' "$Base/historique-statuts" $null $adminToken
-$histTotalApres = 0
-if ($histApresSuppr.OK) { $histTotalApres = [int](@($histApresSuppr.Headers['X-Total-Count'])[0]) }
-Test-Check 'Suppression journal : admin -> 204, total diminué de 1' ($histSuppr.OK -and $histSuppr.Status -eq 204 -and $histTotalApres -eq ($histTotalAvant - 1)) "($($histSuppr.Status)/$histTotalAvant->$histTotalApres)"
+# Invariant final : le total n'a PAS bougé après tous ces refus d'écriture
+# (les écritures ne suppriment ni ne modifient rien, la suite non plus).
+$histAvantFin = Invoke-Api 'Get' "$Base/historique?initiative=$idHist" $null $adminToken
+Test-Check 'Immuabilité : toujours 5 lignes à la fin de la section' (@($histAvantFin.Body).Count -eq 5) "($(@($histAvantFin.Body).Count))"
 
 # Purge d'initiative : refusée tant qu'elle n'est pas archivée (RM14) et
 # réservée à INITIATIVE_ARCHIVER (anonyme 401, visiteur 403).

@@ -88,3 +88,10 @@ WHERE (type_objet = 'demande'
        AND id_objet NOT IN (SELECT id_demande FROM demande_initiative))
    OR (type_objet = 'utilisateur'
        AND id_objet NOT IN (SELECT id_user FROM utilisateur));
+
+-- Aller-retours de permissions sur les rôles pendant la suite (une
+-- permission ajoutée au Visiteur puis remise en état) : la démonstration
+-- ne touche jamais aux rôles, elle n'a donc AUCUNE ligne de ce type —
+-- toutes celles présentes sont résiduelles.
+DELETE FROM historique_modification
+WHERE type_objet = 'role';

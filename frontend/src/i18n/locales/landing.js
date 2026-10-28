@@ -225,10 +225,10 @@ export default {
     'landing.confiance.texte': 'Droits fins, traçabilité complète et hébergement maîtrisé.',
     'landing.confiance.roles.titre': 'Rôles & permissions',
     'landing.confiance.roles.texte':
-      "16 permissions pour l'administrateur, 13 pour le responsable, 3 pour le visiteur — appliquées sur chaque requête, pas seulement masquées à l'écran.",
+      "17 permissions pour l'administrateur, 14 pour le responsable, 3 pour le visiteur — appliquées sur chaque requête, pas seulement masquées à l'écran.",
     'landing.confiance.audit.titre': "Journal d'audit",
     'landing.confiance.audit.texte':
-      "Chaque changement de statut est horodaté, tracé et classé (manuel ou automatique) ; la suppression est réservée à l'administrateur.",
+      "Chaque modification est horodatée, tracée champ à champ et classée (manuel ou automatique) ; le journal est immuable, aucune suppression n'y est exposée.",
     'landing.confiance.hebergement.titre': 'Hébergement local',
     'landing.confiance.hebergement.texte':
       "Base de données, backend et frontend tournent chez vous (Docker), derrière HTTPS et une politique de sécurité stricte — aucune donnée ne quitte votre réseau.",
@@ -440,10 +440,10 @@ export default {
     'landing.confiance.texte': 'Fine-grained rights, full traceability and controlled hosting.',
     'landing.confiance.roles.titre': 'Roles & permissions',
     'landing.confiance.roles.texte':
-      "16 permissions for the administrator, 13 for the manager, 3 for the viewer — enforced on every request, not just hidden on screen.",
+      "17 permissions for the administrator, 14 for the manager, 3 for the viewer — enforced on every request, not just hidden on screen.",
     'landing.confiance.audit.titre': 'Audit log',
     'landing.confiance.audit.texte':
-      'Every status change is timestamped, traced and classified (manual or automatic); deletion is reserved to the administrator.',
+      'Every change is timestamped, traced field by field and classified (manual or automatic); the log is immutable, no deletion is exposed.',
     'landing.confiance.hebergement.titre': 'On-premises hosting',
     'landing.confiance.hebergement.texte':
       'Database, backend and frontend run in-house (Docker), behind HTTPS and a strict security policy — data never leaves your network.',
@@ -645,9 +645,9 @@ export default {
     'landing.confiance.titre': 'مصمّمة للمؤسسة',
     'landing.confiance.texte': 'أذونات دقيقة وتتبّع كامل واستضافة محكومة.',
     'landing.confiance.roles.titre': 'الأدوار والأذونات',
-    'landing.confiance.roles.texte': '16 إذنًا للمدير، و13 للمسؤول، و3 للزائر — مفروضة في كل طلب، لا مجرّد إخفاء في الشاشة.',
+    'landing.confiance.roles.texte': '17 إذنًا للمدير، و14 للمسؤول، و3 للزائر — مفروضة في كل طلب، لا مجرّد إخفاء في الشاشة.',
     'landing.confiance.audit.titre': 'سجل التدقيق',
-    'landing.confiance.audit.texte': 'كل تغيير حالة موثّق بالتوقيت ومصنّف (يدوي أو آلي)؛ والحذف محصور بالمدير.',
+    'landing.confiance.audit.texte': 'كل تعديل موثّق بالتوقيت ومسجّل حقلًا بحقل ومصنّف (يدوي أو آلي)؛ والسجل غير قابل للحذف، لا واجهة حذف معرَّضة.',
     'landing.confiance.hebergement.titre': 'استضافة محلية',
     'landing.confiance.hebergement.texte': 'قاعدة البيانات والواجهة الخلفية والمقدمة تعمل عندكم (Docker)، خلف HTTPS وسياسة أمنية صارمة — لا تغادر بياناتكم شبكتكم.',
 
@@ -858,10 +858,10 @@ export default {
     'landing.confiance.texte': 'Permisos finos, trazabilidad completa y alojamiento controlado.',
     'landing.confiance.roles.titre': 'Roles y permisos',
     'landing.confiance.roles.texte':
-      "16 permisos para el administrador, 13 para el responsable, 3 para el visitante — aplicados en cada petición, no solo ocultos en pantalla.",
+      "17 permisos para el administrador, 14 para el responsable, 3 para el visitante — aplicados en cada petición, no solo ocultos en pantalla.",
     'landing.confiance.audit.titre': 'Registro de auditoría',
     'landing.confiance.audit.texte':
-      "Cada cambio de estado se registra con hora y se clasifica (manual o automático); la supresión queda reservada al administrador.",
+      "Cada modificación se registra con hora, campo por campo y clasificada (manual o automática); el registro es inmutable, no expone ninguna supresión.",
     'landing.confiance.hebergement.titre': 'Alojamiento on-premises',
     'landing.confiance.hebergement.texte':
       'Base de datos, backend y frontend corren en su infraestructura (Docker), detrás de HTTPS y una política de seguridad estricta — los datos no salen de su red.',

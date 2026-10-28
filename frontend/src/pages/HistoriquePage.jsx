@@ -1,26 +1,32 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api, { messageErreur } from '../api';
-import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
-import { useReferentiels } from '../i18n/referentiels';
+import { badgeTypeJournal, libelleChamp, libelleType } from '../i18n/journal';
 import StatutBadge from '../components/StatutBadge';
 
 /** Taille de page fixe : un tableau de lecture se feuillette, il ne s'épuise pas. */
 const TAILLE_PAGE = 25;
 
-const vide = { recherche: '', statut: '', utilisateur: '', du: '', au: '' };
+/** Types d'objet journalisés — doit suivre TYPES côté backend (400 sinon). */
+const TYPES = ['initiative', 'etape', 'jalon', 'demande', 'utilisateur', 'role'];
+
+const vide = { recherche: '', type: '', utilisateur: '', du: '', au: '' };
 
 /** Lit l'ensemble des critères depuis l'URL (vue partageable, fil du navigateur). */
 const lireDepuisUrl = (params) => {
   const page = parseInt(params.get('page') ?? '0', 10);
+  const type = params.get('type') ?? '';
   return {
     recherche: params.get('recherche') ?? '',
-    statut: params.get('statut') ?? '',
+    type: TYPES.includes(type) ? type : '',
     utilisateur: params.get('utilisateur') ?? '',
     du: params.get('du') ?? '',
     au: params.get('au') ?? '',
     initiative: params.get('initiative') ?? '',
+    // Bascule « Actives | Archives » portée par l'URL (?archive=1) :
+    // lien partagé, retour navigateur et rechargement automatique.
+    archives: params.get('archive') === '1' || params.get('archive') === 'true',
     direction: params.get('direction') === 'asc' ? 'asc' : 'desc',
     page: Number.isNaN(page) || page < 0 ? 0 : page
   };
@@ -73,50 +79,40 @@ function Surligner({ texte, requete }) {
 }
 
 /**
- * Page « Historique des statuts » : journal global de toutes les
- * initiatives. Lecture ouverte à tous les consultants
- * (INITIATIVE_CONSULTER) ; la colonne « Actions » permet aux
- * administrateurs (UTILISATEUR_GERER) de supprimer une entrée erronée,
- * avec confirmation — aucune autre écriture n'existe (ni édition, ni
- * création).
+ * Page « Historique » : journal global immuable de toutes les
+ * modifications — initiatives, étapes, jalons, demandes, comptes et
+ * rôles. Lecture ouverte à tous les consultants (INITIATIVE_CONSULTER) et
+ * rien d'autre : il n'existe AUCUNE écriture (aucun bouton de
+ * suppression ni de purge — la preuve d'audit ne se retouche pas).
  *
- * Recherche (code ou nom), filtres statut / utilisateur / période, tri,
- * pagination et export CSV du résultat affiché. L'URL porte les critères :
- * la vue filtrée se partage, c'est ce que fait le bouton
+ * Recherche (code ou nom), filtres type / utilisateur / période, bascule
+ * « Actives | Archives » (lignes de plus de 12 mois, conservées telles
+ * quelles), tri, pagination et export CSV complet côté serveur (toutes
+ * les lignes filtrées, pas seulement l'affichage courant). L'URL porte
+ * les critères : la vue filtrée se partage, c'est ce que fait le bouton
  * « Voir tout l'historique » de la fiche initiative.
  */
 export default function HistoriquePage() {
   const { t, langue } = useI18n();
-  const ref = useReferentiels();
-  const { hasPermission } = useAuth();
-  const peutSupprimer = hasPermission('UTILISATEUR_GERER');
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [filtres, setFiltres] = useState(() => lireDepuisUrl(searchParams));
   const [lignes, setLignes] = useState([]);
   const [total, setTotal] = useState(0);
-  const [statuts, setStatuts] = useState([]);
   const [auteurs, setAuteurs] = useState([]);
   const [initiativeFiltree, setInitiativeFiltree] = useState(null);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState('');
-  const [info, setInfo] = useState('');
 
-  // Référentiel des statuts + auteurs présents dans le journal (une fois).
+  // Auteurs réellement présents dans le journal (une fois).
   useEffect(() => {
-    Promise.all([
-      api.get('/referentiels/statuts-initiative'),
-      api.get('/historique-statuts/auteurs')
-    ])
-      .then(([s, a]) => {
-        setStatuts(s.data);
-        setAuteurs(a.data);
-      })
+    api.get('/historique/auteurs')
+      .then((res) => setAuteurs(res.data))
       .catch((err) => setErreur(messageErreur(err)));
   }, []);
 
-  // Toute modification de l'URL (appliquer, tri, pagination, lien partagé,
-  // retour du navigateur) recharge la liste avec les critères correspondants.
+  // Toute modification de l'URL (appliquer, tri, pagination, bascule
+  // d'archives, lien partagé, retour du navigateur) recharge la liste.
   useEffect(() => {
     const depuisUrl = lireDepuisUrl(searchParams);
     setFiltres(depuisUrl);
@@ -139,15 +135,16 @@ export default function HistoriquePage() {
     try {
       const params = new URLSearchParams();
       if (f.recherche.trim()) params.set('recherche', f.recherche.trim());
-      if (f.statut) params.set('statut', f.statut);
+      if (f.type) params.set('type', f.type);
       if (f.utilisateur) params.set('utilisateur', f.utilisateur);
       if (f.du) params.set('du', f.du);
       if (f.au) params.set('au', f.au);
       if (f.initiative) params.set('initiative', f.initiative);
+      if (f.archives) params.set('archives', 'true');
       if (f.direction === 'asc') params.set('direction', 'asc');
       params.set('page', String(f.page));
       params.set('size', String(TAILLE_PAGE));
-      const res = await api.get(`/historique-statuts?${params.toString()}`);
+      const res = await api.get(`/historique?${params.toString()}`);
       setLignes(res.data);
       const compte = parseInt(res.headers['x-total-count'] ?? '', 10);
       setTotal(Number.isNaN(compte) ? res.data.length : compte);
@@ -161,11 +158,12 @@ export default function HistoriquePage() {
   const construireParams = (f, options = {}) => {
     const params = new URLSearchParams();
     if (f.recherche.trim()) params.set('recherche', f.recherche.trim());
-    if (f.statut) params.set('statut', f.statut);
+    if (f.type) params.set('type', f.type);
     if (f.utilisateur) params.set('utilisateur', f.utilisateur);
     if (f.du) params.set('du', f.du);
     if (f.au) params.set('au', f.au);
     if (f.initiative) params.set('initiative', f.initiative);
+    if (f.archives) params.set('archive', '1');
     if (f.direction === 'asc') params.set('direction', 'asc');
     const page = options.page ?? 0;
     if (page > 0) params.set('page', String(page));
@@ -179,12 +177,17 @@ export default function HistoriquePage() {
   };
 
   const reinitialiser = () => {
-    setFiltres({ ...vide, initiative: '', direction: 'desc', page: 0 });
+    setFiltres({ ...vide, initiative: '', archives: false, direction: 'desc', page: 0 });
     setSearchParams({}, { replace: true });
   };
 
   const changerTri = (direction) => {
     setSearchParams(construireParams({ ...filtres, direction }, { page: 0 }), { replace: true });
+  };
+
+  /** Bascule vers la vue « Archives » (ou retour aux « Actives »). */
+  const basculerVue = (archives) => {
+    setSearchParams(construireParams({ ...filtres, archives }, { page: 0 }), { replace: false });
   };
 
   const allerPage = (page) => {
@@ -195,90 +198,82 @@ export default function HistoriquePage() {
     setSearchParams(construireParams({ ...filtres, initiative: '' }, { page: 0 }), { replace: true });
   };
 
-  /** Export du résultat AFFICHÉ : UTF-8 avec BOM et « ; » (Excel, accents, arabe). */
-  const exporterCsv = () => {
-    const guillemeter = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const entetes = [
-      t('historique.colCode'), t('historique.colInitiative'), t('historique.colAncienStatut'),
-      t('historique.colNouveauStatut'), t('historique.colUtilisateur'), t('historique.colDate'),
-      t('historique.colOrigine')
-    ];
-    const lignesCsv = lignes.map((ev) => [
-      ev.initiative?.code ?? '',
-      ev.initiative?.nom ?? '',
-      ev.ancienStatut ?? '',
-      ev.nouveauStatut ?? '',
-      ev.utilisateur?.nomComplet ?? t('initiativeDetail.auteurInconnu'),
-      formaterDate(ev.dateChangement, langue),
-      ev.automatique ? t('historique.origineAutomatique') : t('historique.origineManuelle')
-    ].map(guillemeter).join(';'));
-    const csv = `\uFEFF${[entetes.map(guillemeter).join(';'), ...lignesCsv].join('\r\n')}`;
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const lien = document.createElement('a');
-    lien.href = url;
-    lien.download = 'historique-statuts.csv';
-    document.body.appendChild(lien);
-    lien.click();
-    lien.remove();
-    URL.revokeObjectURL(url);
-  };
-
   /**
-   * Suppression d'une entrée (admin) : confirmation puis rechargement.
-   * Si la ligne supprimée était la dernière de sa page, on revient à la
-   * page précédente pour ne pas afficher une page vide sur un total > 0.
+   * Export CSV complet côté serveur : mêmes filtres que la lecture, mais
+   * TOUTES les lignes filtrées (pas seulement l'affichage courant) — c'est
+   * le serveur qui assemble et encode le fichier (BOM, « ; »).
    */
-  const demanderSuppression = (ev) => {
-    const libelle = `${ev.initiative?.code ?? ''} — ${formaterDate(ev.dateChangement, langue)}`;
-    if (!window.confirm(t('historique.supprimerConfirmer', { ligne: libelle }))) return;
-    api.delete(`/historique-statuts/${ev.idHistorique}`)
-      .then(() => {
-        setErreur('');
-        setInfo(t('historique.supprimeOk'));
-        if (lignes.length === 1 && filtres.page > 0) {
-          allerPage(filtres.page - 1);
-        } else {
-          charger(filtres);
-        }
-      })
-      .catch((err) => {
-        setInfo('');
-        setErreur(messageErreur(err));
-      });
-  };
-
-  /**
-   * Purge TOUT le journal (admin, UTILISATEUR_GERER) : confirmation puis
-   * rechargement — on revient à la première page si on était ailleurs.
-   */
-  const purgerTout = () => {
-    if (!window.confirm(t('historique.purgerConfirmer'))) return;
-    api.delete('/historique-statuts')
-      .then(() => {
-        setErreur('');
-        setInfo(t('historique.purgeOk'));
-        if (filtres.page > 0) {
-          allerPage(0);
-        } else {
-          charger(filtres);
-        }
-      })
-      .catch((err) => {
-        setInfo('');
-        setErreur(messageErreur(err));
-      });
+  const exporterCsv = async () => {
+    setErreur('');
+    try {
+      const params = new URLSearchParams();
+      if (filtres.recherche.trim()) params.set('recherche', filtres.recherche.trim());
+      if (filtres.type) params.set('type', filtres.type);
+      if (filtres.utilisateur) params.set('utilisateur', filtres.utilisateur);
+      if (filtres.du) params.set('du', filtres.du);
+      if (filtres.au) params.set('au', filtres.au);
+      if (filtres.initiative) params.set('initiative', filtres.initiative);
+      if (filtres.archives) params.set('archives', 'true');
+      const res = await api.get(`/historique/export?${params.toString()}`, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv;charset=utf-8' }));
+      const lien = document.createElement('a');
+      lien.href = url;
+      lien.download = 'historique-modifications.csv';
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      // En responseType 'blob', le corps d'erreur est un Blob : on le
+      // relit pour ne pas afficher un message opaque.
+      const donnees = err.response?.data;
+      if (donnees instanceof Blob) {
+        const texte = await donnees.text();
+        try {
+          setErreur(JSON.parse(texte).message || messageErreur(err));
+          return;
+        } catch { /* corps non JSON : on retombe sur le message HTTP */ }
+      }
+      setErreur(messageErreur(err));
+    }
   };
 
   const pagesTotales = Math.max(1, Math.ceil(total / TAILLE_PAGE));
   const depart = total === 0 ? 0 : filtres.page * TAILLE_PAGE + 1;
   const arrivee = Math.min((filtres.page + 1) * TAILLE_PAGE, total);
   const filtresActifs = Boolean(
-    filtres.recherche.trim() || filtres.statut || filtres.utilisateur
+    filtres.recherche.trim() || filtres.type || filtres.utilisateur
     || filtres.du || filtres.au || filtres.initiative
   );
 
   const champRecherche = (e) => setFiltres((f) => ({ ...f, recherche: e.target.value }));
   const champ = (nom) => (e) => setFiltres((f) => ({ ...f, [nom]: e.target.value }));
+
+  /**
+   * Ancienne → nouvelle valeur. Les changements de statut gardent les
+   * badges colorés du reste de l'application ; les autres champs
+   * s'affichent en clair (budget, dates, responsable…).
+   */
+  const renduValeurs = (ev) => {
+    const estStatut = ev.champ === 'statut';
+    const avant = ev.ancienneValeur
+      ? (estStatut
+        ? <StatutBadge libelle={ev.ancienneValeur} />
+        : <span className="historique-valeur"><Surligner texte={ev.ancienneValeur} requete={filtres.recherche} /></span>)
+      : <span className="texte-muet">—</span>;
+    const apres = ev.nouvelleValeur
+      ? (estStatut
+        ? <StatutBadge libelle={ev.nouvelleValeur} />
+        : <span className="historique-valeur"><Surligner texte={ev.nouvelleValeur} requete={filtres.recherche} /></span>)
+      : <span className="texte-muet">—</span>;
+    return (
+      <>
+        {avant}
+        <span className="historique-fleche" aria-hidden="true"> → </span>
+        {apres}
+      </>
+    );
+  };
 
   return (
     <div className="page">
@@ -288,24 +283,29 @@ export default function HistoriquePage() {
           <p>{t('historique.sousTitre')}</p>
         </div>
         <div className="actions">
+          {/* Bascule dans la page (aucune route ni lien de menu) :
+              l'URL ?archive=1 documente la vue affichée. */}
+          <div className="vue-toggle" role="group" aria-label={t('historique.vueAria')}>
+            <button type="button" className={!filtres.archives ? 'actif' : ''} onClick={() => basculerVue(false)}>
+              {t('historique.vueActives')}
+            </button>
+            <button type="button" className={filtres.archives ? 'actif' : ''} onClick={() => basculerVue(true)}>
+              {t('historique.vueArchives')}
+            </button>
+          </div>
           <button
             type="button"
             className="btn btn-secondaire"
             onClick={exporterCsv}
             disabled={lignes.length === 0}
+            title={t('historique.exportAide')}
           >
             {t('historique.exportCsv')}
           </button>
-          {peutSupprimer && total > 0 && (
-            <button type="button" className="btn btn-danger" onClick={purgerTout}>
-              {t('historique.purger')}
-            </button>
-          )}
         </div>
       </header>
 
       {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
-      {info && <div className="alerte alerte-succes">{info}</div>}
 
       <form className="carte filtre-bar" onSubmit={appliquerFiltres}>
         <div className="filtre-ligne">
@@ -316,10 +316,10 @@ export default function HistoriquePage() {
             value={filtres.recherche}
             onChange={champRecherche}
           />
-          <select aria-label={t('historique.ariaStatut')} value={filtres.statut} onChange={champ('statut')}>
-            <option value="">{t('historique.tousStatuts')}</option>
-            {statuts.map((s) => (
-              <option key={s.idStatut} value={s.libelle}>{ref.statut(s.libelle)}</option>
+          <select aria-label={t('historique.ariaType')} value={filtres.type} onChange={champ('type')}>
+            <option value="">{t('historique.tousTypes')}</option>
+            {TYPES.map((type) => (
+              <option key={type} value={type}>{libelleType(t, type)}</option>
             ))}
           </select>
           <select aria-label={t('historique.ariaUtilisateur')} value={filtres.utilisateur} onChange={champ('utilisateur')}>
@@ -361,7 +361,7 @@ export default function HistoriquePage() {
             </button>
           </div>
           <span className="texte-muet">
-            {t('historique.compteur', { de: depart, a: arrivee, total })}
+            {filtres.archives ? t('historique.vueArchivesAide') : t('historique.compteur', { de: depart, a: arrivee, total })}
             {filtresActifs && (
               <>
                 {' · '}
@@ -408,40 +408,58 @@ export default function HistoriquePage() {
         {chargement ? (
           <div className="center-page">{t('historique.chargement')}</div>
         ) : lignes.length === 0 ? (
-          <p className="texte-muet">{t('historique.aucunResultat')}</p>
+          <p className="texte-muet">
+            {filtres.archives ? t('historique.aucuneArchive') : t('historique.aucunResultat')}
+          </p>
         ) : (
           <div className="table-enveloppe">
             <table className="table">
               <thead>
                 <tr>
-                  <th>{t('historique.colCode')}</th>
+                  <th>{t('historique.colType')}</th>
                   <th>{t('historique.colInitiative')}</th>
-                  <th>{t('historique.colAncienStatut')}</th>
-                  <th>{t('historique.colNouveauStatut')}</th>
+                  <th>{t('historique.colChamp')}</th>
+                  <th>{t('historique.colValeurs')}</th>
+                  <th>{t('historique.colDetail')}</th>
                   <th>{t('historique.colUtilisateur')}</th>
                   <th>{t('historique.colDate')}</th>
                   <th>{t('historique.colOrigine')}</th>
-                  {peutSupprimer && <th>{t('historique.colActions')}</th>}
                 </tr>
               </thead>
               <tbody>
                 {lignes.map((ev) => (
-                  <tr key={ev.idHistorique}>
+                  <tr key={ev.id}>
                     <td>
-                      <Link
-                        to={`/initiatives/${ev.initiative?.idInitiative}`}
-                        className="table-lien-code"
-                      >
-                        <Surligner texte={ev.initiative?.code} requete={filtres.recherche} />
-                      </Link>
+                      <span className={`badge ${badgeTypeJournal(ev.typeObjet)}`}>
+                        {libelleType(t, ev.typeObjet)}
+                      </span>
+                      <span className="texte-muet historique-id"> #{ev.idObjet}</span>
                     </td>
-                    <td><Surligner texte={ev.initiative?.nom} requete={filtres.recherche} /></td>
                     <td>
-                      {ev.ancienStatut
-                        ? <StatutBadge libelle={ev.ancienStatut} />
+                      {ev.initiative ? (
+                        <>
+                          <Link
+                            to={`/initiatives/${ev.initiative.idInitiative}`}
+                            className="table-lien-code"
+                          >
+                            <Surligner texte={ev.initiative.code} requete={filtres.recherche} />
+                          </Link>
+                          <span className="texte-muet historique-nom">
+                            {' '}
+                            <Surligner texte={ev.initiative.nom} requete={filtres.recherche} />
+                          </span>
+                        </>
+                      ) : (
+                        <span className="texte-muet">—</span>
+                      )}
+                    </td>
+                    <td>{libelleChamp(t, ev.champ)}</td>
+                    <td>{renduValeurs(ev)}</td>
+                    <td title={ev.commentaire ?? ''}>
+                      {ev.commentaire
+                        ? <span className="historique-commentaire">{ev.commentaire}</span>
                         : <span className="texte-muet">—</span>}
                     </td>
-                    <td><StatutBadge libelle={ev.nouveauStatut} /></td>
                     <td title={ev.utilisateur?.email ?? ''}>
                       {ev.utilisateur?.nomComplet ?? (
                         <span className="texte-muet">{t('initiativeDetail.auteurInconnu')}</span>
@@ -453,17 +471,6 @@ export default function HistoriquePage() {
                         {ev.automatique ? t('historique.origineAutomatique') : t('historique.origineManuelle')}
                       </span>
                     </td>
-                    {peutSupprimer && (
-                      <td>
-                        <button
-                          type="button"
-                          className="btn btn-petit btn-danger"
-                          onClick={() => demanderSuppression(ev)}
-                        >
-                          {t('historique.supprimer')}
-                        </button>
-                      </td>
-                    )}
                   </tr>
                 ))}
               </tbody>

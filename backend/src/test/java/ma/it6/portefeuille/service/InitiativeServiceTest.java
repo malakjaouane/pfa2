@@ -23,6 +23,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -32,6 +33,7 @@ import org.mockito.quality.Strictness;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -423,6 +425,30 @@ class InitiativeServiceTest {
             verify(historiqueService).enregistrer(
                     any(Initiative.class), anyString(), anyString(),
                     contains("Modification de l'initiative"), any(), eq(false));
+        }
+
+        @Test
+        @DisplayName("budget identique malgré l'échelle (« 10.00 » base vs « 10 » formulaire) : pas de faux changement")
+        void modifier_budgetEchelle_identiqueNeJournaliseRien() {
+            // Rejet de sonde : l'entité venue de DECIMAL(15,2) porte deux
+            // décimales, le JSON en porte zéro — sans normalisation, chaque
+            // retouche journalisait « 10.00 → 10 », un faux événement de
+            // budget identique en clair.
+            Initiative existante = initiativeExistante(enCours, 40, false);
+            existante.setBudget(new BigDecimal("10.00"));
+            when(initiativeRepository.findById(1L)).thenReturn(Optional.of(existante));
+            when(initiativeRepository.existsByCodeAndIdInitiativeNot("INIT-1", 1L)).thenReturn(false);
+            when(statutInitiativeRepository.findById(enCours.getIdStatut())).thenReturn(Optional.of(enCours));
+
+            service.modifier(1L,
+                    request("INIT-1", 40, enCours.getIdStatut(), BigDecimal.TEN, null, null, null));
+
+            ArgumentCaptor<Map<String, String>> avant = ArgumentCaptor.forClass(Map.class);
+            ArgumentCaptor<Map<String, String>> apres = ArgumentCaptor.forClass(Map.class);
+            verify(historiqueService).diff(eq(HistoriqueModificationService.TYPE_INITIATIVE),
+                    eq(1L), any(), avant.capture(), apres.capture(), any(), eq(false));
+            assertThat(avant.getValue().get("budget")).isEqualTo("10");
+            assertThat(apres.getValue().get("budget")).isEqualTo("10");
         }
     }
 

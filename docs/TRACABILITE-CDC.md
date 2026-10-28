@@ -73,16 +73,17 @@ test fonctionnel `tests-api.ps1`).
 | **Transformation en initiative sans doublon** : code auto `DEM-%06d`, statut « À planifier », budget/avancement 0, `id_initiative_liee` UNIQUE | `DemandeService.transformer` + `InitiativeService.creerEnEntite` | JUnit `Transformation en initiative` (3 tests) + API (`seconde transformation → 400`) |
 | **Permissions** : `DEMANDE_SOUMETTRE` (soumettre) et `DEMANDE_EVALUER` (évaluer/accepter/refuser/transformer) ; lister exige l'une des deux | `SecurityConfig`, `data.sql` (permissions 14/15, role_permission) | API (`visiteur → 403`, responsable autorisé → 200) |
 
-## 4quater. P3 — Historique des statuts (journal global)
+## 4quater. P3 — Historique complet (journal immuable)
 
 | Fonctionnalité (CDC) | Mise en œuvre | Validation |
 |---|---|---|
-| **Journal des transitions** : tout changement de statut inscrit dans l'historique (CDC §7.2), écrit dans la même transaction que la modification | `HistoriqueStatutService.enregistrer` (appelé par `InitiativeService`, `EtapeService`, `DataInitializer`), table `historique_statut` | JUnit `HistoriqueStatutServiceTest` + API section 12 (création → transition manuelle → passage RM07-auto : 3 lignes) |
-| **Origine du changement** : colonne `historique_statut.automatique` (manuel / moteur de règles : RM07-auto, réouverture, RM17, alignement de démarrage) ; migration douce idempotente + re-classement rétroactif depuis le motif enregistré | Entité `HistoriqueStatut.automatique`, surcharge `enregistrer(..., boolean)`, `database/schema.sql` (ALTER gardé par `information_schema`) | JUnit (origine manuelle/automatique) + API (`automatique = false` sur création/transition choisie, `= true` sur RM07) |
-| **Page dédiée** `/historique` : table (code, nom, ancien/nouveau statut, utilisateur, date-heure, origine), recherche code/nom (insensible casse/accents), filtres statut/utilisateur/période, tri, pagination, export CSV | `HistoriquePage.jsx`, `GET /api/historique-statuts` (`HistoriqueStatutController` + `HistoriqueStatutRepository.rechercher/compter`, en-tête `X-Total-Count`), route/menu gated `INITIATIVE_CONSULTER` | API section 12 (recherche, filtres, pagination, tri, 400 paramètres) + build Vite |
-| **Résumé sur la fiche** : 5 derniers changements + bouton « Voir tout l'historique » ouvrant la page filtrée (`?initiative=id`, pastille débrayable) | `InitiativeDetailPage.jsx` (`slice(0, 5)`), lien `Link`, pastille `filtre-pastille` | Build Vite + API (champ `initiative` sur chaque ligne) |
-| **Lecture + permissions existantes** : lecture ouverte à `INITIATIVE_CONSULTER`, aucune création/édition possible, aucun nouveau droit | `SecurityConfig` : `GET /api/historique-statuts/**` → `INITIATIVE_CONSULTER` ; aucun `@PostMapping/@PutMapping` (POST → 405) | JUnit `SecuriteApiTest` (401/403/200, POST → 405) + API (anonyme 401, visiteur 200) |
-| **Suppression d'une entrée (admin)** : nettoyage d'une ligne erronée depuis la colonne « Actions » avec confirmation ; réservée aux administrateurs | `DELETE /api/historique-statuts/{id}` (`HistoriqueStatutController.supprimer`, 204 / 404 si absent), `SecurityConfig` : `DELETE` → `UTILISATEUR_GERER` (droit existant) ; bouton `btn-danger` conditionné à `hasPermission('UTILISATEUR_GERER')` | JUnit `SecuriteApiTest` (anonyme 401, consultation seule 403, admin 204) + `HistoriqueStatutServiceTest` (suppression / 404) + API section 12 (401, 403, 404, 204 + total −1) |
+| **Journal générique champ à champ** (CDC §7.2 traçabilité) : toute donnée suivie laisse une ligne `(type_objet, id_objet, champ, ancienne/nouvelle valeur, motif, auteur, horodatage, origine)` — types `initiative`/`etape`/`jalon`/`demande`/`utilisateur`/`role` ; écrit **dans la même transaction** que la modification (aucune donnée fictive). L'ancien journal `historique_statut` est absorbé (migration `INSERT … SELECT` gardée par `information_schema`, puis `DROP`) : les 50 lignes de démonstration ont été reprises sans perte | `HistoriqueModificationService` (`enregistrer`, `diff`), `HistoriqueController`, table `historique_modification` (`ON DELETE CASCADE` vers l'initiative, `SET NULL` vers l'auteur), migration dans `database/schema.sql` | JUnit `HistoriqueModificationServiceTest` (23 tests : écriture, diff, filtres, fenêtre d'archives, tri, export, fil de fiche, immuabilité) + API section 12 (5 lignes pour le scénario complet) + base vérifiée (50 lignes démo migrées, ancienne table supprimée) |
+| **Zéro ligne parasite** : le diff compare des valeurs **normalisées** — vide = absence, espaces de bord retirés, `BigDecimal` ramené sans zéros de queue (l'échelle `DECIMAL(15,2)` de la base ne fabrique plus « 0.00 → 0 » à chaque retouche, `null` vs `« »` non plus) | `HistoriqueModificationService.normaliserDiff`, `InitiativeService.valeursJournalisees` | JUnit (« budget 10.00 / 10 », « vide/espace » : aucune ligne ; vrai changement journalisé normalisé) + sonde live (7 → 5 lignes après correctif) |
+| **Journal immuable** : aucun `POST`, `PUT`, `PATCH` ni `DELETE` déclaré — collection → **405**, `DELETE /{id}` → **404** (route inexistante), anonyme → **401** ; aucune purge ni suppression nulle part dans le produit | `HistoriqueController` (lecture seule), `SecurityConfig` : `GET /api/historique/**` → `INITIATIVE_CONSULTER` | JUnit `SecuriteApiTest` (30 tests : 401/403/200 lecture + export, 405 sur POST/DELETE, 404 sur `DELETE /{id}`, filtre de fiche) + API section 12 (immuabilité vérifiée, aucun test de purge) |
+| **Page dédiée** `/historique` : recherche code/nom (insensible casse/accents), filtres **type d'objet (6)**, champ, utilisateur, période du/au, tri récent/ancien, pagination, bascule **« Actives \| Archives »** (`?archive=1` — les événements de plus de 12 mois passent en archives par calcul de dates, aucune table supplémentaire), **export CSV servi par le backend** (toutes les lignes filtrées, BOM UTF-8, `;`, `historique-modifications.csv`) | `HistoriquePage.jsx`, `GET /api/historique` (+ `?archive=1`), `GET /api/historique/auteurs`, `GET /api/historique/export`, `i18n/locales/historique.js` (fr/en/ar/es) | API section 12 (recherche, filtres, période, pagination, tri, 400 paramètres, partition des vues, export CSV) + build Vite + e2e navigateur |
+| **Fil de la fiche** : `GET /initiatives/{id}/historique` paginé (10 par page, `X-Total-Count`), pastilles **Tous / Initiative / Étapes / Jalons**, bouton « Charger plus », filtre `type` hors {initiative, etape, jalon} → **400** ; lien « Voir tout » vers la page globale filtrée | `InitiativeDetailPage.jsx`, `HistoriqueModificationService.historiqueInitiative` | JUnit + API section 12 (5 lignes, 4 initiative / 1 etape, 400 sur `type=utilisateur` et `type=alien`) |
+| **Activité récente sur le tableau de bord** : widget des 10 derniers événements de la vue active, avec libellés d'événements traduits (helper partagé `i18n/journal.js` : `libelleChamp`, `libelleType`, `badgeTypeJournal`, `texteEvenement` — une seule source pour fiche et dashboard) | `DashboardPage.jsx`, `frontend/src/i18n/journal.js`, `dashboard.js` (fr/en/ar/es) | JUnit (plafonnement à 10) + build Vite + e2e navigateur (widget, navigation depuis la ligne) |
+| **Lecture seule, aucun nouveau droit** : la consultation reste portée par `INITIATIVE_CONSULTER` (la page et la fiche s'ouvrent à tous les profils autorisés, l'anonyme reste dehors) | `SecurityConfig` : `GET /api/historique/**` et `GET /api/initiatives/{id}/historique` rattrapé par `GET /api/initiatives/**` | JUnit `SecuriteApiTest` (anonyme 401, visiteur 200) + API section 12 (401 / 200) |
 
 ## 4quinquies. Améliorations — score de santé et durcissement
 
@@ -110,12 +111,16 @@ test fonctionnel `tests-api.ps1`).
 - **P1/P2** : 15 scénarios fonctionnels supplémentaires (sections 10 et 11 de
   `tests-api.ps1`) : référentiel objectifs, filtre, workflow complet des demandes,
   refus avec/sans motif, transformation sans doublon, permissions.
-- **P3 (historique des statuts)** : 30 scénarios supplémentaires (section 12 de
-  `tests-api.ps1`) : origine manuelle/automatique des lignes, page globale,
-  recherche, filtres statut/utilisateur/période, pagination, tri, validation des
-  paramètres, permissions, lecture seule (POST → 405) et suppression
-  administrative (401/403/404/204 + total décrémenté), purge totale refusée hors
-  administrateur (401/403 pour anonyme, visiteur et responsable).
+- **P3 (historique complet)** : **48 scénarios** supplémentaires (section 12 de
+  `tests-api.ps1`) : scénario complet création → transition manuelle → étape à
+  100 % → passage RM07-auto (**5 lignes exactement**, origine manuelle /
+  automatique, aucune ligne parasite), fil de fiche (filtres `type` 4 / 1,
+  400 hors jeu), page globale : recherche, filtres type / champ / utilisateur /
+  période, pagination, tri, validation des paramètres, vue « Actives |
+  Archives », export CSV (BOM UTF-8, `;`, lignes du test), permissions
+  (401 / 200) et **immuabilité** (`POST` / `DELETE` → 405, `DELETE /{id}` →
+  404, 401 anonyme) — aucune écriture ni purge du journal n'est testée, le
+  journal n'en expose plus.
 - **P4 (recherche et suppression)** : les trois écrans de listes disposent
   d'une barre de recherche ; la suppression suit les droits existants —
   demandes (`DEMANDE_EVALUER`, 400 si déjà transformée, **sélection multiple
@@ -123,15 +128,15 @@ test fonctionnel `tests-api.ps1`).
   confirmation), **objectifs** (`INITIATIVE_MODIFIER`, 400 si référencé par
   au moins une initiative **archivée comprise** — même barre de sélection
   en lot que les demandes), initiatives
-  uniquement archivées (`INITIATIVE_ARCHIVER`), purge du journal réservée à
-  `UTILISATEUR_GERER`. Les lignes bloquées (demande transformée, objectif
-  référencé) portent un **cadenas « Verrouillé(e) »** avec la raison en
-  infobulle et un bandeau explicite quand rien n'est sélectionnable —
+  uniquement archivées (`INITIATIVE_ARCHIVER`). Les lignes bloquées (demande
+  transformée, objectif référencé) portent un **cadenas « Verrouillé(e) »** avec
+  la raison en infobulle et un bandeau explicite quand rien n'est sélectionnable —
   refuser n'est plus muet. Couvert par 22 scénarios fonctionnels (sections 10 à
   12), 15 tests JUnit (recherche `%…%`, refus 400/404, règles d'URL,
   suppression d'objectif) et le e2e navigateur (sélection → suppression en
   lot sur demandes **et** objectifs, refus serveur remonté en cas d'échec
-  partiel, données de démo intactes).
+  partiel, données de démo intactes). *NB : la purge du journal a disparu avec
+  le passage au journal immuable (section 4quater) — plus rien à purger là-bas.*
 - **Archives des demandes** : colonne `archive` ajoutée proprement (déjà
   présente en `CREATE TABLE` + migration douce gardée par `information_schema`
   pour les bases antérieures), bascule **« Actives | Archives »** dans la page
@@ -162,7 +167,7 @@ test fonctionnel `tests-api.ps1`).
 - **Score de santé** : 5 scénarios fonctionnels (section 3 de `tests-api.ps1`) et
   13 tests JUnit (`CalculeurSanteTest`) : niveau + motif sur liste/fiche/surveillance,
   rouge sur initiative en retard, `null` sur les écritures.
-- **Bilan chiffré** : **205 tests JUnit** et **245 scénarios fonctionnels**,
+- **Bilan chiffré** : **216 tests JUnit** et **255 scénarios fonctionnels**,
   0 échec (dernière campagne). Deux scénarios contrôlent les KPI d'accueil
   personnalisé : `jalonsSemaine` (jalons non atteints du jour au dimanche
   courant) et `initiativesARisque` (santé ORANGE ou ROUGE recalculée depuis la
