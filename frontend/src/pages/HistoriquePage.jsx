@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import api, { messageErreur } from '../api';
+import api, { messageErreur, messageErreurBlob, telechargerFichier } from '../api';
 import { useI18n } from '../i18n/I18nContext';
 import { badgeTypeJournal, libelleChamp, libelleType } from '../i18n/journal';
 import StatutBadge from '../components/StatutBadge';
@@ -214,27 +214,9 @@ export default function HistoriquePage() {
       if (filtres.au) params.set('au', filtres.au);
       if (filtres.initiative) params.set('initiative', filtres.initiative);
       if (filtres.archives) params.set('archives', 'true');
-      const res = await api.get(`/historique/export?${params.toString()}`, { responseType: 'blob' });
-      const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv;charset=utf-8' }));
-      const lien = document.createElement('a');
-      lien.href = url;
-      lien.download = 'historique-modifications.csv';
-      document.body.appendChild(lien);
-      lien.click();
-      lien.remove();
-      URL.revokeObjectURL(url);
+      await telechargerFichier(`/historique/export?${params.toString()}`, 'historique-modifications.csv');
     } catch (err) {
-      // En responseType 'blob', le corps d'erreur est un Blob : on le
-      // relit pour ne pas afficher un message opaque.
-      const donnees = err.response?.data;
-      if (donnees instanceof Blob) {
-        const texte = await donnees.text();
-        try {
-          setErreur(JSON.parse(texte).message || messageErreur(err));
-          return;
-        } catch { /* corps non JSON : on retombe sur le message HTTP */ }
-      }
-      setErreur(messageErreur(err));
+      setErreur(await messageErreurBlob(err));
     }
   };
 

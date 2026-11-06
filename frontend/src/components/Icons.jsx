@@ -149,6 +149,15 @@ export function IconAlert(props) {
   );
 }
 
+export function IconCloche(props) {
+  return (
+    <Svg {...props}>
+      <path d="M12 4a5 5 0 0 1 5 5v4l1.5 3h-13L7 13V9a5 5 0 0 1 5-5z" />
+      <path d="M10 19a2 2 0 0 0 4 0" />
+    </Svg>
+  );
+}
+
 export function IconWallet(props) {
   return (
     <Svg {...props}>

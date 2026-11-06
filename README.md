@@ -175,27 +175,59 @@ n'est ni versionnée ni journalisée côté serveur.
   en retard, budget total, avancement moyen ; répartitions par statut, priorité,
   entité, responsable et **objectif stratégique** ; liste des initiatives en
   retard.
-- **Budgets** : le montant affiché est le `budget` **saisi**. L'application
-  n'enregistre **aucune dépense réelle** (ni saisie de factures, ni table de
-  mouvements). Les agrégats dérivés exposés par `GET /api/budget`
+- **Budgets** : le montant affiché est le `budget` **saisi**. Les agrégats
+  dérivés exposés par `GET /api/budget`
   (`consomme`, `effectif`, `ecart`) sont des **estimations calculées au
   prorata du taux d'avancement** (`budget × avancement / 100`) : un
   indicateur de pilotage, pas une comptabilité. La précision est portée
   explicitement à l'écran (légende du tableau de bord, colonne « Budget »,
-  fiche d'initiative) — voir `docs/API.md` §3.
+  fiche d'initiative) — voir `docs/API.md` §3. Les **écritures réelles**
+  sont suivies à part par le registre des dépenses (permission dédiée,
+  plus bas).
 - **Initiatives** : création, consultation, modification, archivage ; cycle de vie
   des statuts contrôlé.
 - **Étapes et jalons** : suivi de l'avancement, dates, statuts dédiés, gestion de
   la date de réalisation des jalons.
-- **Risques** (registre par initiative) : description, **probabilité** et
-  **impact** notés de 1 à 3 (Faible / Moyen / Élevé), responsable du plan
-  d'action et plan d'action. La **santé pondérée** (probabilité × impact,
-  soit 1 à 9) est **recalculée à chaque affichage** — jamais stockée — et
-  affichée en badge `x/9` (verte 1-2, orange 3-4, **rouge 6-9 = critique**).
-  Section « Risques » dans la fiche (lecture pour tous les lecteurs,
-  écriture avec `INITIATIVE_MODIFIER`, refus 400 sur initiative archivée)
-  plus un widget **« Risques critiques »** sur le tableau de bord, qui suit
-  les mêmes filtres que les KPI.
+- **Risques** (registre par initiative **et** registre global) : titre,
+  description, **probabilité** et **impact** notés de **1 à 5**, statut
+  (`ouverte` / `attenuation` / `close`), échéance, responsable du plan
+  d'action et plan d'action. Le **score** (probabilité × impact, soit **1 à
+  25**) est **recalculé à chaque affichage** — jamais stocké — et affiché en
+  badge avec sa bande : **1-4 verte, 5-9 ambre, 10-14 orange, 15-25 rouge =
+  critique**. Écriture soumise à la permission dédiée **`RISQUE_GERER`
+  (19ᵉ, ADMIN + RESPONSABLE)**, lecture à `INITIATIVE_CONSULTER`, refus 400
+  sur initiative archivée. La fiche (`FicheSuivi`) porte le registre, la
+  page **`/risques`** le registre **global** (filtres initiative / statut /
+  recherche, export CSV `risques.csv`) et le tableau de bord le widget
+  **« Risques critiques »** (score ≥ 15, mêmes filtres que les KPI).
+- **Commentaires** : fil de discussion par initiative dans la fiche de
+  suivi — ajout soumis à **`COMMENTAIRE_AJOUTER` (18ᵉ, ADMIN +
+  RESPONSABLE)**, suppression réservée à l'auteur ou à un administrateur
+  (sinon 403), horodatage et auteur affichés, écriture refusée en 400 sur
+  initiative archivée.
+- **Dépenses** (suivi budgétaire opérationnel) : registre des dépenses
+  réelles (libellé, montant strictement positif, date, catégorie) rattaché
+  aux initiatives, avec **saisisseur** et totaux. Tous les verbes — lecture
+  **et** écriture — exigent la permission dédiée **`DEPENSE_SAISIR` (20ᵉ,
+  ADMIN + RESPONSABLE)** ; le visiteur reçoit 403 même en lecture. La fiche
+  de suivi porte les dépenses de l'initiative, la page **`/depenses`** le
+  registre global (filtres période / catégorie / recherche, totaux dans les
+  en-têtes `X-Total-Count` + `X-Total-Montant`, export CSV `depenses.csv`).
+- **Alertes et notifications** : calculées **à chaque lecture, sans table**
+  (7 types : initiative en retard, jalon en retard ou à 7 jours, risque
+  critique (score ≥ 15) ou à échéance, demande en attente, budget dépassé ;
+  niveaux `ROUGE` / `ORANGE`). La **cloche du bandeau** les rafraîchit
+  toutes les 60 s (`GET /api/notifications`), la fiche de suivi affiche
+  celles de son initiative, la page **`/mon-espace`** les agrège.
+- **Mon espace** (`/mon-espace`, tout compte connecté) : profil, rôle,
+  initiatives pilotées, jalons proches, risques dont on est responsable,
+  alertes, activité récente, demandes à évaluer et chiffres budgétaires —
+  le contenu **s'adapte aux permissions** du compte.
+- **Navigation pilotée par les permissions** : barre latérale à liste
+  unique ordonnée (administrateur 15 entrées, responsable 11, visiteur 8)
+  et pages dédiées `/risques`, `/depenses`, `/audit` (journal des actions
+  HTTP, administrateur seul) — chacune avec export CSV servi par le backend
+  (BOM UTF-8, point-virgule, guillemets doublés).
 - **Recherche et filtres** combinables (texte, statut, priorité, entité,
   responsable, objectif, archivage).
 - **Kanban** : bascule Tableau / Kanban sur la page Initiatives (5 colonnes par
@@ -343,13 +375,25 @@ refus 400 quand l'objectif est référencé, 404), `DemandeServiceTest`
 « Brouillon », idempotence, 404, filtre de vue) et les règles d'URL
 `DELETE /objectifs` + `PATCH /demandes/{id}/archive|restaurer` dans
 `SecuriteApiTest`. `RisqueServiceTest` (registre : tri par criticité,
-bandes de santé 1-2 / 3-4 / 6-9 sur la matrice 3 × 3, score jamais stocké,
-initiative archivée → 400, initiative ou responsable inconnus → 404,
-filtre des critiques du dashboard avec liste vide sans requête) et,
+bandes **1-4 / 5-9 / 10-14 / 15-25** sur la matrice 5 × 5, score jamais
+stocké, initiative archivée → 400, initiative ou responsable inconnus →
+404, filtre des critiques du dashboard avec liste vide sans requête) et,
 dans `SecuriteApiTest`, les règles d'URL des risques (lecture
-`INITIATIVE_CONSULTER`, écriture `INITIATIVE_MODIFIER`, 403 sans le droit),
-plus `DashboardServiceTest` (widget `risquesCritiques` servi avec les ids
-de la sélection). **216 tests, 0 échec.**
+`INITIATIVE_CONSULTER`, écriture `RISQUE_GERER`, 403 sans le droit), des
+commentaires (`COMMENTAIRE_AJOUTER`), des dépenses (`DEPENSE_SAISIR` posée
+**avant** la règle `GET /api/initiatives/**`), du journal d'audit
+(`UTILISATEUR_GERER`) et des routes `/mon-espace` + `/notifications`, plus
+`DashboardServiceTest` (widget `risquesCritiques` servi avec les ids de la
+sélection). Les classes ajoutées par le lot couvrent
+`CommentaireServiceTest` (10 : ajout, auteur résolu par jeton,
+anonymisation, initiative archivée → 400, suppression auteur ou
+administrateur, sinon 403), `DepenseServiceTest` (16 : validation, totaux,
+filtres, archivée → 400), `AlerteServiceTest` (10 : les 7 types, seuils
+7 jours et score ≥ 15, recalcul sans table), `MonEspaceServiceTest` (10 :
+agrégat personnel et adaptation aux permissions),
+`JournalAuditServiceTest` (7 : masquage des champs de mot de passe,
+`PUT /api/initiatives/{id}` ignoré, filtres) et `CsvUtilTest` (6 :
+séparateur `;`, BOM UTF-8, guillemets doublés). **280 tests, 0 échec.**
 
 ### Tests fonctionnels de l'API
 
@@ -395,17 +439,32 @@ e-mail, filtre « échouées » après une tentative réelle, période inversée
 administrateur), et la **suppression d'objectif** de la section 10 (401
 anonyme, 403 sans `INITIATIVE_MODIFIER`, 400 si l'objectif est référencé
 par une initiative, 404 id inconnu, 204 puis ré-DELETE 404). La section 16
-couvre le **registre des risques** : création 3 × 3 → score 9/9 critique
-(ROUGE) et 1 × 1 → 1/9 saine (VERTE), notes hors bornes → 400, description
-vide → 400, responsable ou initiative inconnus → 404, registre trié du
-plus critique au moins critique, widget dashboard (le risque y entre à 9/9
-et en ressort dès qu'il passe à 4/9), droits 401 / 200 / 403, suppression
-204 et 404, puis initiative annulée + archivée : écriture refusée en 400
-et lecture toujours possible. **255 scénarios, 0 échec.**
+couvre le **registre des risques** : création 5 × 5 → score 25/25 critique
+(ROUGE) et 1 × 1 → 1/25 saine (VERTE), notes hors bornes → 400, titre ou
+description vide → 400, statut hors valeurs → 400, responsable ou
+initiative inconnus → 404, registre trié du plus critique au moins
+critique, filtres (initiative, statut, recherche), export CSV, widget
+dashboard (le risque y entre à 15/25 et en ressort dès qu'il redescend),
+droits 401 / 200 / 403 (`RISQUE_GERER`), suppression 204 et 404, puis
+initiative annulée + archivée : écriture refusée en 400 et lecture toujours
+possible. Viennent ensuite les **commentaires** (ajout 201, suppression
+auteur ou admin sinon 403, archivée → 400), les **dépenses** (registre
+global avec `X-Total-Count` + `X-Total-Montant`, filtres période /
+catégorie, export CSV, `DEPENSE_SAISIR` exigée — 403 sans elle —, totaux
+recalculés après écriture), le **journal d'audit** (401 anonyme, 403 sans
+`UTILISATEUR_GERER`, 200 + `X-Total-Count`, filtres e-mail / méthode /
+route / période, export CSV, immuabilité 405), les **notifications et
+alertes** (401 anonyme, 200 avec `total` = nombre d'alertes, 7 types
+uniquement, niveaux `ROUGE`/`ORANGE` uniquement, visiteur cohérent) et
+**mon espace** (401 anonyme, admin et responsable avec budget +
+dépenses, visiteur 200 mais budget et dépenses `null` sans permission, aucune
+demande à évaluer sans `DEMANDE_EVALUER`). **335 scénarios, 0 échec.**
 
 Après une campagne de tests, purgez les résidus (initiatives `TEST*` archivées,
-initiatives issues de demandes de test `DEM-*`, demandes `TEST-DEM*`, objectifs
-`TEST-OBJ*` et comptes `test*@it6.ma`) avec le script fourni :
+initiatives issues de demandes de test `DEM-*`, demandes `TEST*`
+(`TEST-DEM*`, `TEST-RECH*`), objectifs
+`TEST-OBJ*`, commentaires et dépenses `TEST*`, journaux de test et comptes
+`test*@it6.ma`) avec le script fourni :
 
 ```powershell
 Get-Content database\cleanup-test-data.sql | mysql -u pfa_user -p portefeuille_initiatives

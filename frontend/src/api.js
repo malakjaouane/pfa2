@@ -54,4 +54,55 @@ export function messageErreur(error) {
   return error.message || 'Erreur inattendue.';
 }
 
+/**
+ * Comme {@link messageErreur}, mais adapté aux réponses CSV : en
+ * `responseType 'blob'`, le corps d'erreur est un Blob — on le relit pour
+ * ne pas afficher un message opaque (« Unexpected token … »).
+ */
+export async function messageErreurBlob(error) {
+  const data = error.response?.data;
+  if (typeof Blob !== 'undefined' && data instanceof Blob) {
+    try {
+      return messageErreur({ response: { data: JSON.parse(await data.text()) } });
+    } catch {
+      /* corps non JSON : on retombe sur le message HTTP */
+    }
+  }
+  return messageErreur(error);
+}
+
+/** Nom de fichier annoncé par Content-Disposition (filename* ou filename). */
+function nomDepuisEnTete(disposition) {
+  if (!disposition) return null;
+  const etoile = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+  if (etoile) {
+    try { return decodeURIComponent(etoile[1]); } catch { /* encodage invalide */ }
+  }
+  const simple = /filename="?([^";]+)"?/i.exec(disposition);
+  return simple ? simple[1] : null;
+}
+
+/**
+ * Télécharge un fichier CSV servi par l'API : requête authentifiée en
+ * `responseType 'blob'`, nom déduit de l'en-tête Content-Disposition quand
+ * le serveur l'expose, sinon nom par défaut. Une panne serveur est
+ * rejetée — appeler {@link messageErreurBlob} pour l'afficher.
+ */
+export async function telechargerFichier(url, nomDefaut) {
+  const res = await api.get(url, { responseType: 'blob' });
+  const nom = nomDepuisEnTete(res.headers['content-disposition']) || nomDefaut;
+  const urlBlob = URL.createObjectURL(new Blob([res.data]));
+  try {
+    const lien = document.createElement('a');
+    lien.href = urlBlob;
+    lien.download = nom;
+    document.body.appendChild(lien);
+    lien.click();
+    lien.remove();
+  } finally {
+    URL.revokeObjectURL(urlBlob);
+  }
+  return nom;
+}
+
 export default api;

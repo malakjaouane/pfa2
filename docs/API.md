@@ -450,46 +450,69 @@ compte n'efface pas le journal de ses tentatives.
 
 ---
 
-## 15. Risques (registre par initiative)
+## 15. Risques (registre par initiative et registre global)
 
-Chaque initiative porte un **registre de risques** : description libre,
-**probabilité** et **impact** notés de **1 à 3** (Faible / Moyen / Élevé),
-responsable du plan d'action et plan d'action.
+Chaque initiative porte un **registre de risques** : titre, description,
+**probabilité** et **impact** notés de **1 à 5** (Très faible → Très élevé),
+statut (`ouverte` par défaut, `attenuation`, `close`), échéance, plan
+d'action et responsable.
 
-La **santé pondérée** (`score` = probabilité × impact, soit **1 à 9**) est
-**recalculée à chaque lecture** — jamais stockée — et renvoyée avec un
-`niveau` aux mêmes codes que `SanteDto` (`VERTE` = 1-2, `ORANGE` = 3-4,
-`ROUGE` = 6-9). **Critique = score ≥ 6** (bande rouge alignée sur
-`CalculeurSante`).
+Le **score** (`probabilité × impact`, soit **1 à 25**) est **recalculé à
+chaque lecture** — jamais stocké — et renvoyé avec un `niveau` aux codes de
+`SanteDto` :
 
-**Lecture** : `INITIATIVE_CONSULTER`, rattrapée par la règle
-`GET /api/initiatives/**` (aucun droit spécifique).
-**Écriture** : `INITIATIVE_MODIFIER` — gérer les risques, c'est enrichir le
-dossier de l'initiative elle-même (aucun nouveau droit créé).
+| Score | Niveau |
+|---|---|
+| 1-4 | `VERTE` |
+| 5-9 | `AMBRE` |
+| 10-14 | `ORANGE` |
+| 15-25 | `ROUGE` (**critique** — `SEUIL_CRITIQUE` = 15) |
+
+**Lecture** (registre global, export et registre par initiative) :
+`INITIATIVE_CONSULTER`.
+**Écriture** : `RISQUE_GERER` (permission **19**, créée pour ce lot,
+détenue par l'administrateur **et** le responsable) — noter et suivre un
+risque est un métier à part entière, distinct de la simple modification de
+l'initiative.
 
 | Méthode | Route | Permission | Description |
 |---|---|---|---|
-| GET | `/initiatives/{id}/risques` | `INITIATIVE_CONSULTER` | Registre, **trié du plus critique au moins critique** (score décroissant, puis ordre d'arrivée) |
-| POST | `/initiatives/{id}/risques` | `INITIATIVE_MODIFIER` | Création → `201` avec `score`/`niveau` calculés |
-| PUT | `/risques/{id}` | `INITIATIVE_MODIFIER` | Modification : les nouvelles notes recalculent immédiatement `score`/`niveau` |
-| DELETE | `/risques/{id}` | `INITIATIVE_MODIFIER` | Suppression → `204` |
+| GET | `/risques` | `INITIATIVE_CONSULTER` | Registre **global** (toutes initiatives), paginé, en-tête `X-Total-Count` |
+| GET | `/risques/export` | `INITIATIVE_CONSULTER` | Export CSV de la sélection filtrée (toutes les lignes, `risques.csv`) |
+| GET | `/initiatives/{id}/risques` | `INITIATIVE_CONSULTER` | Registre de la fiche, **trié du plus critique au moins critique** (score décroissant) |
+| POST | `/initiatives/{id}/risques` | `RISQUE_GERER` | Création → `201` avec `score`/`niveau` calculés |
+| PUT | `/risques/{id}` | `RISQUE_GERER` | Modification : les nouvelles notes recalculent immédiatement `score`/`niveau` |
+| DELETE | `/risques/{id}` | `RISQUE_GERER` | Suppression → `204` |
+
+Paramètres de `GET /risques` (et de `/risques/export`, sans pagination) :
+
+| Paramètre | Type | Exemple |
+|---|---|---|
+| `initiative` | `long` | `initiative=3` — filtre par initiative |
+| `statut` | `string` | `statut=ouverte` — `ouverte`, `attenuation` ou `close` ; valeur inconnue → **aucun filtre** (plutôt que tout masquer) |
+| `recherche` | `string` | `recherche=fournisseur` — titre ou description (jokers `%…%`) |
+| `page`, `size` | `int` | défaut `page=0`, `size=25`, plafond `200` |
 
 **Corps** (création et modification, `RisqueRequest`) :
 
 ```json
 {
+  "titre": "Fournisseur unique en retard",
   "description": "Fournisseur unique en retard",
-  "probabilite": 3,
+  "statut": "ouverte",
+  "echeance": "2026-12-31",
+  "probabilite": 4,
   "impact": 3,
   "planAction": "Contracter un second fournisseur",
   "idResponsable": 2
 }
 ```
 
-`probabilite` et `impact` sont **bornés 1-3** par la validation
-(`@Min`/`@Max`, messages en français) ; `description` est obligatoire ;
-`planAction` et `idResponsable` sont facultatifs (un plan vidé est stocké
-`null`, pas `""`).
+`titre` et `description` sont obligatoires (titre ≤ 150 caractères) ;
+`probabilite` et `impact` sont **bornés 1-5** (`@Min`/`@Max`, messages en
+français affichés tels quels sous le formulaire) ; `statut` vaut `ouverte`
+s'il est absent du corps ; `echeance`, `planAction` et `idResponsable` sont
+facultatifs (un plan vidé est stocké `null`, pas `""`).
 
 **Garde-fous** (alignés sur les étapes) :
 
@@ -499,11 +522,170 @@ dossier de l'initiative elle-même (aucun nouveau droit créé).
 | Risque inexistant (`PUT`/`DELETE`) | `404` |
 | Responsable inexistant | `404` |
 | **Écriture sur initiative archivée** | `400` (« L'initiative est archivée : … refusé(e) ») |
-| Note hors bornes / description vide | `400` |
+| Note hors 1-5, titre/description vide, statut hors valeurs | `400` |
 | Lecture sur initiative archivée | `200` (le registre reste consultable) |
 
 **Tableau de bord** : `GET /dashboard` renvoie `risquesCritiques[]` — les
-risques des initiatives **actives** de la sélection dont `score ≥ 6`, avec
+risques des initiatives **actives** de la sélection dont `score ≥ 15`, avec
 `idInitiative`/`codeInitiative`/`nomInitiative` embarqués (widget
-« Risques critiques »). Le widget suit donc les mêmes filtres que les KPI
-et se vide dès qu'un risque repasse sous 6/9.
+« Risques critiques »). Le KPI « initiatives à risque », lui, suit la
+**santé de l'initiative** (`ORANGE` ou `ROUGE`).
+
+---
+
+## 16. Commentaires d'initiative
+
+Fil de discussion par initiative, horodaté et signé du compte connecté.
+
+| Méthode | Route | Permission | Description |
+|---|---|---|---|
+| GET | `/initiatives/{id}/commentaires` | `INITIATIVE_CONSULTER` | Liste chronologique (rattachée à la règle générale `GET /api/initiatives/**`) |
+| POST | `/initiatives/{id}/commentaires` | `COMMENTAIRE_AJOUTER` | Ajout → `201`, auteur = compte connecté |
+| DELETE | `/commentaires/{id}` | `COMMENTAIRE_AJOUTER` + auteur | `204` — **l'auteur lui-même**, ou un compte détenteur de `UTILISATEUR_GERER` ; sinon `403` |
+
+**Corps** (`CommentaireRequest`) : `{ "contenu": "…" }` — `contenu`
+obligatoire (`@NotBlank`).
+
+**Réponse** (`CommentaireResponse`) : `idCommentaire`, `idInitiative`,
+`contenu`, `dateCreation`, `auteur` (`idUser`, `nomComplet`, `e-mail`).
+
+L'auteur est résolu depuis le jeton (e-mail) puis rechargé en base — le
+compte peut avoir changé de nom entre-temps. **Écriture sur initiative
+archivée → 400** (« le dossier est clos ») ; la lecture reste ouverte. Si
+le compte de l'auteur disparaît, son nom est anonymisé dans le journal
+(même comportement que l'historique des modifications).
+
+---
+
+## 17. Dépenses (suivi budgétaire)
+
+Les dépenses d'initiative sont une **information financière** : **tous les
+verbes — lecture ET écriture — exigent `DEPENSE_SAISIR`** (permission
+**20**, admin + responsable). La règle est posée dans `SecurityConfig`
+**avant** la règle générale `GET /api/initiatives/**` : lire les dépenses
+d'une initiative n'est pas un corollaire de lire l'initiative. Le visiteur
+(détenteur de `INITIATIVE_CONSULTER` sans `DEPENSE_SAISIR`) reçoit donc
+**403** sur ces routes.
+
+| Méthode | Route | Permission | Description |
+|---|---|---|---|
+| GET | `/depenses` | `DEPENSE_SAISIR` | Registre global paginé — en-têtes `X-Total-Count` (nombre) **et** `X-Total-Montant` (somme de la sélection) |
+| GET | `/depenses/export` | `DEPENSE_SAISIR` | Export CSV de la sélection (toutes les lignes, `depenses.csv`) |
+| GET | `/initiatives/{id}/depenses` | `DEPENSE_SAISIR` | Registre de la fiche (les plus récentes d'abord), hors pagination |
+| POST | `/initiatives/{id}/depenses` | `DEPENSE_SAISIR` | Création → `201`, saisisseur = compte connecté |
+| PUT | `/depenses/{id}` | `DEPENSE_SAISIR` | Modification |
+| DELETE | `/depenses/{id}` | `DEPENSE_SAISIR` | Suppression → `204` |
+
+Paramètres de `GET /depenses` (et de `/depenses/export`, sans pagination) :
+
+| Paramètre | Type | Exemple |
+|---|---|---|
+| `initiative` | `long` | `initiative=3` |
+| `categorie` | `string` | `categorie=Externalisation` |
+| `du` / `au` | `date` | `du=2026-01-01&au=2026-12-31` (ISO) |
+| `recherche` | `string` | `recherche=mobilier` — libellé (jokers `%…%`) |
+| `page`, `size` | `int` | défaut `25`, plafond `200` |
+
+**Corps** (`DepenseRequest`) : `libelle` (obligatoire), `montant`
+(`@Positive` — strictement positif), `dateDepense` (`@NotNull`, ISO),
+`categorie` (≤ 50 caractères).
+
+**Réponse** (`DepenseResponse`) : `idDepense`, `idInitiative`,
+`codeInitiative`, `nomInitiative`, `libelle`, `montant`, `dateDepense`,
+`categorie`, `dateCreation`, `saisisseur`.
+
+**Garde-fous** : initiative ou dépense inexistante → `404` ; **écriture sur
+initiative archivée → 400** ; montant nul ou négatif, date ou libellé
+absents → `400`.
+
+---
+
+## 18. Alertes (calculées à la lecture — sans table)
+
+Aucune table ne stocke les alertes : `AlerteService` les **recalcule à
+chaque lecture** à partir des initiatives, jalons, risques, demandes et
+budgets du moment. Deux routes :
+
+| Méthode | Route | Permission | Description |
+|---|---|---|---|
+| GET | `/notifications` | tout compte connecté | `{ "total": n, "alertes": [...] }` — alimente la cloche du bandeau (rafraîchie toutes les 60 s par le frontend) |
+| GET | `/initiatives/{id}/alertes` | `INITIATIVE_CONSULTER` | Bloc « Alertes » de la fiche de suivi |
+
+**`AlerteDto`** : `type`, `niveau` (`ROUGE` | `ORANGE`), `idInitiative`,
+`idDemande`, `reference` (code de l'initiative ou de la demande),
+`libelle`, `echeance`, `parametres` (objet de valeurs à interpoler dans le
+message : `jours`, `score`, `nom`, `budget`, `consomme`…).
+
+Les 7 types :
+
+| `type` | Niveau | Déclencheur |
+|---|---|---|
+| `initiativeEnRetard` | `ROUGE` | date de fin prévue dépassée |
+| `jalonEnRetard` | `ROUGE` | jalon prévu dépassé |
+| `jalonBientot` | `ORANGE` | jalon prévu dans les 7 jours |
+| `risqueCritique` | `ROUGE` | risque au score ≥ 15 |
+| `risqueEcheance` | `ORANGE` | échéance de risque dans les 7 jours |
+| `demandeEnAttente` | `ORANGE` | demande « En évaluation » en attente d'arbitrage |
+| `budgetDepasse` | `ROUGE` | dépenses consommées supérieures au budget |
+
+---
+
+## 19. Mon espace
+
+`GET /mon-espace` (tout compte connecté) renvoie l'**agrégat personnel** :
+le profil, ce que le compte pilote et ce qui l'attend. Le contenu
+**s'adapte aux permissions** : les chiffres budgétaires ne sont produits que
+pour un compte détenteur de `BUDGET_CONSULTER`, les demandes à évaluer que
+pour `DEMANDE_EVALUER`, etc.
+
+**`MonEspaceResponse`** : `compte` (résumé du compte), `role`,
+`initiativesPilotees[]`, `jalonsProches[]`, `mesRisques[]` (risques où le
+compte est responsable), `alertes[]`, `activiteRecente[]` (journal des
+modifications), `demandesEnAttente[]`, `budgetTotal`, `depensesTotales`.
+
+---
+
+## 20. Journal d'audit des actions HTTP
+
+Le **filtre d'audit** (`AuditFilter`, `FilterRegistrationBean` ordre 0,
+exécuté dans la chaîne de sécurité après le filtre JWT) journalise chaque
+**écriture** HTTP dans `journal_audit` : horodatage, compte, IP, méthode,
+route (avec query, tronquée à 300 caractères), statut HTTP et corps
+(tronqué à 300 caractères). C'est le journal de contrôle d'accès côté
+actions (loi 09-08), distinct de l'historique métier (section 13) et de
+l'historique des connexions (section 14).
+
+| Méthode | Route | Permission | Description |
+|---|---|---|---|
+| GET | `/journal-audit` | `UTILISATEUR_GERER` | Liste paginée, en-tête `X-Total-Count` |
+| GET | `/journal-audit/export` | `UTILISATEUR_GERER` | Export CSV des lignes filtrées (`journal-audit.csv`) |
+
+Paramètres (communs aux deux routes) :
+
+| Paramètre | Type | Exemple |
+|---|---|---|
+| `email` | `string` | `email=admin@it6.ma` |
+| `methode` | `string` | `methode=POST` |
+| `route` | `string` | `route=%2Fapi%2Finitiatives%` — jokers `%…%` |
+| `du` / `au` | `date` | `du=2026-01-01&au=2026-12-31` (ISO) |
+| `page`, `size` | `int` | défaut `25`, plafond `200` (liste seulement) |
+
+**Journal immuable** : aucun `POST`/`PUT`/`PATCH`/`DELETE` n'est déclaré
+sur la ressource — ces verbes renvoient **405**.
+
+**Garde-fous du filtre** :
+
+- seules les **écritures** (`POST`/`PUT`/`PATCH`/`DELETE`) sont retenues —
+  le `GET` serait du bruit ;
+- les **champs de mot de passe** (`motDePasse`, `nouveauMotDePasse`,
+  `motDePasseActuel`, `password`, `secret`, `token`) sont **masqués**
+  (`"***"`) dans le corps conservé ;
+- la mise à jour nue `PUT /api/initiatives/{id}` est **ignorée** : son
+  champ par champ est déjà tracé par le journal des modifications ;
+- les rejets de sécurité (401/403) n'atteignent jamais le filtre — ils
+  sont tracés côté connexions ;
+- l'enregistrement est *best-effort* : une erreur d'audit est journalisée
+  en log sans jamais faire échouer l'action métier ;
+- l'initialisation des données de démonstration ne passe pas par l'HTTP et
+  n'y laisse rien ; `database/cleanup-test-data.sql` vide le journal entre
+  deux exécutions de la suite de tests.

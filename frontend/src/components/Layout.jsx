@@ -5,12 +5,17 @@ import { useI18n } from '../i18n/I18nContext';
 import { useReferentiels } from '../i18n/referentiels';
 import LanguageSwitcher from './LanguageSwitcher';
 import MotifZellige from './MotifZellige';
+import NotificationsBell from './NotificationsBell';
 import {
   IconDashboard,
+  IconUser,
   IconProject,
   IconRoadmap,
   IconInbox,
+  IconAlert,
   IconTarget,
+  IconWallet,
+  IconLayers,
   IconUsers,
   IconShield,
   IconLogout,
@@ -38,6 +43,10 @@ function filAriane(pathname, search) {
   if (pathname.startsWith('/roadmap')) return ['layout.fil.portefeuille', 'layout.nav.roadmap'];
   if (pathname.startsWith('/demandes')) return ['layout.fil.portefeuille', 'layout.nav.demandes'];
   if (pathname.startsWith('/objectifs')) return ['layout.fil.portefeuille', 'layout.fil.objectifs'];
+  if (pathname.startsWith('/mon-espace')) return ['layout.fil.portefeuille', 'layout.nav.monEspace'];
+  if (pathname.startsWith('/risques')) return ['layout.fil.portefeuille', 'layout.nav.risques'];
+  if (pathname.startsWith('/depenses')) return ['layout.fil.portefeuille', 'layout.nav.depenses'];
+  if (pathname.startsWith('/audit')) return ['layout.fil.portefeuille', 'layout.nav.audit'];
   if (pathname.startsWith('/historique-connexions')) return ['layout.fil.portefeuille', 'layout.nav.connexions'];
   if (pathname.startsWith('/historique')) return ['layout.fil.portefeuille', 'layout.nav.historique'];
   if (pathname.startsWith('/utilisateurs')) return ['layout.fil.portefeuille', 'layout.nav.utilisateurs'];
@@ -104,8 +113,12 @@ export default function Layout() {
   const { pathname, search } = location;
   const dansArchives = pathname === '/initiatives' && search.includes('archive=1');
 
+  // Menu unique dans l'ordre canonique : chaque entrée est poussée si (et
+  // seulement si) l'utilisateur détient la permission qui l'ouvre. Les rôles
+  // sans permission voient simplement le lien manquant, l'ordre reste stable.
   const liens = [
-    { to: '/dashboard', cle: 'layout.nav.dashboard', Icone: IconDashboard, actif: pathname === '/dashboard' }
+    { to: '/dashboard', cle: 'layout.nav.dashboard', Icone: IconDashboard, actif: pathname === '/dashboard' },
+    { to: '/mon-espace', cle: 'layout.nav.monEspace', Icone: IconUser, actif: pathname === '/mon-espace' }
   ];
   if (hasPermission('INITIATIVE_CONSULTER')) {
     liens.push({ to: '/initiatives', cle: 'layout.nav.initiatives', Icone: IconProject, actif: pathname.startsWith('/initiatives') && !dansArchives });
@@ -115,6 +128,9 @@ export default function Layout() {
     liens.push({ to: '/demandes', cle: 'layout.nav.demandes', Icone: IconInbox, actif: pathname.startsWith('/demandes') });
   }
   if (hasPermission('INITIATIVE_CONSULTER')) {
+    // Registre des risques : lecture ouverte (INITIATIVE_CONSULTER), écriture
+    // réservée à RISQUE_GERER dans la page elle-même.
+    liens.push({ to: '/risques', cle: 'layout.nav.risques', Icone: IconAlert, actif: pathname.startsWith('/risques') });
     liens.push({ to: '/objectifs', cle: 'layout.nav.objectifs', Icone: IconTarget, actif: pathname.startsWith('/objectifs') });
     liens.push({ to: '/initiatives?archive=1', cle: 'layout.nav.archives', Icone: IconArchive, actif: dansArchives });
     // Journal global : même permission que la lecture des initiatives —
@@ -122,7 +138,11 @@ export default function Layout() {
     // « startsWith ») pour ne pas rester actif sur /historique-connexions.
     liens.push({ to: '/historique', cle: 'layout.nav.historique', Icone: IconClock, actif: pathname === '/historique' });
   }
+  if (user?.permissions?.some((p) => ['BUDGET_CONSULTER', 'DEPENSE_SAISIR'].includes(p))) {
+    liens.push({ to: '/depenses', cle: 'layout.nav.depenses', Icone: IconWallet, actif: pathname.startsWith('/depenses') });
+  }
   if (hasPermission('UTILISATEUR_GERER')) {
+    liens.push({ to: '/audit', cle: 'layout.nav.audit', Icone: IconLayers, actif: pathname.startsWith('/audit') });
     liens.push({ to: '/utilisateurs', cle: 'layout.nav.utilisateurs', Icone: IconUsers, actif: pathname.startsWith('/utilisateurs') });
     // Journal des connexions (e-mails + IP) : administrateurs seuls,
     // même droit que la gestion des comptes — aucun nouveau droit créé.
@@ -208,6 +228,8 @@ export default function Layout() {
           </form>
 
           <LanguageSwitcher />
+
+          <NotificationsBell />
 
           <div className="topbar-utilisateur" ref={refMenu}>
             <button className="topbar-profil" onClick={() => setMenuProfil((v) => !v)} aria-haspopup="menu" aria-expanded={menuProfil}>

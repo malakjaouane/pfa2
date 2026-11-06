@@ -15,6 +15,7 @@ import demandes from './demandes';
 import historique from './historique';
 import connexions from './connexions';
 import sante from './sante';
+import suivi from './suivi';
 import users from './users';
 import roles from './roles';
 import motdepasse from './motdepasse';
@@ -41,6 +42,7 @@ const FRAGMENTS = [
   historique,
   connexions,
   sante,
+  suivi,
   users,
   roles,
   motdepasse,

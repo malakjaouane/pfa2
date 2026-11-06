@@ -7,6 +7,7 @@ export default {
   fr: {
     'sante.colonne': 'Santé',
     'sante.verte': 'Feu vert',
+    'sante.ambre': 'Sous surveillance',
     'sante.orange': 'Vigilance',
     'sante.rouge': 'À risque',
     'sante.raison.terminee': 'Initiative terminée',
@@ -20,6 +21,7 @@ export default {
   en: {
     'sante.colonne': 'Health',
     'sante.verte': 'On track',
+    'sante.ambre': 'Under watch',
     'sante.orange': 'Watch',
     'sante.rouge': 'At risk',
     'sante.raison.terminee': 'Initiative completed',
@@ -33,6 +35,7 @@ export default {
   ar: {
     'sante.colonne': 'الحالة',
     'sante.verte': 'آمن',
+    'sante.ambre': 'تحت المراقبة',
     'sante.orange': 'مراقبة',
     'sante.rouge': 'معرّض للخطر',
     'sante.raison.terminee': 'مبادرة منجزة',
@@ -46,6 +49,7 @@ export default {
   es: {
     'sante.colonne': 'Salud',
     'sante.verte': 'En buen estado',
+    'sante.ambre': 'Bajo vigilancia',
     'sante.orange': 'Vigilancia',
     'sante.rouge': 'En riesgo',
     'sante.raison.terminee': 'Iniciativa finalizada',

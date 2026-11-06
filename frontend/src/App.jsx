@@ -16,6 +16,10 @@ import DemandesPage from './pages/DemandesPage';
 import HistoriquePage from './pages/HistoriquePage';
 import ConnexionsPage from './pages/ConnexionsPage';
 import ObjectifsPage from './pages/ObjectifsPage';
+import MonEspacePage from './pages/MonEspacePage';
+import RisquesPage from './pages/RisquesPage';
+import DepensesPage from './pages/DepensesPage';
+import AuditPage from './pages/AuditPage';
 import MotDePassePage from './pages/MotDePassePage';
 import AssistantPage from './pages/AssistantPage';
 
@@ -29,6 +33,7 @@ export default function App() {
 
         <Route element={<RequireAuth><Layout /></RequireAuth>}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/mon-espace" element={<MonEspacePage />} />
           <Route path="/initiatives" element={<InitiativesPage />} />
           <Route path="/initiatives/nouvelle" element={<InitiativeFormPage />} />
           <Route path="/roadmap" element={<RoadmapPage />} />
@@ -45,6 +50,36 @@ export default function App() {
             element={
               <RequireAuth permissions={['INITIATIVE_CONSULTER']}>
                 <ObjectifsPage />
+              </RequireAuth>
+            }
+          />
+          {/* Registre des risques : lecture ouverte à qui consulte les
+              initiatives, écriture (suppression) refusée par le serveur
+              sans RISQUE_GERER. */}
+          <Route
+            path="/risques"
+            element={
+              <RequireAuth permissions={['INITIATIVE_CONSULTER']}>
+                <RisquesPage />
+              </RequireAuth>
+            }
+          />
+          {/* Dépenses : même règle que le menu (BUDGET_CONSULTER ou
+              DEPENSE_SAISIR) ; l'API exige DEPENSE_SAISIR sur chaque appel. */}
+          <Route
+            path="/depenses"
+            element={
+              <RequireAuth permissions={['BUDGET_CONSULTER', 'DEPENSE_SAISIR']}>
+                <DepensesPage />
+              </RequireAuth>
+            }
+          />
+          {/* Journal d'audit : lecture seule, réservée à UTILISATEUR_GERER. */}
+          <Route
+            path="/audit"
+            element={
+              <RequireAuth permissions={['UTILISATEUR_GERER']}>
+                <AuditPage />
               </RequireAuth>
             }
           />

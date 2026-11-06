@@ -4598,3 +4598,217 @@ a:hover { color: #00566D; }
     opacity: 0.8;
   }
 }
+
+/* ============================================================
+   Lot suivi : alertes / cloche / mon espace / registres
+   (risques, dépenses, journal d'audit)
+   ============================================================ */
+
+/* Santé AMBRE : niveau du registre des risques (score 5-9), absent du
+   trio historique vert / orange / rouge. */
+.sante-ambre .sante-puce { background: var(--yellow-bg); color: var(--yellow-text); }
+.fiche-grille .sante-ambre .sante-libelle { color: var(--yellow-text); font-weight: 600; }
+
+/* Badge orange : alertes ORANGE et statuts HTTP 4xx du journal. */
+.badge-orange { background: #FFF3EB; color: var(--orange); }
+
+.texte-rouge { color: var(--red-text); }
+
+/* ---- Cloche de notifications (barre supérieure) ---- */
+.notif-cloche { position: relative; }
+
+.notif-bouton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--bordure);
+  border-radius: 50%;
+  background: var(--carte);
+  color: var(--texte);
+  cursor: pointer;
+}
+
+.notif-bouton:hover { background: var(--n20); }
+
+.notif-compteur {
+  position: absolute;
+  top: -5px;
+  inset-inline-end: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+}
+
+.notif-panneau {
+  position: absolute;
+  top: calc(100% + 8px);
+  inset-inline-end: 0;
+  z-index: 60;
+  width: min(380px, calc(100vw - 32px));
+  background: var(--carte);
+  border: 1px solid var(--bordure);
+  border-radius: var(--radius-card);
+  box-shadow: var(--ombre-haute);
+}
+
+.notif-entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--bordure);
+}
+
+.notif-corps {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 6px 14px 12px;
+}
+
+/* ---- Liste d'alertes (cloche, mon espace, fiche de suivi) ---- */
+.alerte-liste { list-style: none; }
+
+.alerte-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--n30);
+  font-size: 13px;
+}
+
+.alerte-item:last-child { border-bottom: none; }
+
+.alerte-message { font-weight: 600; }
+
+.alerte-libelle { flex-basis: 100%; }
+
+/* ---- Mon espace ---- */
+.mon-espace-entete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.mon-espace-compte h3 { margin-bottom: 4px; }
+
+.mon-espace-compte .badge { display: inline-block; margin-top: 6px; }
+
+.mon-espace-budget {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.mon-espace-chiffre {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mon-espace-chiffre strong { font-size: 1.15rem; }
+
+.mon-espace-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.mon-espace-liste {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mon-espace-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--n20);
+  font-size: 13px;
+}
+
+.mon-espace-item:last-child { border-bottom: none; }
+
+/* ---- Registres : dépenses et journal d'audit ---- */
+.depenses-total { color: var(--texte); }
+
+.depenses-montant { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.audit-corps {
+  display: inline-block;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--texte-muet);
+}
+
+/* ---- Fiche de suivi : formulaires et fil de commentaires ---- */
+.suivi-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+  align-items: start;
+}
+
+.suivi-form input,
+.suivi-form select,
+.suivi-form textarea {
+  width: 100%;
+}
+
+.suivi-form-commentaire textarea {
+  grid-column: 1 / -1;
+  resize: vertical;
+}
+
+.suivi-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.commentaire-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--n30);
+}
+
+.commentaire-item:last-child { border-bottom: none; }
+
+.commentaire-tete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.commentaire-tete .btn { margin-inline-start: auto; }
+
+.commentaire-corps {
+  margin-top: 4px;
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
