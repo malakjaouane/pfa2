@@ -4,6 +4,7 @@ import ma.it6.portefeuille.dto.HistoriqueModificationResponse;
 import ma.it6.portefeuille.dto.UserSummaryDto;
 import ma.it6.portefeuille.exception.BadRequestException;
 import ma.it6.portefeuille.service.HistoriqueModificationService;
+import ma.it6.portefeuille.util.CsvUtil;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -38,8 +39,6 @@ import java.util.Locale;
 @RequestMapping("/api/historique")
 public class HistoriqueController {
 
-    /** Séparateur de colonnes CSV — point-virgule : l'Excel FR l'ouvre tel quel. */
-    private static final String SEPARATEUR = ";";
     private static final DateTimeFormatter FORMATEUR_CSV =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss", Locale.FRANCE);
 
@@ -175,44 +174,27 @@ public class HistoriqueController {
     }
 
     /**
-     * Construction du fichier CSV : en-tête BOM (Excel ouvre le UTF-8 sans
-     * initiative), lignes séparées par « ; », guillemets doublés quand la
-     * valeur contient le séparateur, un guillemet ou un retour à la ligne.
+     * Construction du fichier CSV : déléguée à {@link CsvUtil} — BOM UTF-8,
+     * séparateur « ; », guillemets doublés et garde anti-formule, mêmes
+     * conventions que tous les exports de l'application.
      */
     private static byte[] construireCsv(List<HistoriqueModificationResponse> lignes) {
-        StringBuilder csv = new StringBuilder("﻿");
-        csv.append(String.join(SEPARATEUR,
-                        "Date", "Objet", "Id objet", "Champ", "Ancienne valeur",
-                        "Nouvelle valeur", "Commentaire", "Origine", "Auteur", "Initiative"))
-                .append('\n');
-        for (HistoriqueModificationResponse ligne : lignes) {
-            csv.append(cellule(ligne.dateChangement() == null ? "" : FORMATEUR_CSV.format(ligne.dateChangement())))
-                    .append(SEPARATEUR).append(cellule(ligne.typeObjet()))
-                    .append(SEPARATEUR).append(cellule(ligne.idObjet() == null ? "" : String.valueOf(ligne.idObjet())))
-                    .append(SEPARATEUR).append(cellule(ligne.champ()))
-                    .append(SEPARATEUR).append(cellule(ligne.ancienneValeur()))
-                    .append(SEPARATEUR).append(cellule(ligne.nouvelleValeur()))
-                    .append(SEPARATEUR).append(cellule(ligne.commentaire()))
-                    .append(SEPARATEUR).append(cellule(ligne.automatique() ? "automatique" : "manuelle"))
-                    .append(SEPARATEUR).append(cellule(ligne.utilisateur() == null ? "" : ligne.utilisateur().nomComplet()))
-                    .append(SEPARATEUR).append(cellule(ligne.initiative() == null ? "" : ligne.initiative().code()))
-                    .append('\n');
-        }
-        return csv.toString().getBytes(StandardCharsets.UTF_8);
-    }
-
-    /** Champ CSV : vide si absent, guillemets doublés si nécessaire. */
-    private static String cellule(String valeur) {
-        if (valeur == null || valeur.isEmpty()) {
-            return "";
-        }
-        boolean echappement = valeur.contains(SEPARATEUR)
-                || valeur.contains("\"")
-                || valeur.contains("\n")
-                || valeur.contains("\r");
-        if (!echappement) {
-            return valeur;
-        }
-        return "\"" + valeur.replace("\"", "\"\"") + "\"";
+        List<List<String>> lignesCsv = lignes.stream()
+                .map(ligne -> List.of(
+                        ligne.dateChangement() == null ? "" : FORMATEUR_CSV.format(ligne.dateChangement()),
+                        ligne.typeObjet() == null ? "" : ligne.typeObjet(),
+                        ligne.idObjet() == null ? "" : String.valueOf(ligne.idObjet()),
+                        ligne.champ() == null ? "" : ligne.champ(),
+                        ligne.ancienneValeur() == null ? "" : ligne.ancienneValeur(),
+                        ligne.nouvelleValeur() == null ? "" : ligne.nouvelleValeur(),
+                        ligne.commentaire() == null ? "" : ligne.commentaire(),
+                        ligne.automatique() ? "automatique" : "manuelle",
+                        ligne.utilisateur() == null ? "" : ligne.utilisateur().nomComplet(),
+                        ligne.initiative() == null ? "" : ligne.initiative().code()))
+                .toList();
+        return CsvUtil.construire(
+                List.of("Date", "Objet", "Id objet", "Champ", "Ancienne valeur",
+                        "Nouvelle valeur", "Commentaire", "Origine", "Auteur", "Initiative"),
+                lignesCsv);
     }
 }

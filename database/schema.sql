@@ -217,16 +217,26 @@ CREATE TABLE IF NOT EXISTS jalon (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------------
--- RISQUE (registre des risques d'une initiative) : description,
--- probabilité et impact notés de 1 à 3 (Faible / Moyen / Élevé),
--- responsable du plan d'action et plan d'action. La santé pondérée
--- = probabilité × impact (1 à 9) n'est JAMAIS stockée : elle est
--- recalculée à chaque lecture (score ≥ 6 => « critique », bande
--- rouge alignée sur CalculeurSante).
+-- RISQUE (registre des risques d'une initiative) : titre, description,
+-- cycle de vie (ouverte -> attenuation -> close), échéance de
+-- traitement, probabilité et impact notés de 1 à 5, responsable du
+-- plan d'action et plan d'action. La santé pondérée = probabilité ×
+-- impact (1 à 25) n'est JAMAIS stockée : elle est recalculée à chaque
+-- lecture (bandes : < 5 verte, 5-9 ambre, 10-14 orange, >= 15 rouge,
+-- alignées sur CalculeurSante).
 -- ------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS risque (
     id_risque       BIGINT       NOT NULL AUTO_INCREMENT,
+    titre           VARCHAR(150) NOT NULL DEFAULT '',
     description     TEXT         NOT NULL,
+    -- Cycle de vie du risque : ouverte (défaut) -> attenuation -> close.
+    -- Code en clair, libellé traduit côté interface.
+    statut          VARCHAR(20)  NOT NULL DEFAULT 'ouverte',
+    -- Date cible de traitement (optionnelle) : pilote les alertes
+    -- d'échéance dépassée (risque encore ouvert après cette date).
+    echeance        DATE         NULL,
+    -- Notes à l'échelle 1-5 (migration depuis 1-3 : les valeurs
+    -- existantes restent valides, aucune réécriture). Score = p × i (1-25).
     probabilite     INT          NOT NULL,
     impact          INT          NOT NULL,
     plan_action     TEXT         NULL,
@@ -235,8 +245,8 @@ CREATE TABLE IF NOT EXISTS risque (
     PRIMARY KEY (id_risque),
     CONSTRAINT fk_risque_initiative  FOREIGN KEY (id_initiative)  REFERENCES initiative (id_initiative) ON DELETE CASCADE,
     CONSTRAINT fk_risque_responsable FOREIGN KEY (id_responsable) REFERENCES utilisateur (id_user) ON DELETE SET NULL,
-    CONSTRAINT ck_risque_probabilite CHECK (probabilite BETWEEN 1 AND 3),
-    CONSTRAINT ck_risque_impact      CHECK (impact      BETWEEN 1 AND 3)
+    CONSTRAINT ck_risque_probabilite CHECK (probabilite BETWEEN 1 AND 5),
+    CONSTRAINT ck_risque_impact      CHECK (impact      BETWEEN 1 AND 5)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------------
@@ -483,6 +493,40 @@ PREPARE stmt_audit FROM @sql_audit;
 EXECUTE stmt_audit;
 DEALLOCATE PREPARE stmt_audit;
 
+-- Enrichissement du registre des risques : titre court, cycle de vie
+-- (ouverte -> attenuation -> close) et échéance de traitement (pilote
+-- les alertes). Les bases héritées reçoivent les colonnes ici ; le titre
+-- est rétroactivé depuis la description (jamais NULL, jamais vide).
+SET @col = (SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'risque' AND COLUMN_NAME = 'titre');
+SET @sql_risque_cols = IF(@col = 0,
+        'ALTER TABLE risque ADD COLUMN titre VARCHAR(150) NOT NULL DEFAULT '''', ADD COLUMN statut VARCHAR(20) NOT NULL DEFAULT ''ouverte'', ADD COLUMN echeance DATE NULL',
+        'SELECT 1');
+PREPARE stmt_risque_cols FROM @sql_risque_cols;
+EXECUTE stmt_risque_cols;
+DEALLOCATE PREPARE stmt_risque_cols;
+
+UPDATE risque SET titre = LEFT(description, 150) WHERE titre = '';
+
+-- Notes de risque 1-3 -> 1-5 : MySQL ne sait pas modifier une contrainte
+-- CHECK en place, on la remplace (garde : seulement si l'ancienne définition
+-- « BETWEEN 1 AND 3 » est encore en base — la CREATE TABLE ci-dessus pose
+-- directement la nouvelle). Les valeurs existantes (1-3) restent valides
+-- à l'échelle élargie : aucune réécriture de données.
+SET @chk_ancien = (SELECT COUNT(*) FROM information_schema.CHECK_CONSTRAINTS c
+        JOIN information_schema.TABLE_CONSTRAINTS t
+          ON t.CONSTRAINT_SCHEMA = c.CONSTRAINT_SCHEMA
+         AND t.CONSTRAINT_NAME = c.CONSTRAINT_NAME
+        WHERE c.CONSTRAINT_SCHEMA = DATABASE() AND t.TABLE_NAME = 'risque'
+          AND t.CONSTRAINT_TYPE = 'CHECK'
+          AND LOWER(c.CHECK_CLAUSE) LIKE '%1 and 3%');
+SET @sql_echelle = IF(@chk_ancien > 0,
+        'ALTER TABLE risque DROP CHECK ck_risque_probabilite, DROP CHECK ck_risque_impact, ADD CONSTRAINT ck_risque_probabilite CHECK (probabilite BETWEEN 1 AND 5), ADD CONSTRAINT ck_risque_impact CHECK (impact BETWEEN 1 AND 5)',
+        'SELECT 1');
+PREPARE stmt_echelle FROM @sql_echelle;
+EXECUTE stmt_echelle;
+DEALLOCATE PREPARE stmt_echelle;
+
 -- Table : historique_statut (ANCIEN journal, à migrer) — origine du
 -- changement (manuel / automatique). Colonnes garanties AVANT la copie
 -- vers la table générique, pour les bases héritées qui ne l'ont pas
@@ -609,3 +653,107 @@ SET @sql_conn_date = IF(@col = 0,
 PREPARE stmt_conn_date FROM @sql_conn_date;
 EXECUTE stmt_conn_date;
 DEALLOCATE PREPARE stmt_conn_date;
+
+-- ------------------------------------------------------------------
+-- COMMENTAIRES d'initiative : fil de discussion autour du dossier.
+-- L'auteur est anonymisé (SET NULL) si son compte part — le fil reste.
+-- Table ajoutée en fin de fichier : clés étrangères garanties créées.
+-- ------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS commentaire (
+    id_commentaire  BIGINT        NOT NULL AUTO_INCREMENT,
+    id_initiative   BIGINT        NOT NULL,
+    id_auteur       BIGINT        NULL,
+    contenu         TEXT          NOT NULL,
+    created_at      DATETIME      NULL,
+    updated_at      DATETIME      NULL,
+    version         BIGINT        NOT NULL DEFAULT 0,
+    PRIMARY KEY (id_commentaire),
+    CONSTRAINT fk_commentaire_initiative FOREIGN KEY (id_initiative) REFERENCES initiative (id_initiative) ON DELETE CASCADE,
+    CONSTRAINT fk_commentaire_auteur     FOREIGN KEY (id_auteur)     REFERENCES utilisateur (id_user)     ON DELETE SET NULL
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Fil de la fiche : lecture par initiative, du plus récent au plus ancien.
+SET @col = (SELECT COUNT(*) FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'commentaire'
+        AND INDEX_NAME = 'idx_commentaire_initiative');
+SET @sql_idx_com = IF(@col = 0,
+        'CREATE INDEX idx_commentaire_initiative ON commentaire (id_initiative, created_at)',
+        'SELECT 1');
+PREPARE stmt_idx_com FROM @sql_idx_com;
+EXECUTE stmt_idx_com;
+DEALLOCATE PREPARE stmt_idx_com;
+
+-- ------------------------------------------------------------------
+-- DEPENSES rattachées à une initiative : suivi financier déclaratif
+-- (libellé, montant, date, catégorie). Le montant est positif par
+-- contrainte ; l'auteur de la saisie est anonymisé en cas de départ.
+-- NB : ces dépenses sont DÉCLARATIVES — le portefeuille n'est pas un
+-- outil comptable, aucun écriture comptable n'est propagée.
+-- ------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS depense (
+    id_depense      BIGINT        NOT NULL AUTO_INCREMENT,
+    id_initiative   BIGINT        NOT NULL,
+    libelle         VARCHAR(150)  NOT NULL,
+    montant         DECIMAL(15,2) NOT NULL,
+    date_depense    DATE          NOT NULL,
+    categorie       VARCHAR(50)   NULL,
+    id_saisisseur   BIGINT        NULL,
+    created_at      DATETIME      NULL,
+    updated_at      DATETIME      NULL,
+    version         BIGINT        NOT NULL DEFAULT 0,
+    PRIMARY KEY (id_depense),
+    CONSTRAINT fk_depense_initiative FOREIGN KEY (id_initiative) REFERENCES initiative (id_initiative) ON DELETE CASCADE,
+    CONSTRAINT fk_depense_saisisseur FOREIGN KEY (id_saisisseur) REFERENCES utilisateur (id_user)     ON DELETE SET NULL,
+    CONSTRAINT ck_depense_montant    CHECK (montant > 0)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Filtres de la page dépenses : par initiative et par date.
+SET @col = (SELECT COUNT(*) FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'depense'
+        AND INDEX_NAME = 'idx_depense_initiative');
+SET @sql_idx_dep = IF(@col = 0,
+        'CREATE INDEX idx_depense_initiative ON depense (id_initiative, date_depense)',
+        'SELECT 1');
+PREPARE stmt_idx_dep FROM @sql_idx_dep;
+EXECUTE stmt_idx_dep;
+DEALLOCATE PREPARE stmt_idx_dep;
+
+-- ------------------------------------------------------------------
+-- JOURNAL D'AUDIT (actions HTTP) : traces d'écriture posées par le
+-- filtre servlet — QUI a fait QUOI (verbe + route) depuis OÙ (IP),
+-- quel que soit le résultat (statut HTTP). Complémentaire du journal
+-- des modifications (QUOI a changé champ à champ) : l'un prouve
+-- l'action, l'autre prouve l'effet.
+--
+-- Interdits par conception, vérifiés par le filtre :
+--   * aucun champ de mot de passe dans le corps enregistré (masqué),
+--   * aucune ligne pour GET/HEAD/OPTIONS (lecture non intrusive),
+--   * aucune ligne pour PUT /api/initiatives/{id} : ce journal est
+--     déjà renseigné champ à champ par InitiativeService.
+-- Le corps n'est conservé que pour les routes API (commence par /api/)
+-- et tronqué à 300 caractères.
+-- ------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS journal_audit (
+    id_audit        BIGINT        NOT NULL AUTO_INCREMENT,
+    date_action     DATETIME      NOT NULL,
+    id_utilisateur  BIGINT        NULL,
+    email           VARCHAR(150)  NULL,
+    methode         VARCHAR(10)   NOT NULL,
+    route           VARCHAR(300)  NOT NULL,
+    statut_http     INT           NOT NULL,
+    adresse_ip      VARCHAR(45)   NOT NULL,
+    corps           VARCHAR(300)  NULL,
+    PRIMARY KEY (id_audit),
+    CONSTRAINT fk_audit_utilisateur FOREIGN KEY (id_utilisateur) REFERENCES utilisateur (id_user) ON DELETE SET NULL
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Lecture administrative (tri date décroissante, filtres e-mail / verbe / route).
+SET @col = (SELECT COUNT(*) FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'journal_audit'
+        AND INDEX_NAME = 'idx_audit_date');
+SET @sql_idx_audit = IF(@col = 0,
+        'CREATE INDEX idx_audit_date ON journal_audit (date_action)',
+        'SELECT 1');
+PREPARE stmt_idx_audit FROM @sql_idx_audit;
+EXECUTE stmt_idx_audit;
+DEALLOCATE PREPARE stmt_idx_audit;

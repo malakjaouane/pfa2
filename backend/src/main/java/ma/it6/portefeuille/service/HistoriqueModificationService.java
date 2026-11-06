@@ -364,6 +364,20 @@ public class HistoriqueModificationService {
     }
 
     /**
+     * Activité <strong>personnelle</strong> (« Mon espace ») : les
+     * {@value #ACTIVITE_RECENTE} dernières lignes écrites par un compte
+     * donné — même vue active que le journal, auteur seul ajouté en filtre.
+     */
+    @Transactional(readOnly = true)
+    public List<HistoriqueModificationResponse> activiteUtilisateur(Long idUtilisateur) {
+        if (idUtilisateur == null) {
+            return List.of();
+        }
+        return lister(new FiltreHistorique(null, null, null, idUtilisateur, null, null, null, false),
+                0, ACTIVITE_RECENTE, false).lignes();
+    }
+
+    /**
      * Auteurs présents dans le journal, pour la liste déroulante de filtres.
      * Réutilise la synthèse utilisateur existante — pas de nouveau droit
      * d'accès, la lecture reste soumise à INITIATIVE_CONSULTER.

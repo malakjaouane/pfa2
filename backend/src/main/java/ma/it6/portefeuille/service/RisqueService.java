@@ -12,6 +12,9 @@ import ma.it6.portefeuille.mapper.RisqueMapper;
 import ma.it6.portefeuille.repository.InitiativeRepository;
 import ma.it6.portefeuille.repository.RisqueRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,18 +22,19 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Registre des risques d'une initiative : description, probabilité et
- * impact notés de 1 à 3, responsable du plan d'action et plan d'action.
+ * Registre des risques d'une initiative : titre, statut, échéance,
+ * description, probabilité et impact notés de 1 à 5, responsable du plan
+ * d'action et plan d'action.
  *
  * <p>Garde-fous, identiques aux étapes :</p>
  * <ul>
  *   <li>initiative inexistante → 404 ;</li>
  *   <li>initiative archivée → 400 sur toute écriture ;</li>
- *   <li>notes bornées 1-3 (validation du contrôleur + contrôle ici) ;</li>
+ *   <li>notes bornées 1-5 (validation du contrôleur + contrôle ici) ;</li>
  *   <li>responsable inexistant → 404.</li>
  * </ul>
  *
- * <p>La santé pondérée (score 1-9) est recalculée à chaque lecture par
+ * <p>La santé pondérée (score 1-25) est recalculée à chaque lecture par
  * {@link RisqueMapper} — jamais stockée.</p>
  */
 @Service
@@ -63,6 +67,31 @@ public class RisqueService {
                 .toList();
     }
 
+    /**
+     * Registre <b>global</b> (toutes initiatives) avec filtres optionnels —
+     * pilote la page « Risques ». Les lignes sont triées en mémoire par
+     * score décroissant, puis découpées : le registre reste cohérent avec
+     * celui d'une initiative.
+     */
+    @Transactional(readOnly = true)
+    public Page<RisqueResponse> listerGlobal(Long idInitiative, String statut, String recherche,
+                                             int numeroPage, int taille) {
+        int taillePage = normaliserTaille(taille);
+        List<Risque> tous = risqueRepository
+                .rechercher(idInitiative, normaliserStatut(statut), normaliserRecherche(recherche),
+                        PageRequest.of(0, Integer.MAX_VALUE))
+                .getContent().stream()
+                .sorted(PAR_CRITICITE)
+                .toList();
+        int page = Math.max(numeroPage, 0);
+        int debut = Math.min(page * taillePage, tous.size());
+        int fin = Math.min(debut + taillePage, tous.size());
+        List<RisqueResponse> lignes = tous.subList(debut, fin).stream()
+                .map(RisqueMapper::toResponse)
+                .toList();
+        return new PageImpl<>(lignes, PageRequest.of(page, taillePage), tous.size());
+    }
+
     @Transactional
     public RisqueResponse creer(Long idInitiative, RisqueRequest request) {
         Initiative initiative = verifierInitiative(idInitiative);
@@ -70,7 +99,10 @@ public class RisqueService {
         validerNotes(request);
 
         Risque risque = Risque.builder()
+                .titre(request.titre().trim())
                 .description(request.description().trim())
+                .statut(statutOuDefaut(request.statut()))
+                .echeance(request.echeance())
                 .probabilite(request.probabilite())
                 .impact(request.impact())
                 .planAction(normaliser(request.planAction()))
@@ -87,7 +119,10 @@ public class RisqueService {
         verifierActive(risque.getInitiative(), "modification de risque refusée.");
         validerNotes(request);
 
+        risque.setTitre(request.titre().trim());
         risque.setDescription(request.description().trim());
+        risque.setStatut(statutOuDefaut(request.statut()));
+        risque.setEcheance(request.echeance());
         risque.setProbabilite(request.probabilite());
         risque.setImpact(request.impact());
         risque.setPlanAction(normaliser(request.planAction()));
@@ -104,7 +139,7 @@ public class RisqueService {
     }
 
     /**
-     * Risques <b>critiques</b> (score ≥ 6) parmi les initiatives fournies —
+     * Risques <b>critiques</b> (score ≥ 15) parmi les initiatives fournies —
      * alimente le widget du tableau de bord. Liste vide si aucune initiative
      * (la clause IN SQL n'aime pas les listes vides).
      */
@@ -136,13 +171,50 @@ public class RisqueService {
         }
     }
 
-    /** Notes bornées 1-3 (la validation du contrôleur répond d'abord en 400). */
+    /** Notes bornées 1-5 (la validation du contrôleur répond d'abord en 400). */
     private void validerNotes(RisqueRequest request) {
-        if (request.probabilite() == null || request.probabilite() < 1 || request.probabilite() > 3
-                || request.impact() == null || request.impact() < 1 || request.impact() > 3) {
+        if (request.probabilite() == null || request.probabilite() < 1 || request.probabilite() > 5
+                || request.impact() == null || request.impact() < 1 || request.impact() > 5) {
             throw new BadRequestException(
-                    "Probabilité et impact doivent être notés de 1 à 3 (1 = Faible, 3 = Élevé).");
+                    "Probabilité et impact doivent être notés de 1 à 5 (1 = Très faible, 5 = Très élevé).");
         }
+    }
+
+    /** Statut absent du corps : on retient la valeur par défaut. */
+    private static String statutOuDefaut(String statut) {
+        String nettoye = statut == null ? "" : statut.trim();
+        return nettoye.isEmpty() ? Risque.STATUT_OUVERTE : nettoye;
+    }
+
+    /** La pagination doit rester bornée (déni de service par page géante). */
+    private static int normaliserTaille(int taille) {
+        if (taille < 1) {
+            return 20;
+        }
+        return Math.min(taille, 200);
+    }
+
+    private static String normaliserRecherche(String recherche) {
+        if (recherche == null) {
+            return null;
+        }
+        String nettoye = recherche.trim();
+        return nettoye.isEmpty() ? null : nettoye;
+    }
+
+    /** Un statut inconnu ne filtre rien plutôt que tout masquer. */
+    private static String normaliserStatut(String statut) {
+        if (statut == null) {
+            return null;
+        }
+        String nettoye = statut.trim();
+        if (nettoye.isEmpty()) {
+            return null;
+        }
+        return switch (nettoye) {
+            case Risque.STATUT_OUVERTE, Risque.STATUT_ATTENUATION, Risque.STATUT_CLOSE -> nettoye;
+            default -> null;
+        };
     }
 
     private Utilisateur responsable(Long idResponsable) {

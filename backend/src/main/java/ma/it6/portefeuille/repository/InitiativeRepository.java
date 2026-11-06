@@ -38,6 +38,38 @@ public interface InitiativeRepository extends JpaRepository<Initiative, Long>, J
     Optional<Initiative> findByIdInitiative(Long idInitiative);
 
     /**
+     * Initiatives dont les dépenses dépassent le budget — alimente
+     * l'alerte {@code budgetDepasse} en une seule requête (agrégat de
+     * dépenses comparé au budget, pas de boucle applicative).
+     */
+    @Query("""
+            select i from Initiative i
+             where i.archive = false
+               and i.budget is not null
+               and (select coalesce(sum(d.montant), 0)
+                      from Depense d where d.initiative = i) > i.budget
+            """)
+    List<Initiative> budgetDepasse();
+
+    /**
+     * Initiatives pilotées par un responsable (« Mon espace »), hors
+     * archives — relations du mapper fetchées d'un coup (pas de N+1 sur
+     * les listes de la fiche personnelle).
+     */
+    @Query("""
+            select distinct i from Initiative i
+              left join fetch i.entite
+              left join fetch i.responsable
+              left join fetch i.statut
+              left join fetch i.priorite
+              left join fetch i.objectif
+             where i.archive = false
+               and i.responsable.idUser = :idResponsable
+             order by i.dateFinPrevue asc nulls last, i.idInitiative asc
+            """)
+    List<Initiative> parResponsable(@Param("idResponsable") Long idResponsable);
+
+    /**
      * Fiche « étapes » pour le résumé IA : une seule collection fetchée
      * (interdiction JPA de fetcher deux List bag d'un coup — les jalons
      * sont chargés à part via {@code JalonRepository.chercherParInitiatives}).

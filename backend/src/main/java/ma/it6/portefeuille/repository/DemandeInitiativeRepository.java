@@ -38,6 +38,24 @@ public interface DemandeInitiativeRepository extends JpaRepository<DemandeInitia
                                          @Param("archive") Boolean archive);
 
     /**
+     * Demandes en attente d'évaluation (« En évaluation ») — alimente
+     * l'alerte {@code demandeEnAttente} et la section « Mon espace ».
+     * Relations fetchées pour un mappage sans N+1.
+     */
+    @Query("""
+            select distinct d from DemandeInitiative d
+            left join fetch d.entite
+            left join fetch d.demandeur
+            left join fetch d.priorite
+            left join fetch d.statut
+            left join fetch d.initiativeLiee
+            where d.archive = false
+              and d.statut.libelle = 'En évaluation'
+            order by d.dateSoumission asc, d.idDemande asc
+            """)
+    List<DemandeInitiative> enAttenteEvaluation();
+
+    /**
      * Nombre de demandes portées par un compte (demandeur) — garde-fou de
      * la suppression d'un utilisateur : la clé étrangère est sans cascade,
      * un compte qui porte encore des demandes se désactive mais ne se

@@ -5,10 +5,14 @@
 -- Supprime uniquement les artefacts de test :
 --   * initiatives de test, archivées ou non (code préfixé TEST) ;
 --   * initiatives issues de la transformation de demandes de test
---     (code DEM-xxxxxx, demandes au titre préfixé TEST-DEM) ;
---   * demandes d'initiatives de test ;
+--     (code DEM-xxxxxx, demandes au titre préfixé TEST) ;
+--   * demandes d'initiatives de test (titres TEST-DEM*, TEST-RECH…) ;
 --   * objectifs stratégiques de test (code préfixé TEST-OBJ) ;
---   * comptes de test désactivés (email test*@it6.ma).
+--   * commentaires et dépenses de test (contenu / libellé préfixé TEST,
+--     déjà supprimés en cascade avec leur initiative) ;
+--   * comptes de test désactivés (email test*@it6.ma) ;
+--   * journal d'audit HTTP : entièrement vidé (la démonstration n'y
+--     écrit rien, seules les exécutions de tests y laissent des lignes).
 -- Les données de démonstration et les données utilisateur réelles
 -- ne sont jamais touchées.
 -- Usage :
@@ -31,22 +35,32 @@ SET NAMES utf8mb4;
 DELETE FROM initiative
 WHERE code LIKE 'TEST%';
 
+-- Commentaires et dépenses de test : supprimés en cascade avec leur
+-- initiative ci-dessus. Les requêtes défensives ci-dessous ne rattrapent
+-- que les restes d'une exécution interrompue — leurs libellés sont
+-- préfixés TEST, jamais ceux des initiatives de démonstration.
+DELETE FROM commentaire WHERE contenu LIKE 'TEST%';
+DELETE FROM depense     WHERE libelle  LIKE 'TEST%';
+
 -- Initiatives issues de la transformation de demandes de test (avant la
 -- suppression des demandes elles-mêmes pour conserver la liaison).
 DELETE ini FROM initiative ini
 JOIN demande_initiative d ON d.id_initiative_liee = ini.id_initiative
-WHERE d.titre LIKE 'TEST-DEM%';
+WHERE d.titre LIKE 'TEST%';
 
 -- Journal des modifications (audit immuable) : les lignes qui traçaient
 -- des demandes de test partent AVANT les demandes elles-mêmes — passé ce
 -- point, l'id_objet ne référencer plus rien et la ligne serait orpheline.
 -- Les lignes de démonstration restent : leur demande existe toujours.
+-- Tous les préfixes de la suite sont couverts : TEST-DEM* (workflow),
+-- TEST-RECH* (recherche) — la demande de démonstration porte un titre
+-- libre et n'est jamais touchée.
 DELETE FROM historique_modification
 WHERE type_objet = 'demande'
-  AND id_objet IN (SELECT id_demande FROM demande_initiative WHERE titre LIKE 'TEST-DEM%');
+  AND id_objet IN (SELECT id_demande FROM demande_initiative WHERE titre LIKE 'TEST%');
 
 DELETE FROM demande_initiative
-WHERE titre LIKE 'TEST-DEM%';
+WHERE titre LIKE 'TEST%';
 
 DELETE FROM objectif_strategique
 WHERE code LIKE 'TEST-OBJ%';
@@ -95,3 +109,9 @@ WHERE (type_objet = 'demande'
 -- toutes celles présentes sont résiduelles.
 DELETE FROM historique_modification
 WHERE type_objet = 'role';
+
+-- Journal d'audit HTTP (fil d'audit) : entièrement vidé. La
+-- démonstration ne déclenche aucune écriture HTTP auditable — seules les
+-- exécutions de la suite de tests (et les sessions de développement)
+-- y laissent des lignes, toutes à supprimer.
+DELETE FROM journal_audit;

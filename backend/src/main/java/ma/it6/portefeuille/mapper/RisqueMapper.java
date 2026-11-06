@@ -7,12 +7,13 @@ import ma.it6.portefeuille.entity.Risque;
 
 /**
  * Conversions entre l'entité Risque et ses DTO, avec calcul de la
- * <b>santé pondérée</b> (probabilité × impact, soit 1 à 9) :
+ * <b>santé pondérée</b> (probabilité × impact, soit 1 à 25) :
  *
  * <ul>
- *   <li>1-2 → {@link SanteDto#VERTE} ;</li>
- *   <li>3-4 → {@link SanteDto#ORANGE} ;</li>
- *   <li>6-9 → {@link SanteDto#ROUGE} — et donc <b>critique</b>
+ *   <li>1-4 → {@link SanteDto#VERTE} ;</li>
+ *   <li>5-9 → {@link SanteDto#AMBRE} ;</li>
+ *   <li>10-14 → {@link SanteDto#ORANGE} ;</li>
+ *   <li>15-25 → {@link SanteDto#ROUGE} — et donc <b>critique</b>
  *       (score ≥ {@link #SEUIL_CRITIQUE}), bande rouge alignée sur
  *       {@code CalculeurSante}.</li>
  * </ul>
@@ -21,16 +22,19 @@ import ma.it6.portefeuille.entity.Risque;
  */
 public final class RisqueMapper {
 
-    /** Seuil de criticité du dashboard : score ≥ 6 sur 9. */
-    public static final int SEUIL_CRITIQUE = 6;
+    /** Seuil de criticité du dashboard : score ≥ 15 sur 25. */
+    public static final int SEUIL_CRITIQUE = 15;
 
     /** En dessous de ce score, le risque est dans la bande orange. */
-    public static final int SEUIL_ORANGE = 3;
+    public static final int SEUIL_ORANGE = 10;
+
+    /** En dessous de ce score, le risque est dans la bande ambre. */
+    public static final int SEUIL_AMBRE = 5;
 
     private RisqueMapper() {
     }
 
-    /** Santé pondérée d'un risque : probabilité × impact (1 à 9). */
+    /** Santé pondérée d'un risque : probabilité × impact (1 à 25). */
     public static int score(Risque r) {
         if (r.getProbabilite() == null || r.getImpact() == null) {
             return 0;
@@ -46,6 +50,9 @@ public final class RisqueMapper {
         if (score >= SEUIL_ORANGE) {
             return SanteDto.ORANGE;
         }
+        if (score >= SEUIL_AMBRE) {
+            return SanteDto.AMBRE;
+        }
         return SanteDto.VERTE;
     }
 
@@ -56,12 +63,16 @@ public final class RisqueMapper {
         int s = score(r);
         return new RisqueResponse(
                 r.getIdRisque(),
+                r.getTitre(),
                 r.getDescription(),
+                r.getStatut(),
+                r.getEcheance(),
                 r.getProbabilite(),
                 r.getImpact(),
                 r.getPlanAction(),
                 UtilisateurMapper.toSummary(r.getResponsable()),
                 r.getInitiative() != null ? r.getInitiative().getIdInitiative() : null,
+                r.getInitiative() != null ? r.getInitiative().getCode() : null,
                 s,
                 niveau(s)
         );
@@ -75,7 +86,10 @@ public final class RisqueMapper {
         int s = score(r);
         return new RisqueCritiqueDto(
                 r.getIdRisque(),
+                r.getTitre(),
                 r.getDescription(),
+                r.getStatut(),
+                r.getEcheance(),
                 r.getProbabilite(),
                 r.getImpact(),
                 s,

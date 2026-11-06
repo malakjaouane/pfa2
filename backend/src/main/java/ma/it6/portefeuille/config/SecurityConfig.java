@@ -102,6 +102,13 @@ public class SecurityConfig {
                         // suppression d'une ligne, purge totale).
                         .requestMatchers("/api/historique-connexions/**")
                         .hasAuthority("UTILISATEUR_GERER")
+                        // Dépenses : information financière — TOUS verbes
+                        // (lecture ET écriture) réservés à DEPENSE_SAISIR
+                        // (20). La règle doit précéder « GET /api/initiatives/** » :
+                        // lire les dépenses d'une initiative n'est pas un
+                        // corollaire de lire l'initiative.
+                        .requestMatchers("/api/depenses/**", "/api/initiatives/*/depenses")
+                        .hasAuthority("DEPENSE_SAISIR")
                         // Initiatives
                         .requestMatchers(HttpMethod.GET, "/api/initiatives/**").hasAuthority("INITIATIVE_CONSULTER")
                         .requestMatchers(HttpMethod.POST, "/api/initiatives").hasAuthority("INITIATIVE_CREER")
@@ -109,7 +116,37 @@ public class SecurityConfig {
                         // droit que l'archivage (INITIATIVE_ARCHIVER).
                         .requestMatchers(HttpMethod.DELETE, "/api/initiatives/**")
                         .hasAuthority("INITIATIVE_ARCHIVER")
-                        // Journal des modifications (audit) : lecture =
+                        // Commentaires d'initiative : ajout + suppression =
+                        // permission dédiée (18). La lecture (GET) est déjà
+                        // ouverte par le « /api/initiatives/** » en
+                        // INITIATIVE_CONSULTER ci-dessus.
+                        .requestMatchers(HttpMethod.POST, "/api/initiatives/*/commentaires")
+                        .hasAuthority("COMMENTAIRE_AJOUTER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/commentaires/**")
+                        .hasAuthority("COMMENTAIRE_AJOUTER")
+                        // Registre global des risques (toutes initiatives) :
+                        // lecture = INITIATIVE_CONSULTER, comme le registre
+                        // par initiative.
+                        .requestMatchers(HttpMethod.GET, "/api/risques", "/api/risques/export")
+                        .hasAuthority("INITIATIVE_CONSULTER")
+                        // Écriture des risques : permission dédiée (19),
+                        // distincte de la modification de l'initiative. Doit
+                        // précéder les règles générales PATCH/PUT
+                        // « /api/initiatives/** » pour que les routes par
+                        // initiative retombent sur RISQUE_GERER.
+                        .requestMatchers("/api/risques/**", "/api/initiatives/*/risques")
+                        .hasAuthority("RISQUE_GERER")
+                        // Journal d'audit des actions HTTP : administrateur
+                        // (UTILISATEUR_GERER). JOURNAL IMMUABLE : aucun
+                        // POST/PUT/PATCH/DELETE n'est déclaré — l'envoi de
+                        // ces verbes renvoie 405.
+                        .requestMatchers("/api/journal-audit/**")
+                        .hasAuthority("UTILISATEUR_GERER")
+                        // Mon espace et notifications : tout utilisateur
+                        // connecté, contenu adapté aux permissions.
+                        .requestMatchers("/api/mon-espace", "/api/notifications")
+                        .authenticated()
+                        // Journal des modifications (audit métier) : lecture =
                         // même permission que la lecture des initiatives
                         // (pas de nouveau droit). JOURNAL IMMUABLE : aucun
                         // POST/PUT/PATCH/DELETE n'est déclaré sur ces
@@ -127,13 +164,6 @@ public class SecurityConfig {
                         // réservée à ETAPE_GERER / JALON_GERER.
                         .requestMatchers("/api/etapes/**", "/api/initiatives/*/etapes").hasAuthority("ETAPE_GERER")
                         .requestMatchers("/api/jalons/**", "/api/initiatives/*/jalons").hasAuthority("JALON_GERER")
-                        // Risques (registre par initiative) — lecture (GET)
-                        // déjà autorisée par le « /api/initiatives/** » en
-                        // INITIATIVE_CONSULTER ci-dessus (le visiteur lit le
-                        // registre). Écriture : le droit de modification de
-                        // l'initiative elle-même (pas de nouveau droit).
-                        .requestMatchers("/api/risques/**", "/api/initiatives/*/risques")
-                        .hasAuthority("INITIATIVE_MODIFIER")
                         // Gestion des permissions d'un rôle
                         .requestMatchers(HttpMethod.PUT, "/api/roles/*/permissions").hasAuthority("ROLE_GERER")
                         // Assistant IA (« Demande à ton portefeuille ») —

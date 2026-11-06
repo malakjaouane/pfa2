@@ -18,6 +18,26 @@ public interface JalonRepository extends JpaRepository<Jalon, Long> {
      * restreint aux initiatives fournies (les filtres du dashboard sont donc
      * appliqués aux jalons comme aux initiatives).
      */
+    /**
+     * Jalons à surveiller pour les alertes : non atteints, dont la date
+     * prévue est au plus {@code borne} (retards inclus), initiative non
+     * archivée — initiative et statut fetchés (pas de N+1 dans les boucles
+     * d'alertes). Un {@code idResponsable} filtre sur « mes initiatives ».
+     */
+    @Query("""
+            select j from Jalon j
+              join fetch j.initiative i
+              left join fetch j.statutJalon
+             where i.archive = false
+               and (j.statutJalon is null or j.statutJalon.libelle <> 'Atteint')
+               and j.datePrevue is not null
+               and j.datePrevue <= :borne
+               and (:idResponsable is null or i.responsable.idUser = :idResponsable)
+             order by j.datePrevue asc
+            """)
+    List<Jalon> aSurveiller(@Param("borne") LocalDate borne,
+                            @Param("idResponsable") Long idResponsable);
+
     @Query("""
             select count(j) from Jalon j
             where j.datePrevue < :date

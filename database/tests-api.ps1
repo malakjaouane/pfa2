@@ -72,9 +72,10 @@ Write-Output "=== 1. Authentification ($emailTest) ==="
 
 $login = Invoke-Api 'Post' "$Base/auth/login" @{ email = 'admin@it6.ma'; motDePasse = 'Admin@123' }
 Test-Check 'Login admin (token présent)' ($login.OK -and $null -ne $login.Body.token)
-# 17 = les 15 permissions du cahier des charges + BUDGET_CONSULTER (16)
-# + IA_UTILISER (17, assistant IA) — cf. data.sql.
-Test-Check 'Permissions administrateur = 17 (dont ROLE_GERER + BUDGET_CONSULTER + IA_UTILISER)' ($login.OK -and $login.Body.permissions.Count -eq 17) "($($login.Body.permissions.Count))"
+# 20 = les 15 permissions du cahier des charges + BUDGET_CONSULTER (16)
+# + IA_UTILISER (17) + COMMENTAIRE_AJOUTER (18) + RISQUE_GERER (19)
+# + DEPENSE_SAISIR (20) — cf. data.sql.
+Test-Check 'Permissions administrateur = 20 (dont ROLE_GERER + BUDGET_CONSULTER + IA_UTILISER)' ($login.OK -and $login.Body.permissions.Count -eq 20) "($($login.Body.permissions.Count))"
 Test-Check 'Permission ROLE_GERER présente' ($login.OK -and @($login.Body.permissions | Where-Object { $_ -eq 'ROLE_GERER' }).Count -eq 1)
 $adminToken = $login.Body.token
 
@@ -86,7 +87,7 @@ Test-Check 'Login visiteur, permissions = 3' ($loginV.OK -and $loginV.Body.permi
 $visiteurToken = $loginV.Body.token
 
 $loginR = Invoke-Api 'Post' "$Base/auth/login" @{ email = 'responsable@it6.ma'; motDePasse = 'Resp@123' }
-Test-Check 'Login responsable, permissions = 14 (dont IA_UTILISER)' ($loginR.OK -and $loginR.Body.permissions.Count -eq 14) "($($loginR.Body.permissions.Count))"
+Test-Check 'Login responsable, permissions = 17 (dont IA_UTILISER)' ($loginR.OK -and $loginR.Body.permissions.Count -eq 17) "($($loginR.Body.permissions.Count))"
 $responsableToken = $loginR.Body.token
 Test-Check 'Permission IA_UTILISER : admin + responsable, jamais le visiteur' (
     (@($login.Body.permissions | Where-Object { $_ -eq 'IA_UTILISER' }).Count -eq 1) -and
@@ -95,6 +96,13 @@ Test-Check 'Permission IA_UTILISER : admin + responsable, jamais le visiteur' (
 Test-Check 'Permissions DEMANDE_* présentes (admin + responsable)' (
     (($login.Body.permissions | Where-Object { $_ -eq 'DEMANDE_SOUMETTRE' -or $_ -eq 'DEMANDE_EVALUER' }).Count -eq 2) -and
     (($loginR.Body.permissions | Where-Object { $_ -eq 'DEMANDE_SOUMETTRE' -or $_ -eq 'DEMANDE_EVALUER' }).Count -eq 2))
+# Permissions du lot suivi : 18 COMMENTAIRE_AJOUTER, 19 RISQUE_GERER,
+# 20 DEPENSE_SAISIR — accordées à l'admin et au responsable, jamais au
+# visiteur (lecture seule).
+Test-Check 'Permissions COMMENTAIRE_AJOUTER / RISQUE_GERER / DEPENSE_SAISIR (admin + responsable, jamais visiteur)' (
+    (($login.Body.permissions | Where-Object { $_ -eq 'COMMENTAIRE_AJOUTER' -or $_ -eq 'RISQUE_GERER' -or $_ -eq 'DEPENSE_SAISIR' }).Count -eq 3) -and
+    (($loginR.Body.permissions | Where-Object { $_ -eq 'COMMENTAIRE_AJOUTER' -or $_ -eq 'RISQUE_GERER' -or $_ -eq 'DEPENSE_SAISIR' }).Count -eq 3) -and
+    (($loginV.Body.permissions | Where-Object { $_ -eq 'COMMENTAIRE_AJOUTER' -or $_ -eq 'RISQUE_GERER' -or $_ -eq 'DEPENSE_SAISIR' }).Count -eq 0))
 
 Write-Output '=== 2. Dashboard / KPI ==='
 $dash = Invoke-Api 'Get' "$Base/dashboard" $null $adminToken
@@ -209,7 +217,9 @@ Test-Check 'Création valide -> 201' ($cree.OK -and $cree.Body.idInitiative -gt 
 $idTest = $cree.Body.idInitiative
 Test-Check 'Création : santé non calculée sur les écritures (null)' ($null -eq $cree.Body.sante)
 Test-Check 'Statut créé = À planifier' ($cree.Body.statut.libelle -eq 'À planifier') "($($cree.Body.statut.libelle))"
-Test-Check 'Responsable affecté' ($cree.Body.responsable.nomComplet -eq 'Karim Alaoui') "($($cree.Body.responsable.nomComplet))"
+# Le nom du compte responsable peut évoluer (renommage via l'app) :
+# on vérifie l'identité par e-mail, la donnée stable du référentiel.
+Test-Check 'Responsable affecté' ($cree.Body.responsable.email -eq 'responsable@it6.ma') "($($cree.Body.responsable.email))"
 
 $dup = Invoke-Api 'Post' "$Base/initiatives" $corps $adminToken
 Test-Check 'Code dupliqué -> 400 (RM11)' ($dup.OK -eq $false -and $dup.Status -eq 400) "($($dup.Status))"
@@ -411,7 +421,7 @@ Write-Output '=== 9. Rôles et permissions ==='
 $roles = Invoke-Api 'Get' "$Base/roles" $null $adminToken
 Test-Check '3 rôles exposés' ($roles.OK -and $roles.Body.Count -eq 3) "($($roles.Body.Count))"
 $roleAdmin = Invoke-Api 'Get' "$Base/roles/1" $null $adminToken
-Test-Check 'ADMIN : 17 permissions' ($roleAdmin.OK -and $roleAdmin.Body.permissions.Count -eq 17) "($($roleAdmin.Body.permissions.Count))"
+Test-Check 'ADMIN : 20 permissions' ($roleAdmin.OK -and $roleAdmin.Body.permissions.Count -eq 20) "($($roleAdmin.Body.permissions.Count))"
 $roleVisiteur = Invoke-Api 'Get' "$Base/roles/3" $null $adminToken
 $idsOriginaux = @($roleVisiteur.Body.permissions | ForEach-Object { $_.idPermission })
 $roleUpdate = Invoke-Api 'Put' "$Base/roles/3/permissions" @{ idsPermissions = @($idsOriginaux[0]) } $adminToken
@@ -960,81 +970,347 @@ Test-Check 'Purge connexions : visiteur -> 403' ($hcPurgeVisiteur.OK -eq $false 
 $hcPurgeResp = Invoke-Api 'Delete' "$Base/historique-connexions" $null $responsableToken
 Test-Check 'Purge connexions : responsable sans UTILISATEUR_GERER -> 403' ($hcPurgeResp.OK -eq $false -and $hcPurgeResp.Status -eq 403) "($($hcPurgeResp.Status))"
 
-Write-Output '=== 16. Registre des risques (santé pondérée + widget dashboard) ==='
-# Initiative dédiée : la principale est archivée depuis la section 6.
-# Nettoyage de fin de bloc identique à TESTST (section 4) : « Annulée »
-# puis archivage, pour ne pas fausser les KPI des exécutions suivantes
-# (les risques sont supprimés en cascade avec l'initiative par le
+Write-Output '=== 16. Registre des risques (echelle 1-5, 4 bandes, RISQUE_GERER) ==='
+# Initiative dediee : la principale est archivee depuis la section 6.
+# Nettoyage de fin de bloc identique a TESTST (section 4) : « Annulee »
+# puis archivage, pour ne pas fausser les KPI des executions suivantes
+# (les risques sont supprimes en cascade avec l'initiative par le
 # cleanup-test-data.sql).
 $risqCorps = @{ code = "TESTRISQ-$suffixe"; nom = 'Risques de test'; description = ''; avancement = 0; idEntite = 1; idResponsable = 2; idStatut = 1; idPriorite = 1 }
 $risqIni = Invoke-Api 'Post' "$Base/initiatives" $risqCorps $adminToken
-Test-Check 'Risques : initiative de test créée' ($risqIni.OK -and $risqIni.Body.idInitiative -gt 0)
+Test-Check 'Risques : initiative de test creee' ($risqIni.OK -and $risqIni.Body.idInitiative -gt 0)
 $idRisqIni = $risqIni.Body.idInitiative
 
-# Création : santé pondérée = probabilité × impact, recalculée à chaque
-# lecture (jamais stockée). 3 × 3 = 9 -> critique (bande rouge).
-$rCritique = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = 'TESTRISQ fournisseur unique en retard'; probabilite = 3; impact = 3; planAction = 'Contracter un second fournisseur'; idResponsable = 2 } $adminToken
-Test-Check 'Risque : création 3×3 -> 201, score 9/9 critique (ROUGE)' ($rCritique.OK -and $rCritique.Body.score -eq 9 -and $rCritique.Body.niveau -eq 'ROUGE') "($($rCritique.Status)/$($rCritique.Body.score))"
+# Creation : sante ponderee = probabilite x impact (1 a 25), recalculee
+# a chaque lecture (jamais stockee). 5 x 5 = 25 -> bande rouge haute ;
+# titre, statut et echeance sont conserves tels quels.
+$rCritique = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ titre = 'TESTRISQ fournisseur unique'; description = 'TESTRISQ fournisseur unique en retard'; probabilite = 5; impact = 5; statut = 'ouverte'; echeance = '2026-12-31'; planAction = 'Contracter un second fournisseur'; idResponsable = 2 } $adminToken
+Test-Check 'Risque : creation 5x5 -> 201, score 25/25 ROUGE, statut + echeance conserves' ($rCritique.OK -and $rCritique.Body.score -eq 25 -and $rCritique.Body.niveau -eq 'ROUGE' -and $rCritique.Body.statut -eq 'ouverte' -and $null -ne $rCritique.Body.echeance) "($($rCritique.Status)/$($rCritique.Body.score))"
 $idRisque = $rCritique.Body.idRisque
 
-$rMineur = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = 'TESTRISQ retard administratif mineur'; probabilite = 1; impact = 1 } $adminToken
-Test-Check 'Risque : création 1×1 -> 201, score 1/9 saine (VERTE)' ($rMineur.OK -and $rMineur.Body.score -eq 1 -and $rMineur.Body.niveau -eq 'VERTE') "($($rMineur.Body.score))"
+$rMineur = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ titre = 'TESTRISQ retard mineur'; description = 'TESTRISQ retard administratif mineur'; probabilite = 1; impact = 1 } $adminToken
+Test-Check 'Risque : creation 1x1 -> 201, score 1/25, bande verte' ($rMineur.OK -and $rMineur.Body.score -eq 1 -and $rMineur.Body.niveau -eq 'VERTE') "($($rMineur.Body.score)/$($rMineur.Body.niveau))"
+$idRisqueMineur = $rMineur.Body.idRisque
 
-# Garde-fous de saisie : validation du contrôleur (400) et service (404).
-$rNote = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = 'TESTRISQ note hors bornes'; probabilite = 4; impact = 2 } $adminToken
-Test-Check 'Risque : probabilité 4 -> 400 (bornes 1-3)' ($rNote.OK -eq $false -and $rNote.Status -eq 400) "($($rNote.Status))"
-$rDesc = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = ''; probabilite = 2; impact = 2 } $adminToken
+$rSeuil = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ titre = 'TESTRISQ seuil du widget'; description = 'TESTRISQ seuil critique du tableau de bord'; probabilite = 3; impact = 5 } $adminToken
+Test-Check 'Risque : creation 3x5 -> 15/25, bande rouge (seuil du widget)' ($rSeuil.OK -and $rSeuil.Body.score -eq 15 -and $rSeuil.Body.niveau -eq 'ROUGE') "($($rSeuil.Body.score)/$($rSeuil.Body.niveau))"
+$idRisqueSeuil = $rSeuil.Body.idRisque
+
+# Garde-fous de saisie : echelle elargie 1-5, titre / description /
+# statut valides, responsable et initiative existants.
+$rNote = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ titre = 'TESTRISQ note hors echelle'; description = 'TESTRISQ note hors echelle'; probabilite = 6; impact = 2 } $adminToken
+Test-Check 'Risque : probabilite 6 -> 400 (echelle 1-5)' ($rNote.OK -eq $false -and $rNote.Status -eq 400) "($($rNote.Status))"
+$rTitre = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = 'TESTRISQ sans titre'; probabilite = 2; impact = 2 } $adminToken
+Test-Check 'Risque : titre absent -> 400' ($rTitre.OK -eq $false -and $rTitre.Status -eq 400) "($($rTitre.Status))"
+$rStatut = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ titre = 'TESTRISQ statut inconnu'; description = 'TESTRISQ statut inconnu'; statut = 'inconnu'; probabilite = 2; impact = 2 } $adminToken
+Test-Check 'Risque : statut inconnu -> 400 (ouverte|attenuation|close)' ($rStatut.OK -eq $false -and $rStatut.Status -eq 400) "($($rStatut.Status))"
+$rDesc = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ titre = 'TESTRISQ description vide'; description = ''; probabilite = 2; impact = 2 } $adminToken
 Test-Check 'Risque : description vide -> 400' ($rDesc.OK -eq $false -and $rDesc.Status -eq 400) "($($rDesc.Status))"
-$rResp = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = 'TESTRISQ responsable inconnu'; probabilite = 2; impact = 2; idResponsable = 99999999 } $adminToken
+$rResp = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ titre = 'TESTRISQ responsable'; description = 'TESTRISQ responsable inconnu'; probabilite = 2; impact = 2; idResponsable = 99999999 } $adminToken
 Test-Check 'Risque : responsable inexistant -> 404' ($rResp.OK -eq $false -and $rResp.Status -eq 404) "($($rResp.Status))"
-$rIni404 = Invoke-Api 'Post' "$Base/initiatives/99999999/risques" @{ description = 'TESTRISQ initiative fantome'; probabilite = 2; impact = 2 } $adminToken
+$rIni404 = Invoke-Api 'Post' "$Base/initiatives/99999999/risques" @{ titre = 'TESTRISQ initiative fantome'; description = 'TESTRISQ initiative fantome'; probabilite = 2; impact = 2 } $adminToken
 Test-Check 'Risque : initiative inexistante -> 404' ($rIni404.OK -eq $false -and $rIni404.Status -eq 404) "($($rIni404.Status))"
 
-# Registre : du plus critique au moins critique.
+# Registre par initiative : du plus critique au moins critique
+# (25 -> 15 -> 1) ; chaque ligne porte son code initiative (13 champs).
 $rListe = Invoke-Api 'Get' "$Base/initiatives/$idRisqIni/risques" $null $adminToken
-Test-Check 'Risque : registre trié par criticité décroissante (9 puis 1)' ($rListe.OK -and @($rListe.Body).Count -eq 2 -and $rListe.Body[0].score -eq 9 -and $rListe.Body[1].score -eq 1) "(@($rListe.Body).Count)"
+Test-Check 'Risque : registre trie par criticite decroissante (25, 15, 1)' ($rListe.OK -and @($rListe.Body).Count -eq 3 -and $rListe.Body[0].score -eq 25 -and $rListe.Body[1].score -eq 15 -and $rListe.Body[2].score -eq 1) "(@($rListe.Body).Count)"
+Test-Check 'Risque : code initiative + titre presents sur chaque ligne' ($rListe.Body[0].codeInitiative -eq "TESTRISQ-$suffixe" -and $rListe.Body[0].titre -eq 'TESTRISQ fournisseur unique') "($($rListe.Body[0].codeInitiative))"
 
-# Dashboard : le widget ne montre que les scores >= 6, sur les initiatives
-# actives de la sélection (InitiativeSpecifications exclut les archives).
+# Registre global filtre : memes lignes, total hors pagination.
+$rGlobal = Invoke-Api 'Get' "$Base/risques?initiative=$idRisqIni" $null $adminToken
+Test-Check 'Registre global : filtre initiative + X-Total-Count = 3' ($rGlobal.OK -and @($rGlobal.Body).Count -eq 3 -and "$($rGlobal.Headers['X-Total-Count'])" -eq '3') "($($rGlobal.Headers['X-Total-Count']))"
+
+# Export CSV du registre global : BOM UTF-8, separateur point-virgule.
+$rgOk = $false; $rgDetail = ''
+try {
+    $rgCsv = Invoke-WebRequest -UseBasicParsing -Uri "$Base/risques/export?initiative=$idRisqIni" -Headers @{ Authorization = "Bearer $adminToken" }
+    $rgOctets = $rgCsv.RawContentStream.ToArray()
+    $rgTexte = [System.Text.Encoding]::UTF8.GetString($rgOctets)
+    $rgOk = ($rgCsv.StatusCode -eq 200) `
+        -and ((-join $rgCsv.Headers['Content-Type']) -like 'text/csv*') `
+        -and ($rgOctets[0] -eq 0xEF) `
+        -and ($rgTexte -like '*Initiative;Titre;*') `
+        -and ($rgTexte -like '*TESTRISQ fournisseur unique*')
+    $rgDetail = "($($rgCsv.StatusCode))"
+} catch { $rgDetail = "($($_.Exception.Message))" }
+Test-Check 'Registre global : export CSV (text/csv + BOM + en-tete + lignes)' $rgOk $rgDetail
+
+# Dashboard : le widget ne montre que les scores >= 15 (bande rouge),
+# sur les initiatives actives de la selection (InitiativeSpecifications
+# exclut les archives).
 $dashAvant = Invoke-Api 'Get' "$Base/dashboard" $null $adminToken
-$widgetAvant = @($dashAvant.Body.risquesCritiques | Where-Object { $_.idRisque -eq $idRisque })
-Test-Check 'Dashboard : le risque critique 9/9 figure dans le widget' ($dashAvant.OK -and $widgetAvant.Count -eq 1 -and $widgetAvant[0].idInitiative -eq $idRisqIni) "($(@($dashAvant.Body.risquesCritiques).Count))"
+$widgetAvant = @($dashAvant.Body.risquesCritiques | Where-Object { $_.idRisque -eq $idRisque -or $_.idRisque -eq $idRisqueSeuil })
+Test-Check 'Dashboard : risques 25/25 et 15/15 figurent dans le widget' ($dashAvant.OK -and $widgetAvant.Count -eq 2) "($($widgetAvant.Count))"
 
-# Modification : les nouvelles notes recalculent le score immédiatement.
-$rMod = Invoke-Api 'Put' "$Base/risques/$idRisque" @{ description = 'TESTRISQ reevalue apres mitigation'; probabilite = 2; impact = 2; planAction = 'Plan revise' } $adminToken
-Test-Check 'Risque : modification 3×3 -> 2×2, score 9 -> 4 (ORANGE)' ($rMod.OK -and $rMod.Body.score -eq 4 -and $rMod.Body.niveau -eq 'ORANGE' -and $rMod.Body.planAction -eq 'Plan revise') "($($rMod.Body.score))"
+# Modification : les nouvelles notes recalculent le score immediatement.
+# 5x5 -> 3x3 = 9 : bande ambre, sortie du widget (seuil 15).
+$rMod = Invoke-Api 'Put' "$Base/risques/$idRisque" @{ titre = 'TESTRISQ reevalue'; description = 'TESTRISQ reevalue apres mitigation'; probabilite = 3; impact = 3; statut = 'attenuation'; planAction = 'Plan revise' } $adminToken
+Test-Check 'Risque : modification 5x5 -> 3x3, score 25 -> 9 (AMBRE), statut conserve' ($rMod.OK -and $rMod.Body.score -eq 9 -and $rMod.Body.niveau -eq 'AMBRE' -and $rMod.Body.planAction -eq 'Plan revise' -and $rMod.Body.statut -eq 'attenuation') "($($rMod.Body.score)/$($rMod.Body.niveau))"
 
 $dashApres = Invoke-Api 'Get' "$Base/dashboard" $null $adminToken
 $widgetApres = @($dashApres.Body.risquesCritiques | Where-Object { $_.idRisque -eq $idRisque })
-Test-Check 'Dashboard : le risque passé à 4/9 sort du widget' ($dashApres.OK -and $widgetApres.Count -eq 0) "($($widgetApres.Count))"
+$widgetSeuil = @($dashApres.Body.risquesCritiques | Where-Object { $_.idRisque -eq $idRisqueSeuil })
+Test-Check 'Dashboard : le risque passe a 9/25 sort du widget, le 15/15 y reste' ($dashApres.OK -and $widgetApres.Count -eq 0 -and $widgetSeuil.Count -eq 1) "($($widgetApres.Count)/$($widgetSeuil.Count))"
 
-# Droits : lecture = INITIATIVE_CONSULTER (rattrapée par /initiatives/**),
-# écriture = INITIATIVE_MODIFIER (aucun nouveau droit créé).
+# Droits : lecture = INITIATIVE_CONSULTER (ratapee par /initiatives/**),
+# ecriture = RISQUE_GERER (permission 19, admin + responsable) : la
+# simple modification de l'initiative ne suffit pas.
 $rAnonyme = Invoke-Api 'Get' "$Base/initiatives/$idRisqIni/risques" $null $null
 Test-Check 'Risque : anonyme -> 401' ($rAnonyme.OK -eq $false -and $rAnonyme.Status -eq 401) "($($rAnonyme.Status))"
 $rVisLect = Invoke-Api 'Get' "$Base/initiatives/$idRisqIni/risques" $null $visiteurToken
-Test-Check 'Risque : visiteur -> lecture 200' ($rVisLect.OK -and @($rVisLect.Body).Count -eq 2) "($($rVisLect.Status))"
-$rVisEcr = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = 'TESTRISQ tentative visiteur'; probabilite = 2; impact = 2 } $visiteurToken
-Test-Check 'Risque : visiteur -> écriture 403' ($rVisEcr.OK -eq $false -and $rVisEcr.Status -eq 403) "($($rVisEcr.Status))"
+Test-Check 'Risque : visiteur -> lecture 200' ($rVisLect.OK -and @($rVisLect.Body).Count -eq 3) "($($rVisLect.Status))"
+$rVisEcr = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ titre = 'TESTRISQ tentative visiteur'; description = 'TESTRISQ tentative visiteur'; probabilite = 2; impact = 2 } $visiteurToken
+Test-Check 'Risque : visiteur -> ecriture 403' ($rVisEcr.OK -eq $false -and $rVisEcr.Status -eq 403) "($($rVisEcr.Status))"
+$rRespEcr = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ titre = 'TESTRISQ risque du responsable'; description = 'TESTRISQ risque du responsable'; probabilite = 2; impact = 2 } $responsableToken
+Test-Check 'Risque : responsable (RISQUE_GERER) -> creation 201' ($rRespEcr.OK -and $rRespEcr.Status -eq 201) "($($rRespEcr.Status))"
+$rRespSuppr = Invoke-Api 'Delete' "$Base/risques/$($rRespEcr.Body.idRisque)" $null $responsableToken
+Test-Check 'Risque : responsable -> suppression 204' ($rRespSuppr.OK -and $rRespSuppr.Status -eq 204) "($($rRespSuppr.Status))"
 
-# Suppression : 204, 404 si absent, registre mis à jour.
-$rSuppr = Invoke-Api 'Delete' "$Base/risques/$($rMineur.Body.idRisque)" $null $adminToken
+# Cycle de vie : statut close (filtre statut), echeance preservee, et
+# filtre de statut inconnu ignore plutot que tout masquer.
+$rClose = Invoke-Api 'Put' "$Base/risques/$idRisqueSeuil" @{ titre = 'TESTRISQ seuil du widget'; description = 'TESTRISQ seuil critique du tableau de bord'; probabilite = 3; impact = 5; statut = 'close'; echeance = '2026-12-31' } $adminToken
+Test-Check 'Risque : statut passe a close -> 200, echeance conservee' ($rClose.OK -and $rClose.Body.statut -eq 'close' -and $null -ne $rClose.Body.echeance) "($($rClose.Body.statut))"
+$rFiltreClose = Invoke-Api 'Get' "$Base/risques?initiative=$idRisqIni&statut=close" $null $adminToken
+Test-Check 'Registre global : filtre statut=close -> 1 ligne' ($rFiltreClose.OK -and @($rFiltreClose.Body).Count -eq 1) "(@($rFiltreClose.Body).Count)"
+$rFiltreInconnu = Invoke-Api 'Get' "$Base/risques?initiative=$idRisqIni&statut=inconnu" $null $adminToken
+Test-Check 'Registre global : statut de filtre inconnu ignore (3 lignes)' ($rFiltreInconnu.OK -and @($rFiltreInconnu.Body).Count -eq 3) "(@($rFiltreInconnu.Body).Count)"
+
+# Suppression : 204, 404 si absent, registre mis a jour.
+$rSuppr = Invoke-Api 'Delete' "$Base/risques/$idRisqueMineur" $null $adminToken
 Test-Check 'Risque : suppression -> 204' ($rSuppr.OK -and $rSuppr.Status -eq 204) "($($rSuppr.Status))"
 $rSuppr404 = Invoke-Api 'Delete' "$Base/risques/99999999" $null $adminToken
 Test-Check 'Risque : suppression id inexistant -> 404' ($rSuppr404.OK -eq $false -and $rSuppr404.Status -eq 404) "($($rSuppr404.Status))"
 $rReste = Invoke-Api 'Get' "$Base/initiatives/$idRisqIni/risques" $null $adminToken
-Test-Check 'Risque : registre après suppression = 1' ($rReste.OK -and @($rReste.Body).Count -eq 1) "(@($rReste.Body).Count)"
+Test-Check 'Risque : registre apres suppression = 2' ($rReste.OK -and @($rReste.Body).Count -eq 2) "(@($rReste.Body).Count)"
 
-# Nettoyage : « À planifier » -> « Annulée » -> archivage (cycle admis),
-# puis vérification que l'écriture sur initiative archivée est refusée.
+# Nettoyage : « A planifier » -> « Annulee » -> archivage (cycle admis),
+# puis verification que l'ecriture sur initiative archivee est refusee.
 $risqAnnulCorps = @{ code = "TESTRISQ-$suffixe"; nom = 'Risques de test'; description = ''; avancement = 0; idEntite = 1; idResponsable = 2; idStatut = 5; idPriorite = 1 }
 $risqAnnul = Invoke-Api 'Put' "$Base/initiatives/$idRisqIni" $risqAnnulCorps $adminToken
 $risqArch = Invoke-Api 'Patch' "$Base/initiatives/$idRisqIni/archive" $null $adminToken
-Test-Check 'Risque : initiative annulée puis archivée (nettoyage)' ($risqAnnul.OK -and $risqArch.OK -and $risqArch.Body.archive -eq $true) "($($risqAnnul.Status)/$($risqArch.Status))"
-$rPostArch = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ description = 'TESTRISQ apres archivage'; probabilite = 3; impact = 3 } $adminToken
-Test-Check 'Risque : écriture sur initiative archivée -> 400' ($rPostArch.OK -eq $false -and $rPostArch.Status -eq 400) "($($rPostArch.Status))"
+Test-Check 'Risque : initiative annulee puis archivee (nettoyage)' ($risqAnnul.OK -and $risqArch.OK -and $risqArch.Body.archive -eq $true) "($($risqAnnul.Status)/$($risqArch.Status))"
+$rPostArch = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/risques" @{ titre = 'TESTRISQ apres archivage'; description = 'TESTRISQ apres archivage'; probabilite = 3; impact = 3 } $adminToken
+Test-Check 'Risque : ecriture sur initiative archivee -> 400' ($rPostArch.OK -eq $false -and $rPostArch.Status -eq 400) "($($rPostArch.Status))"
 $rLectArch = Invoke-Api 'Get' "$Base/initiatives/$idRisqIni/risques" $null $adminToken
-Test-Check 'Risque : lecture sur initiative archivée -> 200' ($rLectArch.OK -and @($rLectArch.Body).Count -eq 1) "($($rLectArch.Status))"
+Test-Check 'Risque : lecture sur initiative archivee -> 200' ($rLectArch.OK -and @($rLectArch.Body).Count -eq 2) "($($rLectArch.Status))"
+
+Write-Output '=== 17. Commentaires (fil immuable, COMMENTAIRE_AJOUTER) ==='
+# Initiative dediee, annulee puis archivee en fin de bloc (nettoyage).
+$comCorps = @{ code = "TESTCOM-$suffixe"; nom = 'Commentaires de test'; description = ''; avancement = 0; idEntite = 1; idResponsable = 2; idStatut = 1; idPriorite = 1 }
+$comIni = Invoke-Api 'Post' "$Base/initiatives" $comCorps $adminToken
+Test-Check 'Commentaires : initiative de test creee' ($comIni.OK -and $comIni.Body.idInitiative -gt 0)
+$idComIni = $comIni.Body.idInitiative
+
+$c1 = Invoke-Api 'Post' "$Base/initiatives/$idComIni/commentaires" @{ contenu = 'TEST commentaire du responsable' } $responsableToken
+Test-Check 'Commentaire : ajout (responsable) -> 201, auteur + contenu' ($c1.OK -and $c1.Status -eq 201 -and $c1.Body.contenu -eq 'TEST commentaire du responsable' -and $c1.Body.auteur.email -eq 'responsable@it6.ma') "($($c1.Status))"
+$idC1 = $c1.Body.idCommentaire
+$c2 = Invoke-Api 'Post' "$Base/initiatives/$idComIni/commentaires" @{ contenu = 'TEST reponse de l''administrateur' } $adminToken
+Test-Check 'Commentaire : ajout (administrateur) -> 201' ($c2.OK -and $c2.Status -eq 201) "($($c2.Status))"
+$idC2 = $c2.Body.idCommentaire
+
+$cFil = Invoke-Api 'Get' "$Base/initiatives/$idComIni/commentaires" $null $visiteurToken
+Test-Check 'Commentaire : lecture visiteur -> 200, plus recent d''abord' ($cFil.OK -and @($cFil.Body).Count -eq 2 -and $cFil.Body[0].idCommentaire -eq $idC2) "(@($cFil.Body).Count)"
+
+$cVis = Invoke-Api 'Post' "$Base/initiatives/$idComIni/commentaires" @{ contenu = 'TEST tentative visiteur' } $visiteurToken
+Test-Check 'Commentaire : ajout visiteur -> 403' ($cVis.OK -eq $false -and $cVis.Status -eq 403) "($($cVis.Status))"
+$cAnonyme = Invoke-Api 'Post' "$Base/initiatives/$idComIni/commentaires" @{ contenu = 'TEST anonyme' } $null
+Test-Check 'Commentaire : ajout anonyme -> 401' ($cAnonyme.OK -eq $false -and $cAnonyme.Status -eq 401) "($($cAnonyme.Status))"
+$cVide = Invoke-Api 'Post' "$Base/initiatives/$idComIni/commentaires" @{ contenu = '' } $adminToken
+Test-Check 'Commentaire : contenu vide -> 400' ($cVide.OK -eq $false -and $cVide.Status -eq 400) "($($cVide.Status))"
+$cLong = Invoke-Api 'Post' "$Base/initiatives/$idComIni/commentaires" @{ contenu = ('TEST ' * 1200) } $adminToken
+Test-Check 'Commentaire : contenu > 4000 caracteres -> 400' ($cLong.OK -eq $false -and $cLong.Status -eq 400) "($($cLong.Status))"
+
+$cMaj = Invoke-Api 'Put' "$Base/commentaires/$idC1" @{ contenu = 'TEST modifie' } $adminToken
+Test-Check 'Commentaire : PUT -> 405 (immutable, aucune mise a jour)' ($cMaj.OK -eq $false -and $cMaj.Status -eq 405) "($($cMaj.Status))"
+
+# Droits de suppression : l'auteur lui-meme, ou un administrateur
+# (UTILISATEUR_GERER) ; jamais un autre, jamais le visiteur.
+$cSupprAutre = Invoke-Api 'Delete' "$Base/commentaires/$idC2" $null $responsableToken
+Test-Check 'Commentaire : non-auteur sans UTILISATEUR_GERER -> 400' ($cSupprAutre.OK -eq $false -and $cSupprAutre.Status -eq 400) "($($cSupprAutre.Status))"
+$cSupprVis = Invoke-Api 'Delete' "$Base/commentaires/$idC1" $null $visiteurToken
+Test-Check 'Commentaire : suppression visiteur -> 403' ($cSupprVis.OK -eq $false -and $cSupprVis.Status -eq 403) "($($cSupprVis.Status))"
+$cSuppr = Invoke-Api 'Delete' "$Base/commentaires/$idC1" $null $responsableToken
+Test-Check 'Commentaire : suppression par l''auteur -> 204' ($cSuppr.OK -and $cSuppr.Status -eq 204) "($($cSuppr.Status))"
+$cSuppr404 = Invoke-Api 'Delete' "$Base/commentaires/99999999" $null $adminToken
+Test-Check 'Commentaire : suppression id inexistant -> 404' ($cSuppr404.OK -eq $false -and $cSuppr404.Status -eq 404) "($($cSuppr404.Status))"
+$cFilApres = Invoke-Api 'Get' "$Base/initiatives/$idComIni/commentaires" $null $adminToken
+Test-Check 'Commentaire : fil apres suppression = 1' ($cFilApres.OK -and @($cFilApres.Body).Count -eq 1) "(@($cFilApres.Body).Count)"
+
+# Initiative archivee (TESTRISQ de la section 16) : ajout refuse, et
+# initiative fantome -> 404.
+$cArch = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/commentaires" @{ contenu = 'TEST apres archivage' } $adminToken
+Test-Check 'Commentaire : initiative archivee -> 400' ($cArch.OK -eq $false -and $cArch.Status -eq 400) "($($cArch.Status))"
+$c404 = Invoke-Api 'Post' "$Base/initiatives/99999999/commentaires" @{ contenu = 'TEST fantome' } $adminToken
+Test-Check 'Commentaire : initiative inexistante -> 404' ($c404.OK -eq $false -and $c404.Status -eq 404) "($($c404.Status))"
+
+# Nettoyage : annulee puis archivee (comme la section 16).
+$comAnnul = Invoke-Api 'Put' "$Base/initiatives/$idComIni" @{ code = "TESTCOM-$suffixe"; nom = 'Commentaires de test'; description = ''; avancement = 0; idEntite = 1; idResponsable = 2; idStatut = 5; idPriorite = 1 } $adminToken
+$comArch = Invoke-Api 'Patch' "$Base/initiatives/$idComIni/archive" $null $adminToken
+Test-Check 'Commentaires : initiative annulee puis archivee (nettoyage)' ($comAnnul.OK -and $comArch.OK -and $comArch.Body.archive -eq $true) "($($comAnnul.Status)/$($comArch.Status))"
+
+Write-Output '=== 18. Depenses (DEPENSE_SAISIR, registre + totaux + export) ==='
+$depCorps = @{ code = "TESTDEP-$suffixe"; nom = 'Depenses de test'; description = ''; avancement = 0; idEntite = 1; idResponsable = 2; idStatut = 1; idPriorite = 1; budget = 1000 }
+$depIni = Invoke-Api 'Post' "$Base/initiatives" $depCorps $adminToken
+Test-Check 'Depenses : initiative de test creee (budget 1000)' ($depIni.OK -and $depIni.Body.idInitiative -gt 0)
+$idDepIni = $depIni.Body.idInitiative
+
+$d1 = Invoke-Api 'Post' "$Base/initiatives/$idDepIni/depenses" @{ libelle = 'TEST achat de licences'; montant = 150.5; dateDepense = '2026-03-01'; categorie = 'materiel' } $adminToken
+Test-Check 'Depense : creation -> 201, libelle + montant + saisisseur' ($d1.OK -and $d1.Status -eq 201 -and $d1.Body.libelle -eq 'TEST achat de licences' -and $d1.Body.montant -eq 150.5 -and $null -ne $d1.Body.saisisseur) "($($d1.Status)/$($d1.Body.montant))"
+$idD1 = $d1.Body.idDepense
+$d2 = Invoke-Api 'Post' "$Base/initiatives/$idDepIni/depenses" @{ libelle = 'TEST prestation conseil'; montant = 349.5; dateDepense = '2026-04-10'; categorie = 'prestations' } $responsableToken
+Test-Check 'Depense : creation par le responsable -> 201' ($d2.OK -and $d2.Status -eq 201) "($($d2.Status))"
+$idD2 = $d2.Body.idDepense
+
+# Totaux du registre : compte + montant de la selection (en-tetes HTTP).
+$depListe = Invoke-Api 'Get' "$Base/depenses?initiative=$idDepIni" $null $adminToken
+Test-Check 'Depenses : registre filtre + X-Total-Count 2 + X-Total-Montant 500.00' ($depListe.OK -and @($depListe.Body).Count -eq 2 -and "$($depListe.Headers['X-Total-Count'])" -eq '2' -and "$($depListe.Headers['X-Total-Montant'])" -eq '500.00') "($($depListe.Headers['X-Total-Count'])/$($depListe.Headers['X-Total-Montant']))"
+
+$depPeriode = Invoke-Api 'Get' "$Base/depenses?initiative=$idDepIni&du=2026-04-01" $null $adminToken
+Test-Check 'Depenses : filtre periode (du 2026-04-01) -> 1 ligne' ($depPeriode.OK -and @($depPeriode.Body).Count -eq 1) "(@($depPeriode.Body).Count)"
+$depRech = Invoke-Api 'Get' "$Base/depenses?initiative=$idDepIni&recherche=prestation" $null $adminToken
+Test-Check 'Depenses : filtre recherche -> 1 ligne' ($depRech.OK -and @($depRech.Body).Count -eq 1) "(@($depRech.Body).Count)"
+
+# Garde-fous d'ecriture : montant strictement positif, libelle et date
+# obligatoires (contraintes du cahier des charges).
+$depNeg = Invoke-Api 'Post' "$Base/initiatives/$idDepIni/depenses" @{ libelle = 'TEST negatif'; montant = -5; dateDepense = '2026-03-01' } $adminToken
+Test-Check 'Depense : montant negatif -> 400' ($depNeg.OK -eq $false -and $depNeg.Status -eq 400) "($($depNeg.Status))"
+$depNul = Invoke-Api 'Post' "$Base/initiatives/$idDepIni/depenses" @{ libelle = 'TEST nul'; montant = 0; dateDepense = '2026-03-01' } $adminToken
+Test-Check 'Depense : montant nul -> 400' ($depNul.OK -eq $false -and $depNul.Status -eq 400) "($($depNul.Status))"
+$depSansDate = Invoke-Api 'Post' "$Base/initiatives/$idDepIni/depenses" @{ libelle = 'TEST sans date'; montant = 10 } $adminToken
+Test-Check 'Depense : date absente -> 400' ($depSansDate.OK -eq $false -and $depSansDate.Status -eq 400) "($($depSansDate.Status))"
+$depLibelle = Invoke-Api 'Post' "$Base/initiatives/$idDepIni/depenses" @{ libelle = ''; montant = 10; dateDepense = '2026-03-01' } $adminToken
+Test-Check 'Depense : libelle vide -> 400' ($depLibelle.OK -eq $false -and $depLibelle.Status -eq 400) "($($depLibelle.Status))"
+
+# Droits : tous verbes reserves a DEPENSE_SAISIR, y compris la lecture
+# (information financiere).
+$depVis = Invoke-Api 'Get' "$Base/depenses" $null $visiteurToken
+Test-Check 'Depense : lecture visiteur -> 403' ($depVis.OK -eq $false -and $depVis.Status -eq 403) "($($depVis.Status))"
+$depVisIni = Invoke-Api 'Get' "$Base/initiatives/$idDepIni/depenses" $null $visiteurToken
+Test-Check 'Depense : lecture visiteur (initiative) -> 403' ($depVisIni.OK -eq $false -and $depVisIni.Status -eq 403) "($($depVisIni.Status))"
+$depAnonyme = Invoke-Api 'Get' "$Base/depenses" $null $null
+Test-Check 'Depense : anonyme -> 401' ($depAnonyme.OK -eq $false -and $depAnonyme.Status -eq 401) "($($depAnonyme.Status))"
+$depVisEcr = Invoke-Api 'Post' "$Base/initiatives/$idDepIni/depenses" @{ libelle = 'TEST tentative visiteur'; montant = 10; dateDepense = '2026-03-01' } $visiteurToken
+Test-Check 'Depense : ecriture visiteur -> 403' ($depVisEcr.OK -eq $false -and $depVisEcr.Status -eq 403) "($($depVisEcr.Status))"
+
+# Modification + suppression : lifecycle complet.
+$depMod = Invoke-Api 'Put' "$Base/depenses/$idD1" @{ libelle = 'TEST licences modifiees'; montant = 200; dateDepense = '2026-03-05'; categorie = 'materiel' } $adminToken
+Test-Check 'Depense : modification -> 200, nouveau libelle + montant' ($depMod.OK -and $depMod.Body.libelle -eq 'TEST licences modifiees' -and $depMod.Body.montant -eq 200) "($($depMod.Status))"
+$depSuppr = Invoke-Api 'Delete' "$Base/depenses/$idD2" $null $adminToken
+Test-Check 'Depense : suppression -> 204' ($depSuppr.OK -and $depSuppr.Status -eq 204) "($($depSuppr.Status))"
+$depReste = Invoke-Api 'Get' "$Base/depenses?initiative=$idDepIni" $null $adminToken
+Test-Check 'Depenses : registre apres suppression = 1' ($depReste.OK -and @($depReste.Body).Count -eq 1) "(@($depReste.Body).Count)"
+$depSuppr404 = Invoke-Api 'Delete' "$Base/depenses/99999999" $null $adminToken
+Test-Check 'Depense : suppression id inexistant -> 404' ($depSuppr404.OK -eq $false -and $depSuppr404.Status -eq 404) "($($depSuppr404.Status))"
+
+# Registre de l'initiative + export CSV (BOM UTF-8, point-virgule).
+$depInitListe = Invoke-Api 'Get' "$Base/initiatives/$idDepIni/depenses" $null $adminToken
+Test-Check 'Depense : registre de l''initiative -> 200, 1 ligne' ($depInitListe.OK -and @($depInitListe.Body).Count -eq 1) "(@($depInitListe.Body).Count)"
+$depOk = $false; $depDetail = ''
+try {
+    $depCsv = Invoke-WebRequest -UseBasicParsing -Uri "$Base/depenses/export?initiative=$idDepIni" -Headers @{ Authorization = "Bearer $adminToken" }
+    $depOctets = $depCsv.RawContentStream.ToArray()
+    $depTexte = [System.Text.Encoding]::UTF8.GetString($depOctets)
+    $depOk = ($depCsv.StatusCode -eq 200) `
+        -and ((-join $depCsv.Headers['Content-Type']) -like 'text/csv*') `
+        -and ($depOctets[0] -eq 0xEF) `
+        -and ($depTexte -like '*Date;Initiative;*') `
+        -and ($depTexte -like '*TEST licences modifiees*')
+    $depDetail = "($($depCsv.StatusCode))"
+} catch { $depDetail = "($($_.Exception.Message))" }
+Test-Check 'Depenses : export CSV (text/csv + BOM + en-tete + lignes)' $depOk $depDetail
+
+# Initiative archivee (section 16) : toute ecriture refusee.
+$depArch = Invoke-Api 'Post' "$Base/initiatives/$idRisqIni/depenses" @{ libelle = 'TEST apres archivage'; montant = 10; dateDepense = '2026-03-01' } $adminToken
+Test-Check 'Depense : initiative archivee -> 400' ($depArch.OK -eq $false -and $depArch.Status -eq 400) "($($depArch.Status))"
+
+# Nettoyage : annulee puis archivee (comme la section 16).
+$depAnnul = Invoke-Api 'Put' "$Base/initiatives/$idDepIni" @{ code = "TESTDEP-$suffixe"; nom = 'Depenses de test'; description = ''; avancement = 0; idEntite = 1; idResponsable = 2; idStatut = 5; idPriorite = 1; budget = 1000 } $adminToken
+$depArchIni = Invoke-Api 'Patch' "$Base/initiatives/$idDepIni/archive" $null $adminToken
+Test-Check 'Depenses : initiative annulee puis archivee (nettoyage)' ($depAnnul.OK -and $depArchIni.OK -and $depArchIni.Body.archive -eq $true) "($($depAnnul.Status)/$($depArchIni.Status))"
+
+Write-Output '=== 19. Journal d''audit (lecture seule, UTILISATEUR_GERER, immuable) ==='
+$jaAnonyme = Invoke-Api 'Get' "$Base/journal-audit" $null $null
+Test-Check 'Journal : anonyme -> 401' ($jaAnonyme.OK -eq $false -and $jaAnonyme.Status -eq 401) "($($jaAnonyme.Status))"
+$jaVis = Invoke-Api 'Get' "$Base/journal-audit" $null $visiteurToken
+Test-Check 'Journal : visiteur -> 403' ($jaVis.OK -eq $false -and $jaVis.Status -eq 403) "($($jaVis.Status))"
+$jaResp = Invoke-Api 'Get' "$Base/journal-audit" $null $responsableToken
+Test-Check 'Journal : responsable -> 403 (administrateur seul)' ($jaResp.OK -eq $false -and $jaResp.Status -eq 403) "($($jaResp.Status))"
+$jaListe = Invoke-Api 'Get' "$Base/journal-audit?page=0&size=50" $null $adminToken
+$jaTotal = 0; if ($jaListe.OK -and $jaListe.Headers) { $jaTotal = [int]"$($jaListe.Headers['X-Total-Count'])" }
+Test-Check 'Journal : administrateur -> 200, lignes journalisees par le filtre' ($jaListe.OK -and $jaTotal -ge 1 -and @($jaListe.Body).Count -ge 1) "($jaTotal)"
+Test-Check 'Journal : seules les ecritures sont journalisees (POST/PUT/PATCH/DELETE)' (@($jaListe.Body | Where-Object { $_.methode -notin @('POST','PUT','PATCH','DELETE') }).Count -eq 0)
+Test-Check 'Journal : routes sous /api/ + IP renseignee' (@($jaListe.Body | Where-Object { $_.route -notlike '/api/*' -or [string]::IsNullOrEmpty($_.adresseIp) }).Count -eq 0)
+# Mots de passe jamais en clair : le filtre redige les champs sensibles.
+Test-Check 'Journal : aucun mot de passe en clair (redaction *** obligatoire)' (@($jaListe.Body | Where-Object { $_.corps -match 'motDePasse' -and $_.corps -notmatch '\*\*\*' }).Count -eq 0)
+# PUT /api/initiatives/{id} : explicitement ignore par le filtre d'audit.
+Test-Check 'Journal : PUT /api/initiatives/{id} jamais journalise' (@($jaListe.Body | Where-Object { $_.methode -eq 'PUT' -and $_.route -match '^/api/initiatives/\d+$' }).Count -eq 0)
+
+$jaPost = Invoke-Api 'Get' "$Base/journal-audit?methode=POST" $null $adminToken
+Test-Check 'Journal : filtre methode=POST -> 200, lignes POST uniquement' ($jaPost.OK -and @($jaPost.Body).Count -ge 1 -and @($jaPost.Body | Where-Object { $_.methode -ne 'POST' }).Count -eq 0) "(@($jaPost.Body).Count)"
+$jaGet = Invoke-Api 'Get' "$Base/journal-audit?methode=GET" $null $adminToken
+Test-Check 'Journal : methode GET -> 400 (seules les ecritures existent)' ($jaGet.OK -eq $false -and $jaGet.Status -eq 400) "($($jaGet.Status))"
+$jaPeriode = Invoke-Api 'Get' "$Base/journal-audit?du=2026-06-01&au=2026-01-01" $null $adminToken
+Test-Check 'Journal : periode inversee -> 400' ($jaPeriode.OK -eq $false -and $jaPeriode.Status -eq 400) "($($jaPeriode.Status))"
+$jaEmail = Invoke-Api 'Get' "$Base/journal-audit?email=admin@it6.ma&size=20" $null $adminToken
+Test-Check 'Journal : filtre e-mail admin -> lignes admin uniquement' ($jaEmail.OK -and @($jaEmail.Body).Count -ge 1 -and @($jaEmail.Body | Where-Object { $_.email -notlike '*admin@it6.ma*' }).Count -eq 0) "(@($jaEmail.Body).Count)"
+
+# Immuabilite : aucun verbe d'ecriture n'est declare (405).
+$jaEcriture = Invoke-Api 'Post' "$Base/journal-audit" @{ } $adminToken
+Test-Check 'Journal : POST -> 405 (journal immuable)' ($jaEcriture.OK -eq $false -and $jaEcriture.Status -eq 405) "($($jaEcriture.Status))"
+
+Write-Output '=== 20. Notifications (alertes calculees a la volee, sans table) ==='
+$notifAnonyme = Invoke-Api 'Get' "$Base/notifications" $null $null
+Test-Check 'Notifications : anonyme -> 401' ($notifAnonyme.OK -eq $false -and $notifAnonyme.Status -eq 401) "($($notifAnonyme.Status))"
+$notifTypes = @('initiativeEnRetard','jalonEnRetard','jalonBientot','risqueCritique','risqueEcheance','demandeEnAttente','budgetDepasse')
+$notif = Invoke-Api 'Get' "$Base/notifications" $null $adminToken
+$notifCount = @($notif.Body.alertes | Where-Object { $null -ne $_ }).Count
+Test-Check 'Notifications : 200, total = nombre d''alertes' ($notif.OK -and $notif.Body.total -eq $notifCount) "($($notif.Body.total)/$notifCount)"
+Test-Check 'Notifications : types connus uniquement (7 codes)' (@($notif.Body.alertes | Where-Object { $_ -and $_.type -notin $notifTypes }).Count -eq 0)
+Test-Check 'Notifications : niveaux ROUGE ou ORANGE uniquement' (@($notif.Body.alertes | Where-Object { $_ -and $_.niveau -notin @('ROUGE','ORANGE') }).Count -eq 0)
+$notifVis = Invoke-Api 'Get' "$Base/notifications" $null $visiteurToken
+$notifVisCount = @($notifVis.Body.alertes | Where-Object { $null -ne $_ }).Count
+Test-Check 'Notifications : visiteur connecte -> 200, total coherent' ($notifVis.OK -and $notifVis.Body.total -eq $notifVisCount) "($($notifVis.Status))"
+
+# Alertes d'une initiative : structure seule (le contenu depend des dates).
+$iaAlertes = Invoke-Api 'Get' "$Base/initiatives/$idRisqIni/alertes" $null $adminToken
+Test-Check 'Alertes initiative : 200 (liste calculee, initiative archivee)' ($iaAlertes.OK) "($($iaAlertes.Status))"
+Test-Check 'Alertes initiative : archivee -> aucune alerte initiativeEnRetard' (@($iaAlertes.Body | Where-Object { $_ -and $_.type -eq 'initiativeEnRetard' }).Count -eq 0)
+
+Write-Output '=== 21. Mon espace (profil, pilote, droits conditionnels) ==='
+$meAnonyme = Invoke-Api 'Get' "$Base/mon-espace" $null $null
+Test-Check 'Mon espace : anonyme -> 401' ($meAnonyme.OK -eq $false -and $meAnonyme.Status -eq 401) "($($meAnonyme.Status))"
+$meAdmin = Invoke-Api 'Get' "$Base/mon-espace" $null $adminToken
+Test-Check 'Mon espace admin : compte + budget (BUDGET_CONSULTER) + depenses (DEPENSE_SAISIR)' ($meAdmin.OK -and $meAdmin.Body.compte.email -eq 'admin@it6.ma' -and $null -ne $meAdmin.Body.budgetTotal -and $null -ne $meAdmin.Body.depensesTotales) "($($meAdmin.Body.compte.email))"
+$meResp = Invoke-Api 'Get' "$Base/mon-espace" $null $responsableToken
+Test-Check 'Mon espace responsable : compte + budget + depenses' ($meResp.OK -and $meResp.Body.compte.email -eq 'responsable@it6.ma' -and $null -ne $meResp.Body.budgetTotal -and $null -ne $meResp.Body.depensesTotales) "($($meResp.Body.compte.email))"
+$meVis = Invoke-Api 'Get' "$Base/mon-espace" $null $visiteurToken
+Test-Check 'Mon espace visiteur : 200, budget + depenses null (sans permission)' ($meVis.OK -and $meVis.Body.compte.email -eq 'visiteur@it6.ma' -and $null -eq $meVis.Body.budgetTotal -and $null -eq $meVis.Body.depensesTotales) "($($meVis.Body.compte.email))"
+Test-Check 'Mon espace visiteur : aucune demande a evaluer (sans DEMANDE_EVALUER)' (@($meVis.Body.demandesEnAttente | Where-Object { $null -ne $_ }).Count -eq 0)
+
+Write-Output '=== 22. Exports CSV (BOM UTF-8, separateur point-virgule) ==='
+# Les quatre exports serveur, verifies ensemble : 200, text/csv, BOM en
+# tete et en-tete de colonnes attendu.
+$exports = @(
+    @{ Nom = 'historique'; Url = "$Base/historique/export?type=initiative"; Entete = 'Date;Objet' },
+    @{ Nom = 'risques';    Url = "$Base/risques/export";                    Entete = 'Initiative;Titre' },
+    @{ Nom = 'depenses';   Url = "$Base/depenses/export";                   Entete = 'Date;Initiative' },
+    @{ Nom = 'journal';    Url = "$Base/journal-audit/export";              Entete = 'Date;E-mail' }
+)
+foreach ($exp in $exports) {
+    $expOk = $false; $expDetail = ''
+    try {
+        $expResp = Invoke-WebRequest -UseBasicParsing -Uri $exp.Url -Headers @{ Authorization = "Bearer $adminToken" }
+        $expOctets = $expResp.RawContentStream.ToArray()
+        $expTexte = [System.Text.Encoding]::UTF8.GetString($expOctets)
+        $expOk = ($expResp.StatusCode -eq 200) `
+            -and ((-join $expResp.Headers['Content-Type']) -like 'text/csv*') `
+            -and ($expOctets[0] -eq 0xEF) `
+            -and ($expTexte -like "*$($exp.Entete)*")
+        $expDetail = "($($expResp.StatusCode))"
+    } catch { $expDetail = "($($_.Exception.Message))" }
+    Test-Check "Export CSV $($exp.Nom) : 200 text/csv + BOM + en-tete" $expOk $expDetail
+}
 
 Write-Output ''
 Write-Output '------------------------------------------------------------'

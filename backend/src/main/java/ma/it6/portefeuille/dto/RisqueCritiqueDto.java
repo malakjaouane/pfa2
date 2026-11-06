@@ -1,7 +1,9 @@
 package ma.it6.portefeuille.dto;
 
+import java.time.LocalDate;
+
 /**
- * Risque critique (santé pondérée ≥ 6 sur 9) destiné au widget
+ * Risque critique (santé pondérée ≥ 15 sur 25) destiné au widget
  * « Risques critiques » du tableau de bord : le contexte d'initiative
  * est embarqué pour que la page n'ait pas à recharger chaque fiche.
  *
@@ -11,7 +13,10 @@ package ma.it6.portefeuille.dto;
  */
 public record RisqueCritiqueDto(
         Long idRisque,
+        String titre,
         String description,
+        String statut,
+        LocalDate echeance,
         Integer probabilite,
         Integer impact,
         Integer score,

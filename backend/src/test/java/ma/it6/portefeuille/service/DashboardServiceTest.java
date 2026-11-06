@@ -195,7 +195,8 @@ class DashboardServiceTest {
         brancher(selection);
         ma.it6.portefeuille.dto.RisqueCritiqueDto critique =
                 new ma.it6.portefeuille.dto.RisqueCritiqueDto(7L, "Panne du fournisseur",
-                        3, 3, 9, ma.it6.portefeuille.dto.SanteDto.ROUGE,
+                        "Panne du fournisseur principal", "ouverte", null,
+                        5, 3, 15, ma.it6.portefeuille.dto.SanteDto.ROUGE,
                         1L, "I-1", "Initiative 1", null);
         when(risqueService.listerCritiques(List.of(1L, 2L))).thenReturn(List.of(critique));
 
@@ -207,7 +208,7 @@ class DashboardServiceTest {
         assertThat(reponse.risquesCritiques())
                 .extracting(ma.it6.portefeuille.dto.RisqueCritiqueDto::idRisque)
                 .containsExactly(7L);
-        assertThat(reponse.risquesCritiques().get(0).score()).isEqualTo(9);
+        assertThat(reponse.risquesCritiques().get(0).score()).isEqualTo(15);
     }
 
     @Test

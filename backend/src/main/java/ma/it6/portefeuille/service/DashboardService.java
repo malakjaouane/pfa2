@@ -143,7 +143,7 @@ public class DashboardService {
         // du message d'accueil.
         Map<Long, SanteDto> santes = calculeurSante.calculerTous(initiatives);
         long initiativesARisque = santes.values().stream()
-                .filter(s -> s != null && !SanteDto.VERTE.equals(s.niveau()))
+                .filter(s -> SanteDto.ORANGE.equals(s.niveau()) || SanteDto.ROUGE.equals(s.niveau()))
                 .count();
         List<InitiativeResponse> enRetardReponses = enRetardListe.stream()
                 .map(i -> InitiativeMapper.toResponse(i, santes.get(i.getIdInitiative())))
@@ -175,8 +175,12 @@ public class DashboardService {
     // Règles de calcul
     // ------------------------------------------------------------------
 
-    /** RM : une initiative est en retard si son échéance est passée. */
-    private static boolean enRetard(Initiative initiative, LocalDate aujourdHui) {
+    /**
+     * RM : une initiative est en retard si son échéance est passée.
+     * Package-private : réutilisé tel quel par {@link AlerteService} pour
+     * l'alerte {@code initiativeEnRetard} (une seule définition de la règle).
+     */
+    static boolean enRetard(Initiative initiative, LocalDate aujourdHui) {
         if (Boolean.TRUE.equals(initiative.getArchive())) {
             return false;
         }

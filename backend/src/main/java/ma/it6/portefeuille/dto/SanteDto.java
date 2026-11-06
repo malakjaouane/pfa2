@@ -33,4 +33,10 @@ public record SanteDto(
     public static final String VERTE = "VERTE";
     public static final String ORANGE = "ORANGE";
     public static final String ROUGE = "ROUGE";
+
+    /**
+     * Quatrième palier, réservé à la <b>santé des risques</b> (score
+     * moyen) : jamais émis par {@code CalculeurSante} pour une initiative.
+     */
+    public static final String AMBRE = "AMBRE";
 }
