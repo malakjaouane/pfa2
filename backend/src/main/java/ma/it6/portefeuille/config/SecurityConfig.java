@@ -68,6 +68,16 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/auth/login").permitAll()
+                        // Parcours client (2B) : inscription, verification,
+                        // mot de passe oublie et reinitialisation sont
+                        // accessibles sans authentification prealable.
+                        .requestMatchers("/api/auth/signup", "/api/auth/mot-de-passe-oublie",
+                                "/api/auth/reinitialiser-mot-de-passe", "/api/auth/verifier-email").permitAll()
+                        // Invitation : seulement l'administrateur de l'organisation.
+                        .requestMatchers(HttpMethod.POST, "/api/auth/inviter").hasRole("ADMIN")
+                        // Renvoi d'un nouvel access token (cookie refresh
+                        // tournant) et deconnexion : sans session ouverte.
+                        .requestMatchers("/api/auth/refresh", "/api/auth/logout").permitAll()
                         // Renvoi d'un nouvel access token (cookie refresh
                         // tournant) et déconnexion : sans session ouverte.
                         .requestMatchers("/api/auth/refresh", "/api/auth/logout").permitAll()

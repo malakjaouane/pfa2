@@ -71,11 +71,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -187,6 +190,10 @@ class SecuriteApiTest {
     private OrganisationRepository organisationRepository;
     @MockitoBean
     private JetonVerificationService jetonVerificationService;
+    @MockitoBean
+    private JetonReinitialisationService jetonReinitialisationService;
+    @MockitoBean
+    private InvitationService invitationService;
     @MockitoBean
     private EmailService emailService;
     @MockitoBean
@@ -1128,6 +1135,89 @@ class SecuriteApiTest {
                     .anyMatch(c -> c.startsWith("pfa_access=") && c.contains("Max-Age=0"))
                     .anyMatch(c -> c.startsWith("pfa_refresh=") && c.contains("Max-Age=0"));
         }
+    }
+
+    // =================================================================
+    // 2B3 : Mot de passe oublie / reinitialisation
+    // =================================================================
+    @Nested
+    @DisplayName("Mot de passe oublie / reinitialisation (2B3)")
+    class MotDePasseOublie {
+
+        @Test
+        @DisplayName("adresse inconnue : 200 sans envoi d'e-mail (ne revele rien)")
+        void emailInconnu() throws Exception {
+            when(utilisateurRepository.existsByEmail("inconnu@it6.ma")).thenReturn(false);
+
+            mockMvc.perform(post("/api/auth/mot-de-passe-oublie")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"email\":\"inconnu@it6.ma\"}"))
+                    .andExpect(status().isOk());
+
+            verify(emailService, never()).envoyer(anyString(), anyString(), anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("adresse connue : 200 et e-mail envoye")
+        void emailConnu() throws Exception {
+            when(utilisateurRepository.existsByEmail("admin@it6.ma")).thenReturn(true);
+            when(jetonReinitialisationService.creer("admin@it6.ma")).thenReturn("jeton-test");
+
+            mockMvc.perform(post("/api/auth/mot-de-passe-oublie")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"email\":\"admin@it6.ma\"}"))
+                    .andExpect(status().isOk());
+
+            verify(emailService, times(1)).envoyer(eq("admin@it6.ma"), anyString(), anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("jeton invalide : 400")
+        void jetonInvalide() throws Exception {
+            when(jetonReinitialisationService.valider("mauvais")).thenReturn(null);
+
+            mockMvc.perform(post("/api/auth/reinitialiser-mot-de-passe")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"jeton\":\"mauvais\",\"nouveauMotDePasse\":\"Nouveau2026!\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("JETON_INVALIDE"));
+        }
+
+        @Test
+        @DisplayName("jeton valide : mot de passe change, sessions revoquees")
+        void jetonValide() throws Exception {
+            when(jetonReinitialisationService.valider("bon-jeton")).thenReturn("admin@it6.ma");
+            when(utilisateurRepository.findByEmail("admin@it6.ma"))
+                    .thenReturn(Optional.of(utilisateurTest("admin@it6.ma")));
+            when(passwordEncoder.encode(anyString())).thenReturn("mot-de-passe-encode");
+
+            ArgumentCaptor<Utilisateur> captor = ArgumentCaptor.forClass(Utilisateur.class);
+
+            mockMvc.perform(post("/api/auth/reinitialiser-mot-de-passe")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"jeton\":\"bon-jeton\",\"nouveauMotDePasse\":\"Nouveau2026!\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("reinitialise")));
+
+            verify(utilisateurRepository).save(captor.capture());
+            Utilisateur sauvegarde = captor.getValue();
+            org.assertj.core.api.Assertions.assertThat(sauvegarde.getEmailVerifie()).isTrue();
+            org.assertj.core.api.Assertions.assertThat(sauvegarde.getMotDePasse()).isEqualTo("mot-de-passe-encode");
+            verify(refreshTokenService).revoquerToutParEmail("admin@it6.ma");
+        }
+    }
+
+    /** Utilisateur minimal typé comme en base, pour les tests de reinitialisation. */
+    private static Utilisateur utilisateurTest(String email) {
+        Utilisateur u = new Utilisateur();
+        u.setIdUser(1L);
+        u.setNom("Test");
+        u.setPrenom("Securite");
+        u.setEmail(email);
+        u.setMotDePasse("{bcrypt}$2a$10$ancien");
+        u.setActif(true);
+        u.setEmailVerifie(false);
+        return u;
     }
 
     // =================================================================

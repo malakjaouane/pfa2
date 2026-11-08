@@ -3,11 +3,16 @@ package ma.it6.portefeuille.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import ma.it6.portefeuille.dto.ChangerMotDePasseRequest;
+import ma.it6.portefeuille.dto.AccepterInvitationRequest;
+import ma.it6.portefeuille.dto.InviterRequest;
 import ma.it6.portefeuille.dto.InscriptionRequest;
+import ma.it6.portefeuille.dto.MotDePasseOublieRequest;
+import ma.it6.portefeuille.dto.ReinitialiserMotDePasseRequest;
 import ma.it6.portefeuille.dto.LoginRequest;
 import ma.it6.portefeuille.dto.LoginResponse;
 import ma.it6.portefeuille.exception.ResourceNotFoundException;
 import ma.it6.portefeuille.entity.Organisation;
+import ma.it6.portefeuille.entity.Invitation;
 import ma.it6.portefeuille.entity.Role;
 import ma.it6.portefeuille.entity.Utilisateur;
 import ma.it6.portefeuille.mapper.UtilisateurMapper;
@@ -17,6 +22,8 @@ import ma.it6.portefeuille.repository.UtilisateurRepository;
 import ma.it6.portefeuille.security.CookieService;
 import ma.it6.portefeuille.security.CustomUserDetailsService;
 import ma.it6.portefeuille.security.JwtService;
+import ma.it6.portefeuille.security.InvitationService;
+import ma.it6.portefeuille.security.JetonReinitialisationService;
 import ma.it6.portefeuille.security.JetonVerificationService;
 import ma.it6.portefeuille.security.PrincipalUser;
 import ma.it6.portefeuille.security.PolitiqueMotDePasse;
@@ -71,6 +78,8 @@ public class AuthController {
     private final RoleRepository roleRepository;
     private final UtilisateurRepository utilisateurRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JetonReinitialisationService jetonReinitialisationService;
+    private final InvitationService invitationService;
 
     @Value("${app.verification.email.lien-base:http://localhost/}")
     private String lienBaseVerification;
@@ -88,7 +97,9 @@ public class AuthController {
                           OrganisationRepository organisationRepository,
                           RoleRepository roleRepository,
                           UtilisateurRepository utilisateurRepository,
-                          PasswordEncoder passwordEncoder) {
+                          PasswordEncoder passwordEncoder,
+                          JetonReinitialisationService jetonReinitialisationService,
+                          InvitationService invitationService) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
@@ -103,6 +114,8 @@ public class AuthController {
         this.roleRepository = roleRepository;
         this.utilisateurRepository = utilisateurRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jetonReinitialisationService = jetonReinitialisationService;
+        this.invitationService = invitationService;
     }
 
     /**
@@ -280,6 +293,120 @@ public class AuthController {
         s = s.replace('ç', 'c').replace('ñ', 'n');
         s = s.replaceAll("[^a-z0-9]+", "-");
         return s.replaceAll("^-|-+$", "");
+    }
+
+    /**
+     * Demande de reinitialisation de mot de passe : cree un jeton a usage
+     * unique (1 heure) et l'envoie par e-mail. Repond toujours 200 (meme
+     * si l'adresse n'existe pas) pour ne pas reveler l'existence d'un
+     * compte.
+     */
+    @PostMapping("/mot-de-passe-oublie")
+    public ResponseEntity<?> motDePasseOublie(@Valid @RequestBody MotDePasseOublieRequest request) {
+        String email = request.email().toLowerCase().trim();
+        if (!utilisateurRepository.existsByEmail(email)) {
+            return ResponseEntity.ok(Map.of(
+                    "message", "Si ce compte existe, un e-mail de reinitialisation a ete envoye."));
+        }
+        String jeton = jetonReinitialisationService.creer(email);
+        String base = lienBaseVerification.endsWith("/") ? lienBaseVerification : lienBaseVerification + "/";
+        String lien = base + "reinitialiser-mot-de-passe?jeton=" + jeton;
+        EmailTemplateBuilder.Modele modele = EmailTemplateBuilder.personnaliser(
+                EmailTemplateBuilder.reinitialisation(EmailTemplateBuilder.LANGUE_FR), "", lien);
+        emailService.envoyer(email, modele.sujet(), modele.html(), modele.texte());
+        return ResponseEntity.ok(Map.of(
+                "message", "Si ce compte existe, un e-mail de reinitialisation a ete envoye."));
+    }
+
+    /**
+     * Reinitialisation du mot de passe : valide le jeton a usage unique,
+     * applique la politique de mot de passe, revoque toutes les sessions
+     * existantes et autorise la connexion.
+     */
+    @PostMapping("/reinitialiser-mot-de-passe")
+    public ResponseEntity<?> reinitialiserMotDePasse(@Valid @RequestBody ReinitialiserMotDePasseRequest request) {
+        String email = jetonReinitialisationService.valider(request.jeton());
+        if (email == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "code", "JETON_INVALIDE",
+                    "message", "Jeton de reinitialisation invalide ou expire."));
+        }
+        PolitiqueMotDePasse.valider(request.nouveauMotDePasse(), email);
+        Utilisateur u = utilisateurRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Compte introuvable pour " + email));
+        u.setMotDePasse(passwordEncoder.encode(request.nouveauMotDePasse()));
+        u.setEmailVerifie(true);
+        utilisateurRepository.save(u);
+        refreshTokenService.revoquerToutParEmail(email);
+        return ResponseEntity.ok(Map.of(
+                "message", "Mot de passe reinitialise. Vous pouvez vous connecter."));
+    }
+
+    /**
+     * Invitation d'un collegue : l'administrateur de l'organisation cree une
+     * invitation (jeton a usage unique) et l'invite reçoit un e-mail.
+     * Reserve aux comptes ROLE_ADMIN.
+     */
+    @PostMapping("/inviter")
+    public ResponseEntity<?> inviter(@Valid @RequestBody InviterRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Utilisateur invitateur = utilisateurRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("Invitateur introuvable pour " + authentication.getName()));
+
+        String email = request.email().toLowerCase().trim();
+        if (utilisateurRepository.existsByEmail(email)) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "code", "COMPTE_EXISTANT",
+                    "message", "Ce compte existe déjà."));
+        }
+
+        String jeton = invitationService.creer(email, invitateur.getIdOrganisation(), request.idRole(), invitateur.getIdUser());
+        Organisation organisation = organisationRepository.findById(invitateur.getIdOrganisation())
+                .orElseThrow(() -> new ResourceNotFoundException("Organisation introuvable"));
+        String base = lienBaseVerification.endsWith("/") ? lienBaseVerification : lienBaseVerification + "/";
+        String lien = base + "accepter-invitation?jeton=" + jeton;
+        EmailTemplateBuilder.Modele modele = EmailTemplateBuilder.personnaliser(
+                EmailTemplateBuilder.invitation(EmailTemplateBuilder.LANGUE_FR, invitateur.getPrenom(), organisation.getNom()), "", lien);
+        emailService.envoyer(email, modele.sujet(), modele.html(), modele.texte());
+
+        return ResponseEntity.status(202).body(Map.of(
+                "message", "Invitation envoyee a " + email));
+    }
+
+    /**
+     * Acceptation d'une invitation : cree le compte de l'invite dans
+     * l'organisation de l'invitateur, avec le role propose.
+     */
+    @PostMapping("/accepter-invitation")
+    public ResponseEntity<?> accepterInvitation(@Valid @RequestBody AccepterInvitationRequest request) {
+        Invitation.Acceptation acc = invitationService.valider(request.jeton());
+        if (acc == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "code", "JETON_INVALIDE",
+                    "message", "Jeton d'invitation invalide ou expire."));
+        }
+        PolitiqueMotDePasse.valider(request.motDePasse(), acc.email());
+        if (utilisateurRepository.existsByEmail(acc.email())) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "code", "COMPTE_EXISTANT",
+                    "message", "Ce compte existe déjà."));
+        }
+        Role role = roleRepository.findById(acc.idRole())
+                .orElseThrow(() -> new ResourceNotFoundException("Role introuvable : " + acc.idRole()));
+        Utilisateur u = Utilisateur.builder()
+                .nom(request.nom().trim()).prenom(request.prenom().trim()).email(acc.email())
+                .motDePasse(passwordEncoder.encode(request.motDePasse()))
+                .actif(true).emailVerifie(true).role(role).entite(null)
+                .build();
+        u.setIdOrganisation(acc.idOrganisation());
+        utilisateurRepository.save(u);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Compte cree. Vous pouvez vous connecter."));
+    }
+
+    /**
+     * Depot <strong>best-effort</strong>
     }
 
     /**

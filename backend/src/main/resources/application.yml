@@ -63,6 +63,8 @@ app:
     email:
       # Base URL du lien de verification envoye par e-mail (route front ou API).
       lien-base: ${EMAIL_VERIFICATION_BASE_URL:http://localhost/}
+  invitation:
+    duree-jours: 7
   security:
     # Durée de validité du cache de sessions (millisecondes). L'utilisateur et
     # ses permissions sont rechargeés à chaque requête ; ce cache évite une

@@ -5,6 +5,8 @@ import ma.it6.portefeuille.controller.AuthController;
 import ma.it6.portefeuille.controller.InitiativeController;
 import ma.it6.portefeuille.security.CookieService;
 import ma.it6.portefeuille.security.CustomUserDetailsService;
+import ma.it6.portefeuille.security.JetonReinitialisationService;
+import ma.it6.portefeuille.security.InvitationService;
 import ma.it6.portefeuille.security.JetonVerificationService;
 import ma.it6.portefeuille.security.JwtService;
 import ma.it6.portefeuille.service.email.EmailService;
@@ -111,6 +113,10 @@ class ApiErreurHttpTest {
     private OrganisationRepository organisationRepository;
     @MockitoBean
     private JetonVerificationService jetonVerificationService;
+    @MockitoBean
+    private JetonReinitialisationService jetonReinitialisationService;
+    @MockitoBean
+    private InvitationService invitationService;
     @MockitoBean
     private EmailService emailService;
     @MockitoBean
