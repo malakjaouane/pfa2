@@ -28,7 +28,9 @@ import ma.it6.portefeuille.entity.RolePermissionId;
 import ma.it6.portefeuille.entity.Utilisateur;
 import ma.it6.portefeuille.repository.OrganisationRepository;
 import ma.it6.portefeuille.repository.RoleRepository;
+import ma.it6.portefeuille.repository.MembreInitiativeRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
+import ma.it6.portefeuille.service.MembreInitiativeService;
 import ma.it6.portefeuille.exception.BadRequestException;
 import ma.it6.portefeuille.service.email.EmailService;
 import ma.it6.portefeuille.service.AssistantIaService;
@@ -47,6 +49,8 @@ import ma.it6.portefeuille.service.MonEspaceService;
 import ma.it6.portefeuille.service.ObjectifService;
 import ma.it6.portefeuille.service.RisqueService;
 import ma.it6.portefeuille.service.UtilisateurService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -72,6 +76,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -198,6 +203,15 @@ class SecuriteApiTest {
     private EmailService emailService;
     @MockitoBean
     private PasswordEncoder passwordEncoder;
+    @MockitoBean
+    private MembreInitiativeService membreInitiativeService;
+    @MockitoBean
+    private MembreInitiativeRepository membreInitiativeRepository;
+
+    @BeforeEach
+    void autoriserModificationsInitiative() {
+        when(membreInitiativeService.peutModifier(anyLong(), anyLong())).thenReturn(true);
+    }
 
     // =================================================================
     // 0. Assistant IA : permission dédiée IA_UTILISER + journal admin
@@ -1224,6 +1238,34 @@ class SecuriteApiTest {
         u.setActif(true);
         u.setEmailVerifie(false);
         return u;
+    }
+
+    @Nested
+    @DisplayName("Droits par initiative (2C)")
+    class DroitsInitiative {
+
+        @Test
+        @DisplayName("membre non-responsable : modification d'initiative refusée (403)")
+        void membreNonResponsableRefuse() throws Exception {
+            Utilisateur membre = new Utilisateur();
+            membre.setIdUser(99L);
+            membre.setEmail("membre@it6.ma");
+            membre.setNom("Membre");
+            membre.setPrenom("Test");
+            when(utilisateurRepository.findByEmail("membre@it6.ma"))
+                    .thenReturn(Optional.of(membre));
+            when(membreInitiativeService.peutModifier(99L, 1L)).thenReturn(false);
+
+            String jeton = jwtService.generer(principal("membre@it6.ma", "VISITEUR", "INITIATIVE_CONSULTER"));
+            when(sessionsService.chargerActif("membre@it6.ma"))
+                    .thenReturn(Optional.of(new PrincipalUser(membre)));
+
+            mockMvc.perform(put("/api/initiatives/1")
+                            .header("Authorization", "Bearer " + jeton)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"nom\":\"Modification interdite\"}"))
+                    .andExpect(status().isForbidden());
+        }
     }
 
     // =================================================================

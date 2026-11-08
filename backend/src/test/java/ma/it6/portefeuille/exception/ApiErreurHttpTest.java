@@ -5,6 +5,7 @@ import ma.it6.portefeuille.controller.AuthController;
 import ma.it6.portefeuille.controller.InitiativeController;
 import ma.it6.portefeuille.security.CookieService;
 import ma.it6.portefeuille.security.CustomUserDetailsService;
+import ma.it6.portefeuille.service.MembreInitiativeService;
 import ma.it6.portefeuille.security.JetonReinitialisationService;
 import ma.it6.portefeuille.security.InvitationService;
 import ma.it6.portefeuille.security.JetonVerificationService;
@@ -15,7 +16,10 @@ import ma.it6.portefeuille.security.RefreshTokenService;
 import ma.it6.portefeuille.security.SessionsService;
 import ma.it6.portefeuille.repository.OrganisationRepository;
 import ma.it6.portefeuille.repository.RoleRepository;
+import ma.it6.portefeuille.repository.MembreInitiativeRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
+import ma.it6.portefeuille.repository.MembreInitiativeRepository;
+import ma.it6.portefeuille.service.MembreInitiativeService;
 import ma.it6.portefeuille.service.BudgetService;
 import ma.it6.portefeuille.service.DashboardService;
 import ma.it6.portefeuille.service.EtapeService;
@@ -117,6 +121,10 @@ class ApiErreurHttpTest {
     private JetonReinitialisationService jetonReinitialisationService;
     @MockitoBean
     private InvitationService invitationService;
+    @MockitoBean
+    private MembreInitiativeService membreInitiativeService;
+    @MockitoBean
+    private MembreInitiativeRepository membreInitiativeRepository;
     @MockitoBean
     private EmailService emailService;
     @MockitoBean

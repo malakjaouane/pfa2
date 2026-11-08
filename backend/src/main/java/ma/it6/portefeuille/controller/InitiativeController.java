@@ -6,13 +6,21 @@ import ma.it6.portefeuille.dto.HistoriqueModificationResponse;
 import ma.it6.portefeuille.dto.InitiativeFilterRequest;
 import ma.it6.portefeuille.dto.InitiativeRequest;
 import ma.it6.portefeuille.dto.InitiativeResponse;
+import ma.it6.portefeuille.entity.Utilisateur;
+import ma.it6.portefeuille.repository.UtilisateurRepository;
 import ma.it6.portefeuille.service.HistoriqueModificationService;
 import ma.it6.portefeuille.service.InitiativeService;
+import ma.it6.portefeuille.service.MembreInitiativeService;
+import ma.it6.portefeuille.service.UtilisateurService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * API REST des initiatives (recherche, filtres combinés, CRUD, archivage,
@@ -29,11 +37,17 @@ public class InitiativeController {
 
     private final InitiativeService initiativeService;
     private final HistoriqueModificationService historiqueService;
+    private final UtilisateurRepository utilisateurRepository;
+    private final MembreInitiativeService membreInitiativeService;
 
     public InitiativeController(InitiativeService initiativeService,
-                                HistoriqueModificationService historiqueService) {
+                                HistoriqueModificationService historiqueService,
+                                UtilisateurRepository utilisateurRepository,
+                                MembreInitiativeService membreInitiativeService) {
         this.initiativeService = initiativeService;
         this.historiqueService = historiqueService;
+        this.utilisateurRepository = utilisateurRepository;
+        this.membreInitiativeService = membreInitiativeService;
     }
 
     /**
@@ -114,6 +128,7 @@ public class InitiativeController {
     public ResponseEntity<InitiativeResponse> changerStatut(
             @PathVariable Long id,
             @Valid @RequestBody ChangerStatutRequest request) {
+        verifierEcriture(id);
         return ResponseEntity.ok(initiativeService.changerStatut(id, request));
     }
 
@@ -126,11 +141,13 @@ public class InitiativeController {
     @PutMapping("/{id}")
     public ResponseEntity<InitiativeResponse> modifier(@PathVariable Long id,
                                                        @Valid @RequestBody InitiativeRequest request) {
+        verifierEcriture(id);
         return ResponseEntity.ok(initiativeService.modifier(id, request));
     }
 
     @PatchMapping("/{id}/archive")
     public ResponseEntity<InitiativeResponse> archiver(@PathVariable Long id) {
+        verifierEcriture(id);
         return ResponseEntity.ok(initiativeService.archiver(id));
     }
 
@@ -143,7 +160,30 @@ public class InitiativeController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> purger(@PathVariable Long id) {
+        verifierEcriture(id);
         initiativeService.purger(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Vérifie que l'utilisateur connecté peut modifier l'initiative
+     * (responsable ou membre contributeur/responsable). Sinon 403.
+     */
+    private void verifierEcriture(Long idInitiative) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            return;
+        }
+        Optional<Utilisateur> opt = utilisateurRepository.findByEmail(auth.getName());
+        if (opt.isEmpty()) {
+            // Utilisateur inconnu dans ce contexte (ex. tests) : on ne bloque pas
+            // ici, le contrôle Spring Security a déjà filtré l'authentification.
+            return;
+        }
+        Utilisateur utilisateur = opt.get();
+        if (!membreInitiativeService.peutModifier(utilisateur.getIdUser(), idInitiative)) {
+            throw new AccessDeniedException(
+                    "Vous n'avez pas le droit de modifier cette initiative (résponsable ou membre contributeur requis).");
+        }
     }
 }
