@@ -5,7 +5,7 @@
 #   2. docker compose up --build
 #   3. http://localhost:  → application  (http://localhost:8080 → API)
 #
-# Les deux secrets SONT obligatoires : compose refuse de démarrer sans eux
+# Les secrets SONT obligatoires : compose refuse de démarrer sans eux
 # (syntaxe ${VAR:?message}), et le backend refuse lui-même de démarrer hors
 # du profil dev si une valeur par défaut subsiste (VerificationSecrets).
 # ==================================================================
@@ -49,8 +49,11 @@ services:
         condition: service_healthy
     environment:
       SERVER_PORT: "8080"
-      # L'application n'est PAS en profil dev dans le conteneur : les
-      # secrets ci-dessous sont donc réellement vérifiés au démarrage.
+      # Profil explicite NON dev : les secrets ci-dessous sont donc
+      # réellement vérifiés au démarrage (VerificationSecrets), et les
+      # comptes de démonstration Resp@123 / Visi@123 ne sont jamais
+      # créés ici (DataInitializer les limite au profil dev).
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-conteneur}
       DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-portefeuille_initiatives}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
       DB_USERNAME: ${DB_USERNAME:-pfa_user}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD manquant - copiez .env.example en .env}
@@ -60,7 +63,9 @@ services:
       # Compte administrateur créé au premier démarrage (base vide) :
       # le mot de passe n'est plus codé en dur dans le code source.
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@it6.ma}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin@123}
+      # Exigé : hors profil dev le backend refuse de démarrer sans lui
+      # (VerificationSecrets) — plus aucune valeur par défaut ici.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD manquant - copiez .env.example en .env}
       # Conteneurs : seule l'origine du front conteneurisé sert.
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:*}
       # Assistant IA (Anthropic / format ouvert) — OPTIONNEL : sans clé en

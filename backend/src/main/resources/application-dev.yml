@@ -1,0 +1,16 @@
+# ============================================================
+# Profil de développement local (profil par défaut, cf.
+# spring.profiles.default dans application.yml).
+#
+# SEULE autorisation de conserver une valeur de démonstration :
+#   - ADMIN_PASSWORD : mdp du compte admin sur base vierge.
+# Hors de ce profil (conteneur, recette, production), ces valeurs
+# ne s'appliquent PAS : application.yml les laisse vides et
+# VerificationSecrets refuse le démarrage sans ADMIN_PASSWORD.
+#
+# Les comptes de démonstration Resp@123 / Visi@123 ne sont créés
+# eux aussi qu'avec ce profil (DataInitializer).
+# ============================================================
+app:
+  admin:
+    password: ${ADMIN_PASSWORD:Admin@123}
