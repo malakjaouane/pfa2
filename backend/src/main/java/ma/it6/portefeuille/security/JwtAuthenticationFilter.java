@@ -31,6 +31,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String PREFIXE = "Bearer ";
 
+    /**
+     * Attribut de requête portant le {@code PrincipalUser} authentifié :
+     * posé après validation du jeton, lu par le filtre suivant
+     * ({@code FiltreMotDePasseAChanger}) pour éviter un second
+     * chargement de l'utilisateur.
+     */
+    public static final String ATT_PRINCIPAL = "pfa.principal";
+
     private final JwtService jwtService;
     private final SessionsService sessionsService;
 
@@ -59,6 +67,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                         email, null, utilisateur.get().getAuthorities());
                         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(authentication);
+                        request.setAttribute(ATT_PRINCIPAL, utilisateur.get());
                     } else {
                         // Compte supprimé ou désactivé : on rejette explicitement
                         // le jeton pour éviter tout traitement ultérieur.

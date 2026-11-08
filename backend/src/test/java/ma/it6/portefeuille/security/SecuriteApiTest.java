@@ -117,7 +117,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         NotificationController.class,
         MonEspaceController.class
 })
-@Import({SecurityConfig.class, JwtService.class})
+@Import({SecurityConfig.class, JwtService.class, FiltreMotDePasseAChanger.class})
 class SecuriteApiTest {
 
     @Autowired
@@ -896,6 +896,96 @@ class SecuriteApiTest {
 
             mockMvc.perform(get("/api/initiatives").header("Authorization", "Bearer " + jeton))
                     .andExpect(status().isOk());
+        }
+    }
+
+    // =================================================================
+    // 2bis. Changement de mot de passe obligatoire (filtre V3)
+    // =================================================================
+    @Nested
+    @DisplayName("Changement de mot de passe obligatoire (marqueur V3)")
+    class MotDePasseObligatoire {
+
+        /** Principal authentifié dont le compte porte le marqueur V3. */
+        private PrincipalUser compteAMarque() {
+            PrincipalUser principal = principal("admin@it6.ma", "ADMIN", "INITIATIVE_CONSULTER");
+            principal.getUtilisateur().setDoitChangerMotDePasse(true);
+            return principal;
+        }
+
+        @Test
+        @DisplayName("compte marqué : route métier bloquée en 403 avec le code MOT_DE_PASSE_A_CHANGER")
+        void routeMetierBloquee() throws Exception {
+            String jeton = jwtService.generer(compteAMarque());
+            when(sessionsService.chargerActif("admin@it6.ma")).thenReturn(Optional.of(compteAMarque()));
+
+            mockMvc.perform(get("/api/initiatives").header("Authorization", "Bearer " + jeton))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("MOT_DE_PASSE_A_CHANGER"));
+
+            mockMvc.perform(get("/api/notifications").header("Authorization", "Bearer " + jeton))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("MOT_DE_PASSE_A_CHANGER"));
+        }
+
+        @Test
+        @DisplayName("compte marqué : la route de secours changer-mot-de-passe passe le filtre")
+        void routeDeSecoursAccordee() throws Exception {
+            String jeton = jwtService.generer(compteAMarque());
+            when(sessionsService.chargerActif("admin@it6.ma")).thenReturn(Optional.of(compteAMarque()));
+
+            mockMvc.perform(post("/api/auth/changer-mot-de-passe")
+                            .header("Authorization", "Bearer " + jeton)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"motDePasseActuel\":\"Admin@123\",\"nouveauMotDePasse\":\"Nouveau2026\"}"))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("compte marqué : /api/auth/me reste lisible (le profil porte le marqueur)")
+        void profilLisible() throws Exception {
+            String jeton = jwtService.generer(compteAMarque());
+            when(sessionsService.chargerActif("admin@it6.ma")).thenReturn(Optional.of(compteAMarque()));
+            when(userDetailsService.chargerParEmail("admin@it6.ma")).thenReturn(compteAMarque());
+
+            mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + jeton))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.doitChangerMotDePasse").value(true));
+        }
+
+        @Test
+        @DisplayName("compte marqué : le login renvoie le marqueur au frontend")
+        void loginTransporteLeMarqueur() throws Exception {
+            PrincipalUser compte = compteAMarque();
+            when(authenticationManager.authenticate(any()))
+                    .thenReturn(new org.springframework.security.authentication
+                            .UsernamePasswordAuthenticationToken(
+                            compte, null, compte.getAuthorities()));
+
+            mockMvc.perform(post("/api/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"email\":\"admin@it6.ma\",\"motDePasse\":\"Admin@123\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.doitChangerMotDePasse").value(true));
+        }
+
+        @Test
+        @DisplayName("compte NON marqué : accès normal, marqueur à false")
+        void compteNonMarque() throws Exception {
+            PrincipalUser normal = principal("v@it6.ma", "VISITEUR", "INITIATIVE_CONSULTER");
+            normal.getUtilisateur().setDoitChangerMotDePasse(false);
+            String jeton = jwtService.generer(normal);
+
+            when(sessionsService.chargerActif("v@it6.ma")).thenReturn(Optional.of(normal));
+            when(initiativeService.lister(any())).thenReturn(List.of());
+            when(userDetailsService.chargerParEmail("v@it6.ma")).thenReturn(normal);
+
+            mockMvc.perform(get("/api/initiatives").header("Authorization", "Bearer " + jeton))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + jeton))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.doitChangerMotDePasse").value(false));
         }
     }
 

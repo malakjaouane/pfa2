@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import api, { messageErreur } from '../api';
 import { useI18n } from '../i18n/I18nContext';
+import { useAuth } from '../AuthContext';
 import { IconCloche } from './Icons';
 import ListeAlertes from './ListeAlertes';
 
@@ -17,6 +18,7 @@ const DELAI_MS = 60000;
  */
 export default function NotificationsBell() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const [total, setTotal] = useState(0);
   const [alertes, setAlertes] = useState([]);
   const [ouvert, setOuvert] = useState(false);
@@ -24,15 +26,26 @@ export default function NotificationsBell() {
   const minuteur = useRef(null);
 
   const charger = useCallback(async () => {
+    // Compte en attente de changement de mot de passe : l'API répond 403 sur
+    // toutes les routes (filtre V3) — on n'interroge même pas le serveur.
+    if (user?.doitChangerMotDePasse) {
+      setTotal(0);
+      setAlertes([]);
+      return;
+    }
     try {
       const res = await api.get('/notifications');
       setTotal(res.data.total ?? 0);
       setAlertes(res.data.alertes ?? []);
     } catch (err) {
       // 401 : l'intercepteur gère l'expiration de session, on reste silencieux.
-      if (err.response?.status !== 401) setErreur(messageErreur(err));
+      // 403 « changement obligatoire » : l'écran dédié prend le relais.
+      if (err.response?.status !== 401
+        && err.response?.data?.code !== 'MOT_DE_PASSE_A_CHANGER') {
+        setErreur(messageErreur(err));
+      }
     }
-  }, []);
+  }, [user?.doitChangerMotDePasse]);
 
   useEffect(() => {
     charger();

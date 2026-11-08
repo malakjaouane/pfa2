@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../i18n/I18nContext';
 import { afficherMessage } from '../i18n/message';
 import api, { messageErreur } from '../api';
+import { useAuth } from '../AuthContext';
 
 /**
  * Écran « Changer mon mot de passe » (utilisateur déjà connecté).
@@ -9,9 +11,16 @@ import api, { messageErreur } from '../api';
  * <p>POST /api/auth/changer-mot-de-passe : le backend vérifie le mot de
  * passe actuel, applique la politique (8 caractères, lettre + chiffre,
  * différent de l'email) puis ré-hash le nouveau mot de passe en BCrypt.</p>
+ *
+ * <p>Compte marqué « changement obligatoire » (compte admin créé hors
+ * profil dev) : un bandeau l'annonce, et une fois le nouveau mot de passe
+ * enregistré le profil est rechargé (/auth/me) puis l'utilisateur est
+ * redirigé vers le tableau de bord — l'obligation est levée.</p>
  */
 export default function MotDePassePage() {
   const { t } = useI18n();
+  const { user, rafraichir } = useAuth();
+  const navigate = useNavigate();
   const [actuel, setActuel] = useState('');
   const [nouveau, setNouveau] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -19,6 +28,8 @@ export default function MotDePassePage() {
   const [erreur, setErreur] = useState('');
   const [succes, setSucces] = useState('');
   const [envoi, setEnvoi] = useState(false);
+
+  const obligation = Boolean(user?.doitChangerMotDePasse);
 
   const soumettre = async (e) => {
     e.preventDefault();
@@ -40,6 +51,12 @@ export default function MotDePassePage() {
       setActuel('');
       setNouveau('');
       setConfirmation('');
+      if (obligation) {
+        // Le marqueur est levé côté base : on recharge le profil puis on
+        // quitte l'écran imposé (RequireAuth ne bloque plus l'accès).
+        await rafraichir();
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err) {
       setErreur(messageErreur(err));
     } finally {
@@ -56,6 +73,11 @@ export default function MotDePassePage() {
         </div>
       </header>
 
+      {obligation && (
+        <div className="alerte alerte-info" role="alert">
+          {t('motDePasse.obligatoire')}
+        </div>
+      )}
       {succes && <div className="alerte alerte-succes">{succes}</div>}
       {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
 

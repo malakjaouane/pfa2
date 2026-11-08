@@ -78,6 +78,12 @@ Test-Check 'Login admin (token présent)' ($login.OK -and $null -ne $login.Body.
 Test-Check 'Permissions administrateur = 20 (dont ROLE_GERER + BUDGET_CONSULTER + IA_UTILISER)' ($login.OK -and $login.Body.permissions.Count -eq 20) "($($login.Body.permissions.Count))"
 Test-Check 'Permission ROLE_GERER présente' ($login.OK -and @($login.Body.permissions | Where-Object { $_ -eq 'ROLE_GERER' }).Count -eq 1)
 $adminToken = $login.Body.token
+# Marqueur « changement de mot de passe obligatoire » (migration V3) :
+# un compte créé HORS profil dev le reçoit à la création et toutes les
+# routes sauf /api/auth/changer-mot-de-passe lui répondent 403
+# (couvert en JUnit : FiltreMotDePasseAChanger). La démonstration n'a
+# jamais été créée hors dev -> le marqueur doit rester à false.
+Test-Check 'Marqueur doitChangerMotDePasse = false (admin demo)' ($login.OK -and $login.Body.doitChangerMotDePasse -eq $false)
 
 $bad = Invoke-Api 'Post' "$Base/auth/login" @{ email = 'admin@it6.ma'; motDePasse = 'FauxMdp' }
 Test-Check 'Mauvais mot de passe -> 401' ($bad.OK -eq $false -and $bad.Status -eq 401) "($($bad.Status))"
@@ -89,6 +95,7 @@ $visiteurToken = $loginV.Body.token
 $loginR = Invoke-Api 'Post' "$Base/auth/login" @{ email = 'responsable@it6.ma'; motDePasse = 'Resp@123' }
 Test-Check 'Login responsable, permissions = 17 (dont IA_UTILISER)' ($loginR.OK -and $loginR.Body.permissions.Count -eq 17) "($($loginR.Body.permissions.Count))"
 $responsableToken = $loginR.Body.token
+Test-Check 'Marqueur doitChangerMotDePasse = false (responsable demo)' ($loginR.OK -and $loginR.Body.doitChangerMotDePasse -eq $false)
 Test-Check 'Permission IA_UTILISER : admin + responsable, jamais le visiteur' (
     (@($login.Body.permissions | Where-Object { $_ -eq 'IA_UTILISER' }).Count -eq 1) -and
     (@($loginR.Body.permissions | Where-Object { $_ -eq 'IA_UTILISER' }).Count -eq 1) -and

@@ -5,6 +5,10 @@ import java.util.List;
 /**
  * Réponse d'authentification : jeton JWT + informations de l'utilisateur
  * connecté (profil, entité, permissions).
+ *
+ * @param doitChangerMotDePasse {@code true} = changement de mot de passe
+ *                              obligatoire avant toute autre action
+ *                              (compte créé hors profil dev).
  */
 public record LoginResponse(
         String token,
@@ -15,6 +19,7 @@ public record LoginResponse(
         String email,
         RoleDto role,
         EntiteDto entite,
-        List<String> permissions
+        List<String> permissions,
+        Boolean doitChangerMotDePasse
 ) {
 }

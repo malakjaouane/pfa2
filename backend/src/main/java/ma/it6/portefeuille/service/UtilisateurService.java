@@ -254,6 +254,10 @@ public class UtilisateurService {
         }
 
         u.setMotDePasse(passwordEncoder.encode(nouveauMotDePasse));
+        // Le marqueur « changement obligatoire » retombe dès que l'utilisateur
+        // a choisi son propre mot de passe (V3, premier login d'un compte
+        // créé hors profil dev).
+        u.setDoitChangerMotDePasse(false);
         utilisateurRepository.save(u);
 
         // Journal : le CHANGEMENT est tracé, jamais la valeur.

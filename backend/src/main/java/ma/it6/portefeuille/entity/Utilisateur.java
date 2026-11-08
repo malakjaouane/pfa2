@@ -42,6 +42,17 @@ public class Utilisateur extends BaseAuditable {
     @Column(name = "actif", nullable = false)
     private Boolean actif = true;
 
+    /**
+     * Changement de mot de passe obligatoire au prochain login (V3).
+     * Posé à la création d'un compte administrateur hors profil dev ;
+     * tant qu'il est à TRUE, le filtre {@code FiltreMotDePasseAChanger}
+     * n'autorise que {@code POST /api/auth/changer-mot-de-passe} et le
+     * marqueur retombe à FALSE dès l'enregistrement.
+     */
+    @Builder.Default
+    @Column(name = "doit_changer_mot_de_passe", nullable = false)
+    private Boolean doitChangerMotDePasse = false;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_role")
     private Role role;

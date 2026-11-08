@@ -5,8 +5,11 @@ import ma.it6.portefeuille.repository.*;
 import ma.it6.portefeuille.service.CalculeurAvancement;
 import ma.it6.portefeuille.service.HistoriqueModificationService;
 import ma.it6.portefeuille.service.InitiativeService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +20,9 @@ import java.util.List;
 
 /**
  * Initialiseur de données de démonstration :
- *  - trois comptes de test (un par profil) avec mots de passe hashés BCrypt ;
+ *  - le compte administrateur (paramétré par environnement, base vierge) ;
+ *  - trois comptes de test — comptes Resp@123 / Visi@123 créés UNIQUEMENT
+ *    en profil de développement (dev / test / local), jamais en production ;
  *  - un petit portefeuille d'initiatives (avec étapes et jalons) afin de
  *    visualiser le dashboard et les KPI dès le premier lancement.
  * Seules les tables vides sont alimentées (idempotent).
@@ -25,10 +30,14 @@ import java.util.List;
  * <p>Le compte administrateur est paramétré par environnement
  * ({@code ADMIN_EMAIL} / {@code ADMIN_PASSWORD}, cf. {@code app.admin} dans
  * application.yml) : aucun mot de passe n'est codé en dur dans le code
- * source. Les valeurs par défaut ne servent qu'au lancement local.</p>
+ * source. La valeur par défaut n'existe qu'en profil dev
+ * (application-dev.yml) ; hors dev, un {@code ADMIN_PASSWORD} vide fait
+ * échouer le démarrage (VerificationSecrets).</p>
  */
 @Component
 public class DataInitializer implements CommandLineRunner {
+
+    private static final Logger LOG = LoggerFactory.getLogger(DataInitializer.class);
 
     public static final String RESPONSABLE_PASSWORD = "Resp@123";
     public static final String VISITEUR_PASSWORD = "Visi@123";
@@ -46,6 +55,7 @@ public class DataInitializer implements CommandLineRunner {
     private final ObjectifStrategiqueRepository objectifRepository;
     private final HistoriqueModificationService historiqueService;
     private final PasswordEncoder passwordEncoder;
+    private final Environment environment;
     private final String emailAdmin;
     private final String motDePasseAdmin;
 
@@ -62,6 +72,7 @@ public class DataInitializer implements CommandLineRunner {
                            ObjectifStrategiqueRepository objectifRepository,
                            HistoriqueModificationService historiqueService,
                            PasswordEncoder passwordEncoder,
+                           Environment environment,
                            @Value("${app.admin.email}") String emailAdmin,
                            @Value("${app.admin.password}") String motDePasseAdmin) {
         this.utilisateurRepository = utilisateurRepository;
@@ -77,6 +88,7 @@ public class DataInitializer implements CommandLineRunner {
         this.objectifRepository = objectifRepository;
         this.historiqueService = historiqueService;
         this.passwordEncoder = passwordEncoder;
+        this.environment = environment;
         this.emailAdmin = emailAdmin;
         this.motDePasseAdmin = motDePasseAdmin;
     }
@@ -253,10 +265,28 @@ public class DataInitializer implements CommandLineRunner {
         Entite dv = entiteRepository.findById(2L).orElse(null);
         Entite si = entiteRepository.findById(3L).orElse(null);
 
+        // Jamais de compte administrateur sans mot de passe : VerificationSecrets
+        // refuse déjà un ADMIN_PASSWORD vide, la garde ci-dessous protège un
+        // appel direct (ex. test) contre la création d'un compte injoignable.
+        if (motDePasseAdmin == null || motDePasseAdmin.isBlank()) {
+            throw new IllegalStateException(
+                    "ADMIN_PASSWORD est vide : impossible de créer le compte administrateur.");
+        }
+
         utilisateurRepository.save(Utilisateur.builder()
                 .nom("Administrateur").prenom("Système").email(emailAdmin)
                 .motDePasse(passwordEncoder.encode(motDePasseAdmin))
+                // Hors dev : premier login forcé de choisir son propre mot de
+                // passe (le livré ne doit pas survivre à la mise en service).
+                .doitChangerMotDePasse(!Profils.estDeveloppement(environment))
                 .telephone("0611111111").actif(true).role(admin).entite(it6).build());
+
+        // Comptes de démonstration (Resp@123 / Visi@123) : profil dev
+        // uniquement — une installation hors dev ne crée QUE l'admin.
+        if (!Profils.estDeveloppement(environment)) {
+            LOG.info("Hors profil dev : comptes de démonstration (responsable / visiteur) non créés.");
+            return;
+        }
 
         utilisateurRepository.save(Utilisateur.builder()
                 .nom("Alaoui").prenom("Karim").email("responsable@it6.ma")

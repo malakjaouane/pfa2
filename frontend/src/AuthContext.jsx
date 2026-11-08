@@ -51,6 +51,18 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  /**
+   * Recharge le profil depuis /auth/me (dont le marqueur
+   * « doitChangerMotDePasse ») : utilisé après un changement de mot de
+   * passe pour lever l'obligation sans reconnexion.
+   */
+  const rafraichir = useCallback(async () => {
+    const res = await api.get('/auth/me');
+    setUser(res.data);
+    localStorage.setItem('pfa_user', JSON.stringify(res.data));
+    return res.data;
+  }, []);
+
   /** Fonction courte : l'utilisateur possède-t-il telle permission ? */
   const hasPermission = useCallback(
     (permission) => Boolean(user?.permissions?.includes(permission)),
@@ -64,7 +76,7 @@ export function AuthProvider({ children }) {
   );
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, hasPermission, hasRole }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, rafraichir, hasPermission, hasRole }}>
       {children}
     </AuthContext.Provider>
   );

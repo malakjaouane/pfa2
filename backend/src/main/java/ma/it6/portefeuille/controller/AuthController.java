@@ -162,7 +162,8 @@ public class AuthController {
                 u.getEmail(),
                 UtilisateurMapper.toRoleDto(u.getRole()),
                 UtilisateurMapper.toEntiteDto(u.getEntite()),
-                permissions
+                permissions,
+                Boolean.TRUE.equals(u.getDoitChangerMotDePasse())
         );
     }
 }

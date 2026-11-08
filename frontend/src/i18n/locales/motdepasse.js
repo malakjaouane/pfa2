@@ -11,7 +11,8 @@ export default {
     'motDePasse.enregistrer': 'Enregistrer le nouveau mot de passe',
     'motDePasse.enCours': 'Enregistrement…',
     'motDePasse.succes': 'Mot de passe modifié avec succès.',
-    'motDePasse.erreurConfirmation': 'Les deux nouveaux mots de passe ne correspondent pas.'
+    'motDePasse.erreurConfirmation': 'Les deux nouveaux mots de passe ne correspondent pas.',
+    'motDePasse.obligatoire': "Changement obligatoire : définissez votre propre mot de passe avant d'accéder à l'application."
   },
 
   en: {
@@ -25,7 +26,8 @@ export default {
     'motDePasse.enregistrer': 'Save the new password',
     'motDePasse.enCours': 'Saving…',
     'motDePasse.succes': 'Password changed successfully.',
-    'motDePasse.erreurConfirmation': 'The two new passwords do not match.'
+    'motDePasse.erreurConfirmation': 'The two new passwords do not match.',
+    'motDePasse.obligatoire': 'Password change required: set your own password before using the application.'
   },
 
   ar: {
@@ -39,7 +41,8 @@ export default {
     'motDePasse.enregistrer': 'حفظ كلمة المرور الجديدة',
     'motDePasse.enCours': 'جارٍ الحفظ…',
     'motDePasse.succes': 'تم تغيير كلمة المرور بنجاح.',
-    'motDePasse.erreurConfirmation': 'كلمتا المرور الجديدتان غير متطابقتين.'
+    'motDePasse.erreurConfirmation': 'كلمتا المرور الجديدتان غير متطابقتين.',
+    'motDePasse.obligatoire': 'تغيير إجباري: حدّد كلمة المرور الخاصة بك قبل الدخول إلى التطبيق.'
   },
 
   es: {
@@ -53,6 +56,7 @@ export default {
     'motDePasse.enregistrer': 'Guardar la nueva contraseña',
     'motDePasse.enCours': 'Guardando…',
     'motDePasse.succes': 'Contraseña modificada correctamente.',
-    'motDePasse.erreurConfirmation': 'Las dos contraseñas nuevas no coinciden.'
+    'motDePasse.erreurConfirmation': 'Las dos contraseñas nuevas no coinciden.',
+    'motDePasse.obligatoire': 'Cambio obligatorio: defina su propia contraseña antes de acceder a la aplicación.'
   }
 };

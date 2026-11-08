@@ -18,6 +18,12 @@ export default function RequireAuth({ children, permissions = [] }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Changement de mot de passe obligatoire (compte créé hors profil dev) :
+  // la seule page autorisée est celle du changement, quel que soit le reste.
+  if (user.doitChangerMotDePasse && location.pathname !== '/mot-de-passe') {
+    return <Navigate to="/mot-de-passe" replace />;
+  }
+
   const autorise = permissions.length === 0
     || permissions.some((p) => user.permissions?.includes(p));
 

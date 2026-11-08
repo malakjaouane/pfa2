@@ -1,5 +1,6 @@
 package ma.it6.portefeuille.config;
 
+import ma.it6.portefeuille.security.FiltreMotDePasseAChanger;
 import ma.it6.portefeuille.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -34,12 +35,15 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final FiltreMotDePasseAChanger filtreMotDePasseAChanger;
     private final String[] originesAutorisees;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          FiltreMotDePasseAChanger filtreMotDePasseAChanger,
                           @Value("${app.cors.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*}")
                           String originesAutorisees) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.filtreMotDePasseAChanger = filtreMotDePasseAChanger;
         // Motifs séparés par des virgules (cf. application.yml).
         this.originesAutorisees = originesAutorisees == null
                 ? new String[0]
@@ -192,7 +196,10 @@ public class SecurityConfig {
                                     "Accès refusé : droits insuffisants."));
                         })
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // Juste après le JWT : un compte marqué « changement de mot de
+                // passe obligatoire » (V3) n'accorde que les routes de secours.
+                .addFilterAfter(filtreMotDePasseAChanger, JwtAuthenticationFilter.class);
 
         return http.build();
     }
