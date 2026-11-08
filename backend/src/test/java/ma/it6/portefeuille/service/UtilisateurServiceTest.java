@@ -62,6 +62,8 @@ class UtilisateurServiceTest {
     private DemandeInitiativeRepository demandeRepository;
     @Mock
     private HistoriqueModificationService historiqueService;
+    @Mock
+    private ma.it6.portefeuille.security.RefreshTokenService refreshTokenService;
 
     @InjectMocks
     private UtilisateurService service;

@@ -37,13 +37,20 @@ spring:
     # démarrage si elles sont conservées (voir VerificationSecrets).
     default: dev
 
-# Durée de validité du jeton JWT (en millisecondes) : 8 heures.
-# Les valeurs sensibles sont surchargeables par variables d'environnement
-# (voir .env.example) ; les valeurs par défaut permettent un lancement local.
+# Jetons et cookies de session (valeurs sensibles surchargeables par
+# variables d'environnement — voir .env.example).
 app:
   jwt:
     secret: ${JWT_SECRET:PfaIT6ConsultingAgdalRabat2026CleSecreteTresLonguePourHS256===}
-    expiration-ms: ${JWT_EXPIRATION_MS:28800000}
+    # Access token COURT : 15 minutes, servi en cookie HttpOnly (pfa_access).
+    # Au-delà, le client présente le cookie pfa_refresh (rotation, V4).
+    expiration-ms: ${JWT_EXPIRATION_MS:900000}
+    # Validité du jeton de rafraîchissement (rotation à chaque usage).
+    refresh-jours: ${JWT_REFRESH_JOURS:7}
+  cookie:
+    # Secure = cookie réservé à HTTPS. True partout sauf autorisation
+    # explicite pour un lancement local en HTTP (COOKIE_SECURE=false).
+    secure: ${COOKIE_SECURE:true}
   security:
     # Durée de validité du cache de sessions (millisecondes). L'utilisateur et
     # ses permissions sont rechargeés à chaque requête ; ce cache évite une

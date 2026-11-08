@@ -71,6 +71,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -117,7 +118,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         NotificationController.class,
         MonEspaceController.class
 })
-@Import({SecurityConfig.class, JwtService.class, FiltreMotDePasseAChanger.class})
+@Import({SecurityConfig.class, JwtService.class, FiltreMotDePasseAChanger.class, CookieService.class})
 class SecuriteApiTest {
 
     @Autowired
@@ -171,6 +172,8 @@ class SecuriteApiTest {
     private AlerteService alerteService;
     @MockitoBean
     private MonEspaceService monEspaceService;
+    @MockitoBean
+    private RefreshTokenService refreshTokenService;
 
     // =================================================================
     // 0. Assistant IA : permission dédiée IA_UTILISER + journal admin
@@ -933,6 +936,8 @@ class SecuriteApiTest {
         void routeDeSecoursAccordee() throws Exception {
             String jeton = jwtService.generer(compteAMarque());
             when(sessionsService.chargerActif("admin@it6.ma")).thenReturn(Optional.of(compteAMarque()));
+            when(userDetailsService.chargerParEmail("admin@it6.ma")).thenReturn(compteAMarque());
+            when(refreshTokenService.creer(any())).thenReturn("refresh-test");
 
             mockMvc.perform(post("/api/auth/changer-mot-de-passe")
                             .header("Authorization", "Bearer " + jeton)
@@ -961,6 +966,7 @@ class SecuriteApiTest {
                     .thenReturn(new org.springframework.security.authentication
                             .UsernamePasswordAuthenticationToken(
                             compte, null, compte.getAuthorities()));
+            when(refreshTokenService.creer(any())).thenReturn("refresh-test");
 
             mockMvc.perform(post("/api/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -986,6 +992,124 @@ class SecuriteApiTest {
             mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + jeton))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.doitChangerMotDePasse").value(false));
+        }
+    }
+
+    // =================================================================
+    // 2 bis. Phase 1 C : cookies HttpOnly (access 15 min) + refresh rotatif
+    // =================================================================
+    @Nested
+    @DisplayName("Cookies de session et refresh rotatif (V4)")
+    class CookiesSession {
+
+        private PrincipalUser visiteur() {
+            PrincipalUser p = principal("v@it6.ma", "VISITEUR", "INITIATIVE_CONSULTER");
+            p.getUtilisateur().setDoitChangerMotDePasse(false);
+            return p;
+        }
+
+        @Test
+        @DisplayName("login : cookie pfa_access HttpOnly + SameSite=Strict, jeton aussi dans le corps")
+        void loginPoseCookiesHttpOnly() throws Exception {
+            PrincipalUser compte = visiteur();
+            when(authenticationManager.authenticate(any()))
+                    .thenReturn(new UsernamePasswordAuthenticationToken(
+                            compte, null, compte.getAuthorities()));
+            when(refreshTokenService.creer(any())).thenReturn("refresh-clair");
+
+            String[] cookies = mockMvc.perform(post("/api/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"email\":\"v@it6.ma\",\"motDePasse\":\"Visi@123\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.token").isNotEmpty())
+                    .andReturn().getResponse().getHeaders("Set-Cookie").toArray(new String[0]);
+
+            String access = java.util.Arrays.stream(cookies)
+                    .filter(c -> c.startsWith("pfa_access=")).findFirst().orElse("");
+            String refresh = java.util.Arrays.stream(cookies)
+                    .filter(c -> c.startsWith("pfa_refresh=")).findFirst().orElse("");
+
+            org.assertj.core.api.Assertions.assertThat(access)
+                    .contains("HttpOnly").contains("SameSite=Strict")
+                    .contains("Path=/").doesNotContain("Path=/api/auth");
+            org.assertj.core.api.Assertions.assertThat(refresh)
+                    .contains("HttpOnly").contains("SameSite=Strict")
+                    .contains("Path=/api/auth");
+        }
+
+        @Test
+        @DisplayName("authentification par le seul cookie pfa_access (sans en-tête Authorization)")
+        void authentificationParCookie() throws Exception {
+            PrincipalUser compte = visiteur();
+            String jeton = jwtService.generer(compte);
+            when(sessionsService.chargerActif("v@it6.ma")).thenReturn(Optional.of(compte));
+            when(initiativeService.lister(any())).thenReturn(List.of());
+
+            mockMvc.perform(get("/api/initiatives")
+                            .cookie(new jakarta.servlet.http.Cookie("pfa_access", jeton)))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("refresh sans cookie : 401 (pas de session ouverte)")
+        void refreshSansCookie() throws Exception {
+            mockMvc.perform(post("/api/auth/refresh"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.message").isNotEmpty());
+        }
+
+        @Test
+        @DisplayName("refresh avec cookie valide : rotation (nouveau refresh) + nouvel access")
+        void refreshAvecCookieValide() throws Exception {
+            PrincipalUser compte = visiteur();
+            when(refreshTokenService.tourner("clair-ok"))
+                    .thenReturn(new RefreshTokenService.Rotation("clair-suivant", compte.getUtilisateur()));
+
+            String[] cookies = mockMvc.perform(post("/api/auth/refresh")
+                            .cookie(new jakarta.servlet.http.Cookie("pfa_refresh", "clair-ok")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.token").isNotEmpty())
+                    .andReturn().getResponse().getHeaders("Set-Cookie").toArray(new String[0]);
+
+            String access = java.util.Arrays.stream(cookies)
+                    .filter(c -> c.startsWith("pfa_access=")).findFirst().orElse("");
+            String refresh = java.util.Arrays.stream(cookies)
+                    .filter(c -> c.startsWith("pfa_refresh=")).findFirst().orElse("");
+
+            org.assertj.core.api.Assertions.assertThat(access).contains("HttpOnly");
+            org.assertj.core.api.Assertions.assertThat(refresh).contains("clair-suivant");
+        }
+
+        @Test
+        @DisplayName("refresh d'un jeton déjà présenté (vol) : 401 + cookies vidés")
+        void refreshReutilisation() throws Exception {
+            when(refreshTokenService.tourner("deja-vole")).thenReturn(null);
+
+            mockMvc.perform(post("/api/auth/refresh")
+                            .cookie(new jakarta.servlet.http.Cookie("pfa_refresh", "deja-vole")))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(header().string("Set-Cookie",
+                            org.hamcrest.Matchers.containsString("pfa_access=")))
+                    .andExpect(header().string("Set-Cookie",
+                            org.hamcrest.Matchers.containsString("Max-Age=0")));
+        }
+
+        @Test
+        @DisplayName("logout : révocation des refresh + cookies vidés")
+        void logoutRevoqueEtVide() throws Exception {
+            PrincipalUser compte = visiteur();
+            String jeton = jwtService.generer(compte);
+            when(sessionsService.chargerActif("v@it6.ma")).thenReturn(Optional.of(compte));
+
+            String[] cookies = mockMvc.perform(post("/api/auth/logout")
+                            .cookie(new jakarta.servlet.http.Cookie("pfa_access", jeton)))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getHeaders("Set-Cookie").toArray(new String[0]);
+
+            verify(refreshTokenService).revoquerToutParEmail("v@it6.ma");
+            org.assertj.core.api.Assertions.assertThat(java.util.Arrays.asList(cookies))
+                    .anyMatch(c -> c.startsWith("pfa_access=") && c.contains("Max-Age=0"))
+                    .anyMatch(c -> c.startsWith("pfa_refresh=") && c.contains("Max-Age=0"));
         }
     }
 

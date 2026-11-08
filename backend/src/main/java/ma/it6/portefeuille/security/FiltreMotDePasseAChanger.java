@@ -36,7 +36,10 @@ public class FiltreMotDePasseAChanger extends OncePerRequestFilter {
      *  l'écran de changement au lieu de déconnecter l'utilisateur). */
     private static final String[] ROUTES_AUTORISEES = {
             "/api/auth/changer-mot-de-passe",
-            "/api/auth/me"
+            "/api/auth/me",
+            // La déconnexion reste possible même sous obligation de changer
+            // de mot de passe : elle révoque les jetons et vide les cookies.
+            "/api/auth/logout"
     };
 
     @Override

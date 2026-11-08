@@ -13,6 +13,7 @@ import ma.it6.portefeuille.repository.EntiteRepository;
 import ma.it6.portefeuille.repository.RoleRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
 import ma.it6.portefeuille.security.PolitiqueMotDePasse;
+import ma.it6.portefeuille.security.RefreshTokenService;
 import ma.it6.portefeuille.security.SessionsService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -45,6 +46,7 @@ public class UtilisateurService {
     private final SessionsService sessionsService;
     private final DemandeInitiativeRepository demandeRepository;
     private final HistoriqueModificationService historiqueService;
+    private final RefreshTokenService refreshTokenService;
 
     public UtilisateurService(UtilisateurRepository utilisateurRepository,
                               RoleRepository roleRepository,
@@ -52,7 +54,8 @@ public class UtilisateurService {
                               PasswordEncoder passwordEncoder,
                               SessionsService sessionsService,
                               DemandeInitiativeRepository demandeRepository,
-                              HistoriqueModificationService historiqueService) {
+                              HistoriqueModificationService historiqueService,
+                              RefreshTokenService refreshTokenService) {
         this.utilisateurRepository = utilisateurRepository;
         this.roleRepository = roleRepository;
         this.entiteRepository = entiteRepository;
@@ -60,6 +63,7 @@ public class UtilisateurService {
         this.sessionsService = sessionsService;
         this.demandeRepository = demandeRepository;
         this.historiqueService = historiqueService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Transactional(readOnly = true)
@@ -161,6 +165,13 @@ public class UtilisateurService {
         // (invalidation différée jusqu'au commit pour ne pas relire trop tôt).
         sessionsService.invaliderApresCommit(ancienEmail);
         sessionsService.invaliderApresCommit(enregistre.getEmail());
+
+        // Changement de mot de passe ou désactivation par l'admin : tous les
+        // jetons de rafraîchissement du compte (7 jours) sont révoqués — un
+        // compte réinitialisé ne doit pas garder une session ouverte.
+        if (motDePasseChange || !actifApres) {
+            refreshTokenService.revoquerTout(idUser);
+        }
 
         return UtilisateurMapper.toResponse(enregistre);
     }

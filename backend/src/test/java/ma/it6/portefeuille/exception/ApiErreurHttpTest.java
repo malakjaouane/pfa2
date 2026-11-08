@@ -3,9 +3,11 @@ package ma.it6.portefeuille.exception;
 import ma.it6.portefeuille.config.SecurityConfig;
 import ma.it6.portefeuille.controller.AuthController;
 import ma.it6.portefeuille.controller.InitiativeController;
+import ma.it6.portefeuille.security.CookieService;
 import ma.it6.portefeuille.security.CustomUserDetailsService;
 import ma.it6.portefeuille.security.JwtService;
 import ma.it6.portefeuille.security.ProtectionConnexions;
+import ma.it6.portefeuille.security.RefreshTokenService;
 import ma.it6.portefeuille.security.SessionsService;
 import ma.it6.portefeuille.service.BudgetService;
 import ma.it6.portefeuille.service.DashboardService;
@@ -57,7 +59,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         InitiativeController.class,
         AuthController.class
 })
-@Import({SecurityConfig.class, JwtService.class})
+@Import({SecurityConfig.class, JwtService.class, CookieService.class})
 class ApiErreurHttpTest {
 
     @Autowired
@@ -91,6 +93,10 @@ class ApiErreurHttpTest {
     private SessionsService sessionsService;
     @MockitoBean
     private ProtectionConnexions protectionConnexions;
+    @MockitoBean
+    private RefreshTokenService refreshTokenService;
+    @MockitoBean
+    private CookieService cookieService;
 
     @Nested
     @DisplayName("Une requête malformée n'est pas une erreur interne")

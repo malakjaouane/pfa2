@@ -17,14 +17,20 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
- * Filtre JWT : lit le jeton « Bearer », le valide <strong>puis recharge
- * l'utilisateur depuis la base</strong> avant de positionner l'authentification.
+ * Filtre JWT : lit le jeton « Bearer » de l'en-tête {@code Authorization}
+ * <strong>ou</strong> le cookie d'accès {@code pfa_access} (HttpOnly, 15 min),
+ * le valide <strong>puis recharge l'utilisateur depuis la base</strong> avant
+ * de positionner l'authentification.
  *
  * <p>Le jeton ne fait pas foi à lui seul : à chaque requête, le compte doit
  * toujours exister et être actif, et ce sont les permissions fraîchement
  * chargées qui sont utilisées (et non celles encodées dans le jeton). Un
  * compte désactivé ou un rôle modifié a donc effet immédiat, sans attendre
  * l'expiration du jeton.</p>
+ *
+ * <p>L'en-tête l'emporte sur le cookie : un client non navigateur (suite de
+ * tests, script) s'authentifie par {@code Authorization} sans jamais porter
+ * de cookie.</p>
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -41,22 +47,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final SessionsService sessionsService;
+    private final CookieService cookieService;
 
-    public JwtAuthenticationFilter(JwtService jwtService, SessionsService sessionsService) {
+    public JwtAuthenticationFilter(JwtService jwtService, SessionsService sessionsService,
+                                   CookieService cookieService) {
         this.jwtService = jwtService;
         this.sessionsService = sessionsService;
+        this.cookieService = cookieService;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        String entete = request.getHeader("Authorization");
+        String token = extraireJeton(request);
 
-        if (entete != null && entete.startsWith(PREFIXE)
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-            String token = entete.substring(PREFIXE.length());
+        if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 String email = jwtService.extraireEmail(token);
                 if (email != null && jwtService.estValide(token, email)) {
@@ -77,6 +83,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 } else {
                     // Jeton expiré : on renvoie un 401 explicite plutôt que de
                     // laisser une chaîne de filtres renvoyer une page d'erreur.
+                    // Le frontend répond par un rafraîchissement (cookie refresh).
                     refuser(response, "Jeton expiré ou invalide.");
                     return;
                 }
@@ -88,6 +95,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /** Jeton d'accès : en-tête {@code Authorization} d'abord, sinon cookie. */
+    private String extraireJeton(HttpServletRequest request) {
+        String entete = request.getHeader("Authorization");
+        if (entete != null && entete.startsWith(PREFIXE)) {
+            return entete.substring(PREFIXE.length());
+        }
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            return cookieService.lire(request, CookieService.NOM_ACCESS);
+        }
+        return null;
     }
 
     private static void refuser(HttpServletResponse response, String message) throws IOException {

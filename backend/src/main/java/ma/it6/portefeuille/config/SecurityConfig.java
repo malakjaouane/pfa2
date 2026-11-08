@@ -68,6 +68,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/auth/login").permitAll()
+                        // Renvoi d'un nouvel access token (cookie refresh
+                        // tournant) et déconnexion : sans session ouverte.
+                        .requestMatchers("/api/auth/refresh", "/api/auth/logout").permitAll()
                         // Référentiels et profils (listes déroulantes) : utilisateur connecté
                         .requestMatchers(HttpMethod.GET, "/api/referentiels/**", "/api/roles", "/api/permissions").authenticated()
                         // Dashboard / KPI
