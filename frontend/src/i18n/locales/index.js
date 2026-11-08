@@ -46,6 +46,8 @@ const FRAGMENTS = [
   users,
   roles,
   motdepasse,
+  inscription,
+  onboarding,
   assistant
 ];
 

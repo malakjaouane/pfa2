@@ -5,10 +5,12 @@ import RequireAuth from './components/RequireAuth';
 import LandingPage from './pages/LandingPage';
 import DecouvrirPage from './pages/DecouvrirPage';
 import LoginPage from './pages/LoginPage';
+import InscriptionPage from './pages/InscriptionPage';
 import DashboardPage from './pages/DashboardPage';
 import InitiativesPage from './pages/InitiativesPage';
 import InitiativeFormPage from './pages/InitiativeFormPage';
 import InitiativeDetailPage from './pages/InitiativeDetailPage';
+import OnboardingPage from './pages/OnboardingPage';
 import UsersPage from './pages/UsersPage';
 import RolesPage from './pages/RolesPage';
 import RoadmapPage from './pages/RoadmapPage';
@@ -30,8 +32,10 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/decouvrir/:sujet" element={<DecouvrirPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/inscription" element={<InscriptionPage />} />
 
         <Route element={<RequireAuth><Layout /></RequireAuth>}>
+          <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/mon-espace" element={<MonEspacePage />} />
           <Route path="/initiatives" element={<InitiativesPage />} />

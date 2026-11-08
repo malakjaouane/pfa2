@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api, { EVT_SESSION_EXPIREE } from './api';
 
 const AuthContext = createContext(null);
@@ -6,6 +7,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Restaure la session au chargement de l'application.
   useEffect(() => {
@@ -19,6 +21,10 @@ export function AuthProvider({ children }) {
       .then((res) => {
         setUser(res.data);
         localStorage.setItem('pfa_user', JSON.stringify(res.data));
+        // Premier acces : envoie vers l'assistant d'installation (2B5)
+        if (localStorage.getItem('onboardingDone') !== '1' && window.location.pathname !== '/onboarding') {
+          navigate('/onboarding', { replace: true });
+        }
       })
       .catch(() => {
         localStorage.removeItem('pfa_token');
@@ -42,6 +48,10 @@ export function AuthProvider({ children }) {
     localStorage.setItem('pfa_token', data.token);
     localStorage.setItem('pfa_user', JSON.stringify(data));
     setUser(data);
+    // Premier acces : envoie vers l'assistant d'installation (2B5)
+    if (localStorage.getItem('onboardingDone') !== '1') {
+      navigate('/onboarding', { replace: true });
+    }
     return data;
   }, []);
 
