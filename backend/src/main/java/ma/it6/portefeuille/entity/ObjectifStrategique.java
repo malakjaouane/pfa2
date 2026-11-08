@@ -14,7 +14,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ObjectifStrategique extends BaseAuditable {
+public class ObjectifStrategique extends BaseOrganisation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

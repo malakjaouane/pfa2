@@ -17,7 +17,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Commentaire extends BaseAuditable {
+public class Commentaire extends BaseOrganisation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

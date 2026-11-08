@@ -10,6 +10,7 @@ import ma.it6.portefeuille.exception.BadRequestException;
 import ma.it6.portefeuille.mapper.UtilisateurMapper;
 import ma.it6.portefeuille.repository.HistoriqueModificationRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
+import ma.it6.portefeuille.security.OrganisationContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -217,6 +218,7 @@ public class HistoriqueModificationService {
         entree.setDateChangement(LocalDateTime.now());
         entree.setUtilisateur(resoudreUtilisateur(email));
         entree.setAutomatique(automatique);
+        entree.setIdOrganisation(OrganisationContext.getId());
         historiqueRepository.save(entree);
     }
 

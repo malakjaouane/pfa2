@@ -14,6 +14,7 @@ import ma.it6.portefeuille.exception.ResourceNotFoundException;
 import ma.it6.portefeuille.repository.InitiativeRepository;
 import ma.it6.portefeuille.repository.JalonRepository;
 import ma.it6.portefeuille.repository.JournalIaRepository;
+import ma.it6.portefeuille.security.OrganisationContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -223,6 +224,7 @@ public class AssistantIaService {
             entree.setMessageErreur(messageErreur == null ? null : tronquer(messageErreur, 300));
             entree.setDureeMs(dureeMs);
             entree.setDateRequete(LocalDateTime.now());
+            entree.setIdOrganisation(OrganisationContext.getId());
             journalIaRepository.save(entree);
         } catch (RuntimeException e) {
             // Le journal ne doit jamais faire échouer l'assistant.

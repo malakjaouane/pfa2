@@ -23,7 +23,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Risque extends BaseAuditable {
+public class Risque extends BaseOrganisation {
 
     /** Cycle de vie du risque : ouverte (défaut) -> attenuation -> close. */
     public static final String STATUT_OUVERTE = "ouverte";

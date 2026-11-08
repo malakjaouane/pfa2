@@ -5,6 +5,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.ParamDef;
+
 import java.time.LocalDateTime;
 
 /**
@@ -23,6 +27,14 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "journal_ia")
+@FilterDef(
+        name = "filtreParOrganisation",
+        parameters = @ParamDef(name = "idOrganisation", type = Long.class)
+)
+@Filter(
+        name = "filtreParOrganisation",
+        condition = "id_organisation = :idOrganisation"
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -49,6 +61,14 @@ public class JournalIa {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_utilisateur")
     private Utilisateur utilisateur;
+
+    @Column(name = "id_organisation", nullable = false)
+    private Long idOrganisation;
+
+    /** Navigation en lecture seulement. */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_organisation", insertable = false, updatable = false)
+    private Organisation organisation;
 
     @Column(name = "type_requete", nullable = false, length = 20)
     private String typeRequete;

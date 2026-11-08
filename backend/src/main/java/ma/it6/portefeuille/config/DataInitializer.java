@@ -2,6 +2,7 @@ package ma.it6.portefeuille.config;
 
 import ma.it6.portefeuille.entity.*;
 import ma.it6.portefeuille.repository.*;
+import ma.it6.portefeuille.security.OrganisationContext;
 import ma.it6.portefeuille.service.CalculeurAvancement;
 import ma.it6.portefeuille.service.HistoriqueModificationService;
 import ma.it6.portefeuille.service.InitiativeService;
@@ -45,6 +46,7 @@ public class DataInitializer implements CommandLineRunner {
     private final UtilisateurRepository utilisateurRepository;
     private final RoleRepository roleRepository;
     private final EntiteRepository entiteRepository;
+    private final OrganisationRepository organisationRepository;
     private final InitiativeRepository initiativeRepository;
     private final StatutInitiativeRepository statutInitiativeRepository;
     private final PrioriteRepository prioriteRepository;
@@ -62,6 +64,7 @@ public class DataInitializer implements CommandLineRunner {
     public DataInitializer(UtilisateurRepository utilisateurRepository,
                            RoleRepository roleRepository,
                            EntiteRepository entiteRepository,
+                           OrganisationRepository organisationRepository,
                            InitiativeRepository initiativeRepository,
                            StatutInitiativeRepository statutInitiativeRepository,
                            PrioriteRepository prioriteRepository,
@@ -78,6 +81,7 @@ public class DataInitializer implements CommandLineRunner {
         this.utilisateurRepository = utilisateurRepository;
         this.roleRepository = roleRepository;
         this.entiteRepository = entiteRepository;
+        this.organisationRepository = organisationRepository;
         this.initiativeRepository = initiativeRepository;
         this.statutInitiativeRepository = statutInitiativeRepository;
         this.prioriteRepository = prioriteRepository;
@@ -96,6 +100,12 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
+        Organisation organisation = organisationRepository.findBySlug("it6");
+        if (organisation == null) {
+            organisation = creerOrganisationParDefaut();
+        }
+        OrganisationContext.setId(organisation.getIdOrganisation());
+
         if (utilisateurRepository.count() == 0) {
             creerUtilisateurs();
         }
@@ -104,6 +114,13 @@ public class DataInitializer implements CommandLineRunner {
         }
         alignerAvancements();
         alignerHistorique();
+    }
+
+    /** Cree l'organisation par defaut si la migration V5 ne l'a pas encore inseree. */
+    private Organisation creerOrganisationParDefaut() {
+        return organisationRepository.save(Organisation.builder()
+                .nom("IT6 Consulting").slug("it6").plan("gratuit").statut("active")
+                .build());
     }
 
     /**

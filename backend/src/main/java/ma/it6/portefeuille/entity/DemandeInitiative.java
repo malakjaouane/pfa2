@@ -19,7 +19,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class DemandeInitiative extends BaseAuditable {
+public class DemandeInitiative extends BaseOrganisation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

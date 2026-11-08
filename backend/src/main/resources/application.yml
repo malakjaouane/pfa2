@@ -27,7 +27,7 @@ spring:
       # La structure est définie par database/migration/V1__baseline.sql
       # (fidèle au MPD). Hibernate ne fait que valider sa cohérence.
       ddl-auto: validate
-    open-in-view: false
+    open-in-view: true
     properties:
       hibernate:
         format_sql: true

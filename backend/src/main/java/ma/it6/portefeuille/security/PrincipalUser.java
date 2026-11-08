@@ -36,6 +36,10 @@ public class PrincipalUser implements UserDetails {
         }
     }
 
+    public Long getIdOrganisation() {
+        return utilisateur.getIdOrganisation();
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return autorites;

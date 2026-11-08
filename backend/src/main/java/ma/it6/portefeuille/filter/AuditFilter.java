@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import ma.it6.portefeuille.entity.JournalAudit;
 import ma.it6.portefeuille.repository.JournalAuditRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
+import ma.it6.portefeuille.security.OrganisationContext;
 import ma.it6.portefeuille.security.PrincipalUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,6 +132,7 @@ public class AuditFilter extends OncePerRequestFilter {
                     .adresseIp(adresseIp(request))
                     .corps(corps)
                     .build();
+            ligne.setIdOrganisation(OrganisationContext.getId());
             journalRepository.save(ligne);
         } catch (RuntimeException e) {
             // L'audit ne doit jamais faire échouer l'action métier.

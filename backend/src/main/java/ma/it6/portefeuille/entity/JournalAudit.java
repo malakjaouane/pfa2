@@ -3,6 +3,10 @@ package ma.it6.portefeuille.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.ParamDef;
+
 import java.time.LocalDateTime;
 
 /**
@@ -17,6 +21,14 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "journal_audit")
+@FilterDef(
+        name = "filtreParOrganisation",
+        parameters = @ParamDef(name = "idOrganisation", type = Long.class)
+)
+@Filter(
+        name = "filtreParOrganisation",
+        condition = "id_organisation = :idOrganisation"
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -36,6 +48,14 @@ public class JournalAudit {
     /** Auteur de l'action, anonymisé si le compte part (SET NULL). */
     @Column(name = "id_utilisateur")
     private Long idUtilisateur;
+
+    @Column(name = "id_organisation", nullable = false)
+    private Long idOrganisation;
+
+    /** Navigation en lecture seulement. */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_organisation", insertable = false, updatable = false)
+    private Organisation organisation;
 
     /**
      * E-mail capturé dans le corps de la requête (login) ou dans le jeton.
