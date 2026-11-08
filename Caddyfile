@@ -1,0 +1,20 @@
+{
+    admin off
+}
+
+# Reverse proxy vers le front (qui lui-même proxye /api vers le backend).
+# En production avec un domaine, Caddy obtient automatiquement un
+# certificat TLS (Let's Encrypt). En local sans domaine, le site est servi
+# en HTTP.
+:80 {
+    reverse_proxy frontend:80
+
+    # Headers de sécurité sur toutes les réponses.
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    }
+}

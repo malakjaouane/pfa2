@@ -1,0 +1,116 @@
+# ==================================================================
+# Déploiement PRODUCTION du portefeuille d'initiatives :
+# MySQL + Backend + Front + Caddy (reverse proxy + TLS automatique).
+#
+#   1. cp .env.example .env   (renseigner toutes les variables :? )
+#   2. docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
+#
+# Secrets OBLIGATOIRES : chaque variable marquée ${VAR:?...} fait échouer
+# le démarrage si absente du .env (aucun secret n'a de valeur par défaut
+# en profil conteneur).
+# ==================================================================
+
+services:
+
+  # ---------------------------------------------------------------
+  # Base de données MySQL 8.4
+  # ---------------------------------------------------------------
+  mysql:
+    image: mysql:8.4
+    container_name: pfa-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:?DB_NAME manquant}
+      MYSQL_USER: ${DB_USERNAME:?DB_USERNAME manquant}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD manquant}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD manquant}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql-donnees:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # ---------------------------------------------------------------
+  # Backend Spring Boot (profil conteneur : secrets vérifiés au démarrage)
+  # ---------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: pfa-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: "8080"
+      SPRING_PROFILES_ACTIVE: conteneur
+      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:?DB_NAME manquant}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+      DB_USERNAME: ${DB_USERNAME:?DB_USERNAME manquant}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD manquant}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET manquant}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@it6.ma}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD manquant}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS manquant}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODELE: ${ANTHROPIC_MODELE:-claude-haiku-4-5}
+      IA_ACTIF: ${IA_ACTIF:-true}
+      IA_FORMAT: ${IA_FORMAT:-anthropic}
+      IA_BASE_URL: ${IA_BASE_URL:-https://api.anthropic.com}
+      IA_MODELE: ${IA_MODELE:-claude-haiku-4-5}
+      IA_MAX_TOKENS: ${IA_MAX_TOKENS:-1024}
+      # SMTP production (obligatoire pour l'envoi d'e-mails réels)
+      MAIL_HOST: ${MAIL_HOST:?MAIL_HOST manquant}
+      MAIL_PORT: ${MAIL_PORT:?MAIL_PORT manquant}
+      MAIL_USERNAME: ${MAIL_USERNAME:}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:false}
+      MAIL_FROM: ${MAIL_FROM:?MAIL_FROM manquant}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Portefeuille IT6}
+      # Cookies sécurisés en production (HTTPS)
+      COOKIE_SECURE: true
+    ports:
+      - "8080:8080"
+
+  # ---------------------------------------------------------------
+  # Front React servi par nginx (proxy /api/ → backend)
+  # ---------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: pfa-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+  # ---------------------------------------------------------------
+  # Caddy : reverse proxy, headers de sécurité, TLS automatique
+  # (Let's Encrypt) quand un domaine est configuré.
+  # ---------------------------------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    container_name: pfa-caddy
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    ports:
+      - "${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-donnees:/data
+      - caddy-config:/config
+
+volumes:
+  mysql-donnees:
+  caddy-donnees:
+  caddy-config:
