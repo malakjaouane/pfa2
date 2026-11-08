@@ -25,12 +25,12 @@ $sql | & (Join-Path $mysqlbin 'mysql.exe') -u root --protocol=TCP -h 127.0.0.1 -
 Write-Output 'Base portefeuille_initiatives et utilisateur pfa_user créés.'
 Write-Output ''
 Write-Output 'Application du schéma et des données : lancez simplement l''application.'
-Write-Output 'Elle exécute database\schema.sql puis database\data.sql au démarrage, en UTF-8.'
+Write-Output 'Flyway applique database\migration\V1__baseline.sql puis V2__referentiels.sql au démarrage, en UTF-8.'
 Write-Output ''
 Write-Warning ('Ne chargez JAMAIS ces fichiers via un pipeline PowerShell du type' +
-    ' « Get-Content schema.sql | mysql » : PowerShell 5.1 lit un UTF-8 sans BOM' +
+    ' « Get-Content V1__baseline.sql | mysql » : PowerShell 5.1 lit un UTF-8 sans BOM' +
     ' en ANSI, les accents sont détruits (« À planifier » devient « ?? planifier »),' +
     ' et l''application refuse ensuite de démarrer — car elle cherche les libellés' +
     ' exacts. Si vous devez charger le SQL à la main, passez par une redirection' +
     ' système, qui est sans conversion d''encodage :')
-Write-Output '    cmd /c "mysql -u root --default-character-set=utf8mb4 portefeuille_initiatives < database\schema.sql"'
+Write-Output '    cmd /c "mysql -u root --default-character-set=utf8mb4 portefeuille_initiatives < database\migration\V1__baseline.sql"'

@@ -30,7 +30,8 @@ import java.time.LocalDateTime;
  * {@code ddl-auto: validate}, et le comportement est explicite à la lecture
  * (on voit qu'une date de création n'est jamais réécrite).</p>
  *
- * <p>Les colonnes sont ajoutées rétroactivement par {@code database/schema.sql}
+ * <p>Les colonnes sont déclarées dès la création de la table par
+ * {@code database/migration/V1__baseline.sql}
  * : elles restent donc NULLables, et on refuse d'inventer une date de création
  * pour les enregistrements préexistants (ils ne seront jamais réécrits avec un
  * {@code created_at} faux). Seule {@code version} est NOT NULL, valeur par

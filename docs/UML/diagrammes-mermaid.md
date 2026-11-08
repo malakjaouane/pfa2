@@ -3,7 +3,7 @@
 ## Diagrammes UML corrigés (version Mermaid)
 
 > **Source de vérité.** Ces diagrammes sont reconstruits à partir du **code réel**
-> (entités JPA, services, contrôleurs, `SecurityConfig`, `schema.sql`) et non des
+> (entités JPA, services, contrôleurs, `SecurityConfig`, `database/migration`) et non des
 > croquis initiaux. Ils reflètent donc exactement l'application livrée.
 >
 > Chaque diagramme est fourni en **Mermaid** (ci-dessous, rendu par GitHub/IDE) et
@@ -365,7 +365,7 @@ flowchart TB
 
     subgraph DONNEES["Persistance"]
         MYSQL[("MySQL 8.4<br/>portefeuille_initiatives")]
-        SCRIPTS["database/schema.sql<br/>database/data.sql"]
+        SCRIPTS["database/migration/V1__baseline.sql<br/>database/migration/V2__referentiels.sql"]
     end
 
     NAV --> PAGES
@@ -500,4 +500,4 @@ erDiagram
 | Activité | `InitiativeRequest` (validations), `InitiativeService.validerReglesMetier` |
 | Composants | `pom.xml`, `SecurityConfig`, `SpringDataJpa`, `styles.css` |
 | Déploiement | `application.yml` (port 8080, datasource), `start-mysql.ps1` |
-| ER | `database/schema.sql` |
+| ER | `database/migration/V1__baseline.sql` |

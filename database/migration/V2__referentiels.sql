@@ -1,6 +1,11 @@
 -- ============================================================
 -- Portefeuille d'initiatives digitales — IT6 Consulting
--- DONNÉES DE RÉFÉRENCE (référentiels + profils de droits)
+-- V2 : DONNÉES DE RÉFÉRENCE (référentiels + profils de droits)
+--
+-- Ce fichier remplace l'ancien database/data.sql (supprimé) ; contenu
+-- identique, déjà idempotent (INSERT IGNORE partout) : une base déjà
+-- alimentée ne reçoit aucun doublon et le rejeu est sans effet.
+--
 -- Les mots de passe des utilisateurs sont créés par l'application
 -- (hash BCrypt) via le DataInitializer ; aucun mot de passe en clair
 -- ni en base ni dans ce fichier.

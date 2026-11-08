@@ -2,7 +2,8 @@
 # Image du backend Spring Boot (build multi-étapes).
 #
 # Le build context DOIT être la racine du dépôt (cf. docker-compose.yml)
-# car pom.xml embarque database/schema.sql et database/data.sql dans le
+# car pom.xml embarque database/migration (V1__baseline.sql +
+# V2__referentiels.sql) dans le
 # jar : cette source unique versionnée reste ainsi unique pour l'exécution
 # locale (base MySQL existante) et pour l'exécution conteneurisée.
 # ==================================================================

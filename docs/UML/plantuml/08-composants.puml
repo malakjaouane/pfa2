@@ -21,7 +21,7 @@ package "Serveur d'application (Spring Boot 3.5)" {
 
 package "Persistance" {
   database "MySQL 8.4\nportefeuille_initiatives" as MYSQL
-  artifact "database/schema.sql\ndatabase/data.sql" as SCRIPTS
+  artifact "database/migration/V1__baseline.sql\nV2__referentiels.sql (Flyway)" as SCRIPTS
 }
 
 NAV --> PAGES

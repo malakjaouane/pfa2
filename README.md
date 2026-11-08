@@ -58,8 +58,8 @@ Portefeuille-d-initiatives-digitales/
 ├── frontend/                    # Application React/Vite
 │   └── src/                     # pages, composants, services API, styles
 ├── database/                    # SOURCE UNIQUE SQL + scripts d'exploitation
-│   ├── schema.sql               # MPD MySQL 8 (structure)
-│   ├── data.sql                 # Référentiels (rôles, permissions, entités, statuts…)
+│   ├── migration/               # Migrations Flyway (V1 schéma, V2 référentiels)
+│   ├── cleanup-test-data.sql   # Purge des données de test (préfixe TEST)
 │   ├── init-mysql.ps1           # Initialisation du datadir MySQL local
 │   ├── start-mysql.ps1          # Démarrage du serveur MySQL
 │   └── tests-api.ps1            # Suite de tests fonctionnels de l'API
@@ -67,9 +67,10 @@ Portefeuille-d-initiatives-digitales/
 └── .env.example                 # Modèle de variables d'environnement
 ```
 
-> Le schéma et les données de référence (`database/*.sql`) sont **embarqués dans le
-> jar** par le bloc `<resources>` de `pom.xml` (sous `db/`) puis exécutés au
-> démarrage via `spring.sql.init`. Il n'y a donc qu'une seule source de vérité SQL.
+> Le schéma et les données de référence (`database/migration/*.sql`) sont **embarqués dans le
+> jar** par le bloc `<resources>` de `pom.xml` (sous `db/migration/`) puis appliqués au
+> démarrage par **Flyway** (`spring.flyway`). Il n'y a donc qu'une seule source de vérité SQL :
+> une base vierge reçoit V1 puis V2 ; une base existante est simplement « baseline ».
 
 ---
 

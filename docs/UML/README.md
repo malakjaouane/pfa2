@@ -1,7 +1,7 @@
 # Diagrammes de référence
 
 Onze diagrammes décrivent le système (cahier des charges, section 10). Ils sont
-cohérents avec le cahier des charges, `database/schema.sql` et l'API (`docs/API.md`).
+cohérents avec le cahier des charges, `database/migration/V1__baseline.sql` et l'API (`docs/API.md`).
 
 | N° | Diagramme | Image |
 |---|---|---|

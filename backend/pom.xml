@@ -46,6 +46,19 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Migration du schéma : la base est versionnée par Flyway
+             (database/migration/V*.sql), remplaçant spring.sql.init.
+             flyway-mysql apporte le dialecte MySQL 8 (contraintes,
+             réservés) indispensable au démarrage. -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -89,15 +102,12 @@
                 <directory>src/main/resources</directory>
             </resource>
             <!-- Source unique du schéma et des données de référence : les
-                 scripts SQL versionnés dans database/ sont embarqués dans le
-                 jar sous db/ puis exécutés par spring.sql.init. -->
+                 migrations Flyway versionnées dans database/migration sont
+                 embarquées dans le jar sous db/migration puis appliquées par
+                 Flyway au démarrage (spring.flyway.locations). -->
             <resource>
-                <directory>${project.basedir}/../database</directory>
-                <targetPath>db</targetPath>
-                <includes>
-                    <include>schema.sql</include>
-                    <include>data.sql</include>
-                </includes>
+                <directory>${project.basedir}/../database/migration</directory>
+                <targetPath>db/migration</targetPath>
             </resource>
         </resources>
         <plugins>

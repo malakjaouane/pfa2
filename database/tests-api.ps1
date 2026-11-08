@@ -74,7 +74,7 @@ $login = Invoke-Api 'Post' "$Base/auth/login" @{ email = 'admin@it6.ma'; motDePa
 Test-Check 'Login admin (token présent)' ($login.OK -and $null -ne $login.Body.token)
 # 20 = les 15 permissions du cahier des charges + BUDGET_CONSULTER (16)
 # + IA_UTILISER (17) + COMMENTAIRE_AJOUTER (18) + RISQUE_GERER (19)
-# + DEPENSE_SAISIR (20) — cf. data.sql.
+# + DEPENSE_SAISIR (20) — cf. database/migration/V2__referentiels.sql.
 Test-Check 'Permissions administrateur = 20 (dont ROLE_GERER + BUDGET_CONSULTER + IA_UTILISER)' ($login.OK -and $login.Body.permissions.Count -eq 20) "($($login.Body.permissions.Count))"
 Test-Check 'Permission ROLE_GERER présente' ($login.OK -and @($login.Body.permissions | Where-Object { $_ -eq 'ROLE_GERER' }).Count -eq 1)
 $adminToken = $login.Body.token

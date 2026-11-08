@@ -59,8 +59,8 @@ Architecture en trois couches, chaque responsabilité isolée :
   pages, composants réutilisables, contexte d'authentification, service `api`
   (Axios), styles centralisés.
 - **Base de données** (`database/`) — **source unique SQL** :
-  `schema.sql` (MPD MySQL 8) et `data.sql` (référentiels idempotents), embarqués
-  dans le jar via `<resources>` (Maven) puis exécutés par `spring.sql.init`.
+  `V1__baseline.sql` (MPD MySQL 8) et `V2__referentiels.sql` (référentiels idempotents), embarqués
+  dans le jar via `<resources>` (Maven) puis appliqués par **Flyway** au démarrage.
 
 Points d'architecture notables :
 

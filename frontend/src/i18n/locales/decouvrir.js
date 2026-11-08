@@ -19,7 +19,7 @@
  *    passée et le statut n'est pas « Atteint » (JalonMapper) ;
  *  - dashboard filtrable par statut, entité, responsable, période
  *    (InitiativeFilterRequest) ;
- *  - trois profils, comptes créés par l'administrateur (data.sql).
+ *  - trois profils, comptes créés par l'administrateur (V2__referentiels.sql).
  */
 export default {
   fr: {

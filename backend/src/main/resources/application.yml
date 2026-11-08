@@ -9,20 +9,23 @@ spring:
     username: ${DB_USERNAME:pfa_user}
     password: ${DB_PASSWORD:pfa2026}
     driver-class-name: com.mysql.cj.jdbc.Driver
-  sql:
-    init:
-      # Le schéma et les données de référence proviennent de database/
-      # (source unique versionnée) et sont embarqués dans le jar sous db/
-      # par le bloc <resources> de pom.xml. « optional: » rend le démarrage
-      # tolérant si les scripts sont absents (ex. exécution depuis l'IDE).
-      mode: always
-      encoding: UTF-8
-      schema-locations: optional:classpath:db/schema.sql
-      data-locations: optional:classpath:db/data.sql
+  # Migration du schéma : Flyway remplace spring.sql.init et
+  # database/schema.sql — source unique = database/migration (embarquée
+  # dans le jar sous db/migration, cf. le bloc <resources> du pom).
+  # - Une base VIERGE reçoit V1 (schéma) puis V2 (référentiels).
+  # - Une base existante créée avant Flyway est simplement « baseline »
+  #   (tag version 2) : ses tables et ses données ne sont jamais rejouées,
+  #   seules les migrations ultérieures (V3+) s'y appliquent.
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 2
+    baseline-description: "base existante anterieure a Flyway"
   jpa:
     hibernate:
-      # La structure est définie par database/schema.sql (fidèle au MPD).
-      # Hibernate ne fait que valider sa cohérence avec le schéma.
+      # La structure est définie par database/migration/V1__baseline.sql
+      # (fidèle au MPD). Hibernate ne fait que valider sa cohérence.
       ddl-auto: validate
     open-in-view: false
     properties:

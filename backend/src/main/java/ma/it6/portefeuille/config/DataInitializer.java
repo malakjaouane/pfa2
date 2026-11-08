@@ -287,7 +287,7 @@ public class DataInitializer implements CommandLineRunner {
         Entite si = entiteRepository.findById(3L).orElse(null);
 
         // L'alignement initiative -> objectif est énoncé ICI, au moment de la
-        // création. Les UPDATE équivalents de data.sql s'exécutent avant que
+        // création. Les UPDATE équivalents de V2__referentiels.sql s'exécutent avant que
         // cette méthode n'ait inséré la moindre initiative : sur un premier
         // lancement ils ne touchent rien, et il faut un deuxième démarrage
         // pour les voir prendre effet. Une donnée de démonstration doit être
