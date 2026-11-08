@@ -242,6 +242,10 @@ public class SecurityConfig {
                         // Actuator : santé et info de l'application, réservés
                         // aux administrateurs (supervision production).
                         .requestMatchers("/actuator/**").hasAuthority("UTILISATEUR_GERER")
+                        // Documentation OpenAPI (swagger) : réservée aux
+                        // administrateurs.
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**",
+                                "/swagger-ui.html").hasAuthority("UTILISATEUR_GERER")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions
