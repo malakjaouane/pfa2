@@ -105,3 +105,13 @@ app:
     max-tokens: ${IA_MAX_TOKENS:1024}
     timeout-ms: ${IA_TIMEOUT_MS:60000}
     url-api: ${IA_BASE_URL:${ANTHROPIC_BASE_URL:https://api.anthropic.com}}
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: when-authorized

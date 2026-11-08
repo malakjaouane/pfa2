@@ -239,6 +239,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/ia/statut").authenticated()
                         .requestMatchers("/api/ia/assistant", "/api/ia/resume/**").hasAuthority("IA_UTILISER")
                         .requestMatchers(HttpMethod.GET, "/api/ia/journal").hasAuthority("UTILISATEUR_GERER")
+                        // Actuator : santé et info de l'application, réservés
+                        // aux administrateurs (supervision production).
+                        .requestMatchers("/actuator/**").hasAuthority("UTILISATEUR_GERER")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions
