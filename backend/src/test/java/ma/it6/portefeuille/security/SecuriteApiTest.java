@@ -1109,13 +1109,19 @@ class SecuriteApiTest {
         void refreshReutilisation() throws Exception {
             when(refreshTokenService.tourner("deja-vole")).thenReturn(null);
 
-            mockMvc.perform(post("/api/auth/refresh")
+            String[] setCookies = mockMvc.perform(post("/api/auth/refresh")
                             .cookie(new jakarta.servlet.http.Cookie("pfa_refresh", "deja-vole")))
                     .andExpect(status().isUnauthorized())
-                    .andExpect(header().string("Set-Cookie",
-                            org.hamcrest.Matchers.containsString("pfa_access=")))
-                    .andExpect(header().string("Set-Cookie",
-                            org.hamcrest.Matchers.containsString("Max-Age=0")));
+                    .andReturn().getResponse().getHeaders("Set-Cookie")
+                    .toArray(new String[0]);
+
+            boolean pfaAccessVide = java.util.Arrays.stream(setCookies)
+                    .anyMatch(c -> c.startsWith("pfa_access=") && c.contains("Max-Age=0"));
+            boolean pfaRefreshVide = java.util.Arrays.stream(setCookies)
+                    .anyMatch(c -> c.startsWith("pfa_refresh=") && c.contains("Max-Age=0"));
+
+            org.assertj.core.api.Assertions.assertThat(pfaAccessVide).isTrue();
+            org.assertj.core.api.Assertions.assertThat(pfaRefreshVide).isTrue();
         }
 
         @Test

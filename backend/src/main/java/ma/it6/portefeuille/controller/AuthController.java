@@ -35,6 +35,7 @@ import ma.it6.portefeuille.service.HistoriqueConnexionService;
 import ma.it6.portefeuille.service.UtilisateurService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -281,6 +282,18 @@ public class AuthController {
                 });
         return ResponseEntity.ok(Map.of(
                 "message", "Adresse e-mail verifiee. Vous pouvez vous connecter."));
+    }
+
+    /**
+     * Retourne le jeton CSRF courant (cookie {@code XSRF-TOKEN} émis par le
+     * filtre Spring Security). Permet au SPA d'amorcer le cookie avant ses
+     * premières mutations.
+     */
+    @GetMapping("/csrf")
+    public ResponseEntity<Map<String, String>> csrf(HttpServletRequest request) {
+        CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+        String valeur = token == null ? "" : token.getToken();
+        return ResponseEntity.ok(Map.of("token", valeur));
     }
 
     private static String slugify(String nom) {

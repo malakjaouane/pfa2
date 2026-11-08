@@ -1,5 +1,6 @@
 package ma.it6.portefeuille.config;
 
+import ma.it6.portefeuille.security.CookieService;
 import ma.it6.portefeuille.security.FiltreMotDePasseAChanger;
 import ma.it6.portefeuille.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,12 +19,19 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * Configuration Spring Security : authentification JWT sans état,
@@ -63,7 +71,45 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                // CSRF activé uniquement pour les requêtes authentifiées par
+                // cookie (porteuses du cookie pfa_access). Les clients qui
+                // s'authentifient par l'en-tête Authorization (suite de tests,
+                // scripts) n'envoient pas de cookie : ils sont exemptés de CSRF
+                // (une requête cross-site ne peut pas fabriquer d'en-tête
+                // Authorization, donc pas de risque CSRF).
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+                        .requireCsrfProtectionMatcher(request -> {
+                            // Les routes d'authentification (login, refresh, logout, signup…)
+                            // sont exemptes : elles sont appelées avant qu'un cookie
+                            // pfa_access ne existe, et ne sont pas sensibles au CSRF.
+                            String chemin = request.getRequestURI();
+                            if (chemin.startsWith("/api/auth/")) {
+                                return false;
+                            }
+                            // Seules les méthodes en mutation sont concernées par le CSRF.
+                            String method = request.getMethod();
+                            if (!"POST".equals(method) && !"PUT".equals(method)
+                                    && !"PATCH".equals(method) && !"DELETE".equals(method)) {
+                                return false;
+                            }
+                            // Toutes les autres routes en mutation sont protégées
+                            // uniquement quand le client est authentifié par cookie
+                            // (présence de pfa_access). Les clients en Authorization:
+                            // Bearer (suite de tests, scripts) sont exemptés.
+                            Cookie[] cookies = request.getCookies();
+                            if (cookies == null) {
+                                return false;
+                            }
+                            for (Cookie cookie : cookies) {
+                                if (CookieService.NOM_ACCESS.equals(cookie.getName())) {
+                                    return true;
+                                }
+                            }
+                            return false;
+                        })
+                )
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
@@ -228,9 +274,9 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of(originesAutorisees));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
-        configuration.setExposedHeaders(List.of("Authorization"));
-        configuration.setAllowCredentials(false);
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-XSRF-TOKEN"));
+        configuration.setExposedHeaders(List.of("Authorization", "X-XSRF-TOKEN"));
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
@@ -240,5 +286,21 @@ public class SecurityConfig {
     private static String erreur(HttpStatus statut, String message) {
         return "{\"timestamp\": \"" + LocalDateTime.now() + "\", \"status\": " + statut.value()
                 + ", \"error\": \"" + statut.getReasonPhrase() + "\", \"message\": \"" + message + "\"}";
+    }
+
+    /**
+     * Force la génération du jeton CSRF (et donc l'écriture du cookie
+     * {@code XSRF-TOKEN}) dès la première requête authentifiée par cookie, afin
+     * que le SPA puisse le lire et le renvoyer en header {@code X-XSRF-TOKEN}
+     * sur les mutations.
+     */
+    private static class SpaCsrfTokenRequestHandler extends CsrfTokenRequestAttributeHandler {
+
+        @Override
+        public void handle(HttpServletRequest request, HttpServletResponse response,
+                           Supplier<CsrfToken> csrfToken) {
+            csrfToken.get(); // force la génération + écriture du cookie XSRF-TOKEN
+            super.handle(request, response, csrfToken);
+        }
     }
 }

@@ -1,43 +1,111 @@
 import axios from 'axios';
 
 /**
- * Client HTTP de l'API REST. Le jeton JWT est ajouté automatiquement sur
- * chaque requête ; en cas de réponse 401, la session est réinitialisée.
+ * Client HTTP de l'API REST.
+ *
+ * <p>Les requêtes sont authentifiées par les cookies HttpOnly
+ * {@code pfa_access} / {@code pfa_refresh} (envoyés automatiquement par le
+ * navigateur, même origin via le proxy nginx). {@code withCredentials: true}
+ * garantit l'envoi des cookies aussi en développement (Vite sur un port
+ * différent du backend).
+ *
+ * <p>CSRF : avant chaque mutation (POST/PUT/PATCH/DELETE), le cookie
+ * {@code XSRF-TOKEN} est lu et renvoyé en header {@code X-XSRF-TOKEN}
+ * (Spring Security émet ce cookie via {@code CookieCsrfTokenRepository}).
+ * En cas de 403 CSRF, le cookie est rafraîchi (GET /api/auth/csrf) et la
+ * requête est rejouée une fois.
+ *
+ * <p>En cas de 401 (jeton expiré), l'intercepteur tente un
+ * {@code POST /api/auth/refresh} (cookie tournant) puis rejoue la requête ;
+ * en cas d'échec, l'événement {@link EVT_SESSION_EXPIREE} est émis.
  */
 const api = axios.create({
   baseURL: '/api',
+  withCredentials: true,
   headers: { 'Content-Type': 'application/json' }
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('pfa_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+/** Lit la valeur d'un cookie depuis document.cookie (XSRF-TOKEN est non-HttpOnly). */
+function lireCookie(nom) {
+  const correspondance = document.cookie.match('(?:^|;\\s*)' + nom + '=([^;]*)');
+  return correspondance ? decodeURIComponent(correspondance[1]) : null;
+}
+
+let promesseCsrf = null;
+
+/**
+ * S'assure que le cookie XSRF-TOKEN est présent (appel GET /api/auth/csrf
+ * sinon). Idempotent : un seul appel en cours à la fois.
+ */
+function assurerCsrf() {
+  if (lireCookie('XSRF-TOKEN')) {
+    return Promise.resolve();
+  }
+  if (promesseCsrf) {
+    return promesseCsrf;
+  }
+  promesseCsrf = api
+    .get('/auth/csrf')
+    .then(() => {
+      promesseCsrf = null;
+    })
+    .catch(() => {
+      promesseCsrf = null;
+    });
+  return promesseCsrf;
+}
+
+api.interceptors.request.use(async (config) => {
+  const methode = (config.method || 'get').toUpperCase();
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(methode)) {
+    await assurerCsrf();
+    const jeton = lireCookie('XSRF-TOKEN');
+    if (jeton) {
+      config.headers['X-XSRF-TOKEN'] = jeton;
+    }
   }
   return config;
 });
 
 /**
- * Événement émis par l'intercepteur lorsque l'API répond 401 : le token est
- * retiré du stockage, mais l'état React doit aussi être réinitialisé, sinon
- * l'application continue d'afficher l'utilisateur comme connecté.
+ * Événement émis par l'intercepteur lorsque la session est expirée (401 non
+ * recouvrable) : l'état React doit être réinitialisé.
  */
 export const EVT_SESSION_EXPIREE = 'pfa:session-expiree';
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const status = error.response?.status;
-    const isLoginCall = error.config?.url?.includes('/auth/login');
-    if (status === 401 && !isLoginCall) {
-      const etaitConnecte = Boolean(localStorage.getItem('pfa_token'));
-      localStorage.removeItem('pfa_token');
-      localStorage.removeItem('pfa_user');
-      if (etaitConnecte) {
-        // Seul AuthContext sait « déconnecter » React : on l'avise.
+    const config = error.config;
+    const isLoginCall = config?.url?.includes('/auth/login');
+
+    // 403 CSRF : le cookie XSRF-TOKEN est absent ou invalide -> on le
+    // rafraîchit et on rejoue la requête une fois.
+    if (status === 403 && !config._retryCsrf && !isLoginCall) {
+      config._retryCsrf = true;
+      try {
+        await api.get('/auth/csrf');
+        config.headers['X-XSRF-TOKEN'] = lireCookie('XSRF-TOKEN');
+        return api(config);
+      } catch {
+        // Échec du rafraîchissement CSRF : on laisse l'erreur remonter.
+      }
+    }
+
+    // 401 : tentative de renouvellement via le cookie de refresh tournant.
+    if (status === 401 && !isLoginCall && !config._retryRefresh) {
+      config._retryRefresh = true;
+      try {
+        await api.post('/auth/refresh');
+        return api(config);
+      } catch {
+        // Session expirée : on notifie React via l'événement dédié.
+        localStorage.removeItem('pfa_user');
         window.dispatchEvent(new CustomEvent(EVT_SESSION_EXPIREE));
       }
     }
+
     return Promise.reject(error);
   }
 );

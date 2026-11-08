@@ -10,12 +10,10 @@ export function AuthProvider({ children }) {
   const navigate = useNavigate();
 
   // Restaure la session au chargement de l'application.
+  // L'authentification repose sur les cookies HttpOnly (pfa_access / pfa_refresh)
+  // envoyés automatiquement par le navigateur : on appelle /auth/me directement,
+  // sans jeton dans localStorage.
   useEffect(() => {
-    const token = localStorage.getItem('pfa_token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
     api
       .get('/auth/me')
       .then((res) => {
@@ -27,7 +25,6 @@ export function AuthProvider({ children }) {
         }
       })
       .catch(() => {
-        localStorage.removeItem('pfa_token');
         localStorage.removeItem('pfa_user');
       })
       .finally(() => setLoading(false));
@@ -45,7 +42,6 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, motDePasse) => {
     const res = await api.post('/auth/login', { email, motDePasse });
     const data = res.data;
-    localStorage.setItem('pfa_token', data.token);
     localStorage.setItem('pfa_user', JSON.stringify(data));
     setUser(data);
     // Premier acces : envoie vers l'assistant d'installation (2B5)
@@ -56,7 +52,6 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('pfa_token');
     localStorage.removeItem('pfa_user');
     setUser(null);
   }, []);
