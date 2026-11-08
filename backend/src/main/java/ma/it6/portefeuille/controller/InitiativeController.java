@@ -7,10 +7,12 @@ import ma.it6.portefeuille.dto.InitiativeFilterRequest;
 import ma.it6.portefeuille.dto.InitiativeRequest;
 import ma.it6.portefeuille.dto.InitiativeResponse;
 import ma.it6.portefeuille.entity.Utilisateur;
+import ma.it6.portefeuille.entity.Plan;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
 import ma.it6.portefeuille.service.HistoriqueModificationService;
 import ma.it6.portefeuille.service.InitiativeService;
 import ma.it6.portefeuille.service.MembreInitiativeService;
+import ma.it6.portefeuille.service.PlanService;
 import ma.it6.portefeuille.service.UtilisateurService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -39,15 +42,18 @@ public class InitiativeController {
     private final HistoriqueModificationService historiqueService;
     private final UtilisateurRepository utilisateurRepository;
     private final MembreInitiativeService membreInitiativeService;
+    private final PlanService planService;
 
     public InitiativeController(InitiativeService initiativeService,
                                 HistoriqueModificationService historiqueService,
                                 UtilisateurRepository utilisateurRepository,
-                                MembreInitiativeService membreInitiativeService) {
+                                MembreInitiativeService membreInitiativeService,
+                                PlanService planService) {
         this.initiativeService = initiativeService;
         this.historiqueService = historiqueService;
         this.utilisateurRepository = utilisateurRepository;
         this.membreInitiativeService = membreInitiativeService;
+        this.planService = planService;
     }
 
     /**
@@ -133,7 +139,21 @@ public class InitiativeController {
     }
 
     @PostMapping
-    public ResponseEntity<InitiativeResponse> creer(@Valid @RequestBody InitiativeRequest request) {
+    public ResponseEntity<?> creer(@Valid @RequestBody InitiativeRequest request) {
+        // Vérification des limites de plan avant toute création.
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getName() != null) {
+            Utilisateur u = utilisateurRepository.findByEmail(auth.getName())
+                    .orElse(null);
+            if (u != null && !planService.peutCreerInitiative(u.getIdOrganisation())) {
+                Plan plan = planService.planDe(u.getIdOrganisation());
+                return ResponseEntity.badRequest().body(Map.of(
+                        "code", "LIMITE_PLAN",
+                        "message", "Limite d'initiatives atteinte pour le plan "
+                                + (plan == null ? "inconnu" : plan.getNom())
+                                + " (" + plan.getNbInitiativesMax() + " initiatives maximum)."));
+            }
+        }
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(initiativeService.creer(request));
     }
@@ -175,9 +195,7 @@ public class InitiativeController {
             return;
         }
         Optional<Utilisateur> opt = utilisateurRepository.findByEmail(auth.getName());
-        if (opt.isEmpty()) {
-            // Utilisateur inconnu dans ce contexte (ex. tests) : on ne bloque pas
-            // ici, le contrôle Spring Security a déjà filtré l'authentification.
+        if (opt == null || opt.isEmpty()) {
             return;
         }
         Utilisateur utilisateur = opt.get();
