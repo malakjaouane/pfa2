@@ -26,7 +26,11 @@ import ma.it6.portefeuille.entity.Role;
 import ma.it6.portefeuille.entity.RolePermission;
 import ma.it6.portefeuille.entity.RolePermissionId;
 import ma.it6.portefeuille.entity.Utilisateur;
+import ma.it6.portefeuille.repository.OrganisationRepository;
+import ma.it6.portefeuille.repository.RoleRepository;
+import ma.it6.portefeuille.repository.UtilisateurRepository;
 import ma.it6.portefeuille.exception.BadRequestException;
+import ma.it6.portefeuille.service.email.EmailService;
 import ma.it6.portefeuille.service.AssistantIaService;
 import ma.it6.portefeuille.service.AlerteService;
 import ma.it6.portefeuille.service.BudgetService;
@@ -58,6 +62,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -174,6 +179,18 @@ class SecuriteApiTest {
     private MonEspaceService monEspaceService;
     @MockitoBean
     private RefreshTokenService refreshTokenService;
+    @MockitoBean
+    private UtilisateurRepository utilisateurRepository;
+    @MockitoBean
+    private RoleRepository roleRepository;
+    @MockitoBean
+    private OrganisationRepository organisationRepository;
+    @MockitoBean
+    private JetonVerificationService jetonVerificationService;
+    @MockitoBean
+    private EmailService emailService;
+    @MockitoBean
+    private PasswordEncoder passwordEncoder;
 
     // =================================================================
     // 0. Assistant IA : permission dédiée IA_UTILISER + journal admin
@@ -1297,6 +1314,7 @@ class SecuriteApiTest {
         utilisateur.setMotDePasse("{bcrypt}$2a$10$exemple");
         utilisateur.setActif(true);
         utilisateur.setRole(role);
+        utilisateur.setEmailVerifie(true);
 
         return new PrincipalUser(utilisateur);
     }

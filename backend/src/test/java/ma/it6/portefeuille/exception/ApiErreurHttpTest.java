@@ -5,10 +5,15 @@ import ma.it6.portefeuille.controller.AuthController;
 import ma.it6.portefeuille.controller.InitiativeController;
 import ma.it6.portefeuille.security.CookieService;
 import ma.it6.portefeuille.security.CustomUserDetailsService;
+import ma.it6.portefeuille.security.JetonVerificationService;
 import ma.it6.portefeuille.security.JwtService;
+import ma.it6.portefeuille.service.email.EmailService;
 import ma.it6.portefeuille.security.ProtectionConnexions;
 import ma.it6.portefeuille.security.RefreshTokenService;
 import ma.it6.portefeuille.security.SessionsService;
+import ma.it6.portefeuille.repository.OrganisationRepository;
+import ma.it6.portefeuille.repository.RoleRepository;
+import ma.it6.portefeuille.repository.UtilisateurRepository;
 import ma.it6.portefeuille.service.BudgetService;
 import ma.it6.portefeuille.service.DashboardService;
 import ma.it6.portefeuille.service.EtapeService;
@@ -27,6 +32,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -97,6 +103,18 @@ class ApiErreurHttpTest {
     private RefreshTokenService refreshTokenService;
     @MockitoBean
     private CookieService cookieService;
+    @MockitoBean
+    private UtilisateurRepository utilisateurRepository;
+    @MockitoBean
+    private RoleRepository roleRepository;
+    @MockitoBean
+    private OrganisationRepository organisationRepository;
+    @MockitoBean
+    private JetonVerificationService jetonVerificationService;
+    @MockitoBean
+    private EmailService emailService;
+    @MockitoBean
+    private PasswordEncoder passwordEncoder;
 
     @Nested
     @DisplayName("Une requête malformée n'est pas une erreur interne")

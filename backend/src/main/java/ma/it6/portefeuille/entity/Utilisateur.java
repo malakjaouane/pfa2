@@ -53,6 +53,16 @@ public class Utilisateur extends BaseOrganisation {
     @Column(name = "doit_changer_mot_de_passe", nullable = false)
     private Boolean doitChangerMotDePasse = false;
 
+    /**
+     * Adresse e-mail verifiee (circuit inscription Phase 2B).
+     * Tant qu'elle est FALSE, le filtre d'authentification rejette toute
+     * requete sauf la verification du jeton (403 EMAIL_NON_VERIFIE).
+     * Les comptes crees par DataInitializer (demo) sont passes a TRUE.
+     */
+    @Builder.Default
+    @Column(name = "email_verifie", nullable = false)
+    private Boolean emailVerifie = false;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_role")
     private Role role;

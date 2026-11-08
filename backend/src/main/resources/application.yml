@@ -31,6 +31,14 @@ spring:
     properties:
       hibernate:
         format_sql: true
+    mail:
+      host: ${MAIL_HOST:}
+      port: ${MAIL_PORT:25}
+      username: ${MAIL_USERNAME:}
+      password: ${MAIL_PASSWORD:}
+      properties:
+        mail.smtp.auth: ${MAIL_SMTP_AUTH:false}
+        mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS:false}
   profiles:
     # Profil par défaut : autorise les valeurs de développement ci-dessous.
     # Tout autre profil (recette, production, conteneur) fait échouer le
@@ -51,6 +59,10 @@ app:
     # Secure = cookie réservé à HTTPS. True partout sauf autorisation
     # explicite pour un lancement local en HTTP (COOKIE_SECURE=false).
     secure: ${COOKIE_SECURE:true}
+  verification:
+    email:
+      # Base URL du lien de verification envoye par e-mail (route front ou API).
+      lien-base: ${EMAIL_VERIFICATION_BASE_URL:http://localhost/}
   security:
     # Durée de validité du cache de sessions (millisecondes). L'utilisateur et
     # ses permissions sont rechargeés à chaque requête ; ce cache évite une

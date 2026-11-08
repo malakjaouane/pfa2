@@ -14,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -36,6 +37,9 @@ import java.util.Optional;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String PREFIXE = "Bearer ";
+
+    /** Routes accessibles meme quand l'e-mail n'est pas encore verifie. */
+    private static final List<String> ROUTES_SANS_VERIFICATION_EMAIL = List.of("/api/auth/verifier-email");
 
     /**
      * Attribut de requête portant le {@code PrincipalUser} authentifié :
@@ -75,6 +79,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         SecurityContextHolder.getContext().setAuthentication(authentication);
                         request.setAttribute(ATT_PRINCIPAL, utilisateur.get());
                         OrganisationContext.setId(utilisateur.get().getIdOrganisation());
+
+                        // Adresse e-mail non verifiee : seul le jeton de
+                        // verification est accessible, tout le reste est
+                        // refuse (403 EMAIL_NON_VERIFIE).
+                        if (!Boolean.TRUE.equals(utilisateur.get().getUtilisateur().getEmailVerifie())
+                                && !ROUTES_SANS_VERIFICATION_EMAIL.contains(request.getRequestURI())) {
+                            refuserCode(response, 403, "EMAIL_NON_VERIFIE",
+                                    "Adresse e-mail non verifiee : verifiez votre boite avant de vous connecter.");
+                            return;
+                        }
                     } else {
                         // Compte supprimé ou désactivé : on rejette explicitement
                         // le jeton pour éviter tout traitement ultérieur.
@@ -111,11 +125,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private static void refuser(HttpServletResponse response, String message) throws IOException {
-        response.setStatus(HttpStatus.UNAUTHORIZED.value());
+        refuserCode(response, 401, "UNAUTHORIZED", message);
+    }
+
+    private static void refuserCode(HttpServletResponse response, int status, String code, String message)
+            throws IOException {
+        response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
+        String error = status == 403 ? "Forbidden" : "Unauthorized";
         response.getWriter().write("{\"timestamp\": \"" + LocalDateTime.now()
-                + "\", \"status\": 401, \"error\": \"Unauthorized\", \"message\": \""
-                + message + "\"}");
+                + "\", \"status\": " + status + ", \"error\": \"" + error + "\", \"code\": \""
+                + code + "\", \"message\": \"" + message + "\"}");
     }
 }
