@@ -4,8 +4,9 @@ import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import { useReferentiels } from '../i18n/referentiels';
 import LanguageSwitcher from './LanguageSwitcher';
-import MotifZellige from './MotifZellige';
 import NotificationsBell from './NotificationsBell';
+import { ThemeToggle } from './ui/theme-toggle';
+import { cn } from '@/lib/utils';
 import {
   IconDashboard,
   IconUser,
@@ -17,17 +18,54 @@ import {
   IconWallet,
   IconLayers,
   IconUsers,
-  IconShield,
   IconLogout,
   IconArchive,
   IconClock,
   IconSearch,
-  IconChevronDown,
   IconMenu,
   IconClose,
   IconSettings,
-  IconAssistant
+  IconAssistant,
 } from './Icons';
+
+const LINKS = [
+  {
+    section: 'layout.nav.portefeuille',
+    items: [
+      { to: '/dashboard', cle: 'layout.nav.dashboard', Icone: IconDashboard },
+      { to: '/initiatives', cle: 'layout.nav.initiatives', Icone: IconProject },
+      { to: '/roadmap', cle: 'layout.nav.roadmap', Icone: IconRoadmap },
+      { to: '/demandes', cle: 'layout.nav.demandes', Icone: IconInbox },
+      { to: '/objectifs', cle: 'layout.nav.objectifs', Icone: IconTarget },
+      { to: '/initiatives?archive=1', cle: 'layout.nav.archives', Icone: IconArchive },
+    ],
+  },
+  {
+    section: 'layout.nav.suivi',
+    items: [
+      { to: '/risques', cle: 'layout.nav.risques', Icone: IconAlert },
+      { to: '/depenses', cle: 'layout.nav.depenses', Icone: IconWallet },
+      { to: '/commentaires', cle: 'layout.nav.commentaires', Icone: IconAssistant },
+    ],
+  },
+  {
+    section: 'layout.nav.administration',
+    items: [
+      { to: '/utilisateurs', cle: 'layout.nav.utilisateurs', Icone: IconUsers },
+      { to: '/roles', cle: 'layout.nav.roles', Icone: IconShield },
+      { to: '/entites', cle: 'layout.nav.entites', Icone: IconDashboard },
+    ],
+  },
+  {
+    section: 'layout.nav.activite',
+    items: [
+      { to: '/historique', cle: 'layout.nav.historique', Icone: IconClock },
+      { to: '/historique-connexions', cle: 'layout.nav.connexions', Icone: IconClock },
+      { to: '/audit', cle: 'layout.nav.audit', Icone: IconLayers },
+      { to: '/ia/journal', cle: 'layout.nav.journalIA', Icone: IconAssistant },
+    ],
+  },
+];
 
 /** Fil d'Ariane (clés de traduction) déduit de la route courante. */
 function filAriane(pathname, search) {
@@ -44,21 +82,22 @@ function filAriane(pathname, search) {
   if (pathname.startsWith('/demandes')) return ['layout.fil.portefeuille', 'layout.nav.demandes'];
   if (pathname.startsWith('/objectifs')) return ['layout.fil.portefeuille', 'layout.fil.objectifs'];
   if (pathname.startsWith('/mon-espace')) return ['layout.fil.portefeuille', 'layout.nav.monEspace'];
-  if (pathname.startsWith('/risques')) return ['layout.fil.portefeuille', 'layout.nav.risques'];
-  if (pathname.startsWith('/depenses')) return ['layout.fil.portefeuille', 'layout.nav.depenses'];
-  if (pathname.startsWith('/audit')) return ['layout.fil.portefeuille', 'layout.nav.audit'];
-  if (pathname.startsWith('/historique-connexions')) return ['layout.fil.portefeuille', 'layout.nav.connexions'];
-  if (pathname.startsWith('/historique')) return ['layout.fil.portefeuille', 'layout.nav.historique'];
-  if (pathname.startsWith('/utilisateurs')) return ['layout.fil.portefeuille', 'layout.nav.utilisateurs'];
-  if (pathname.startsWith('/roles')) return ['layout.fil.portefeuille', 'layout.nav.roles'];
+  if (pathname.startsWith('/risques')) return ['layout.fil.suivi', 'layout.nav.risques'];
+  if (pathname.startsWith('/depenses')) return ['layout.fil.suivi', 'layout.nav.depenses'];
+  if (pathname.startsWith('/audit')) return ['layout.fil.activite', 'layout.nav.audit'];
+  if (pathname.startsWith('/historique-connexions')) return ['layout.fil.activite', 'layout.nav.connexions'];
+  if (pathname.startsWith('/historique')) return ['layout.fil.activite', 'layout.nav.historique'];
+  if (pathname.startsWith('/utilisateurs')) return ['layout.fil.administration', 'layout.nav.utilisateurs'];
+  if (pathname.startsWith('/roles')) return ['layout.fil.administration', 'layout.nav.roles'];
   if (pathname.startsWith('/assistant')) return ['layout.fil.portefeuille', 'layout.nav.assistant'];
   if (pathname.startsWith('/mot-de-passe')) return ['layout.fil.portefeuille', 'layout.menu.motDePasse'];
   return ['layout.fil.portefeuille'];
 }
 
 /**
- * Gabarit de l'application : barre latérale de navigation, barre supérieure
- * (fil d'Ariane, recherche, langue, profil) et zone de contenu.
+ * Gabarit de l'application : barre latérale de navigation (desktop),
+ * barre de navigation en bas (mobile), barre supérieure (fil d'Ariane,
+ * recherche, langue, thème, notifications, profil) et zone de contenu.
  */
 export default function Layout() {
   const { user, logout, hasPermission } = useAuth();
@@ -69,7 +108,6 @@ export default function Layout() {
 
   const [menuProfil, setMenuProfil] = useState(false);
   const [tiroir, setTiroir] = useState(false);
-  const [menuReduit, setMenuReduit] = useState(false);
   const [recherche, setRecherche] = useState('');
   const refMenu = useRef(null);
 
@@ -88,16 +126,9 @@ export default function Layout() {
     setMenuProfil(false);
   }, [location.pathname, location.search]);
 
-  // Ouvre le tiroir sur mobile, replie/affiche la barre latérale sur grand écran.
-  const basculerMenu = () => {
-    const estMobile = typeof window !== 'undefined'
-      && window.matchMedia('(max-width: 980px)').matches;
-    if (estMobile) {
-      setTiroir((v) => !v);
-    } else {
-      setMenuReduit((v) => !v);
-    }
-  };
+  const estMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 1024px)').matches;
+
+  const basculerMenu = () => setTiroir((v) => !v);
 
   const handleLogout = () => {
     logout();
@@ -113,163 +144,212 @@ export default function Layout() {
   const { pathname, search } = location;
   const dansArchives = pathname === '/initiatives' && search.includes('archive=1');
 
-  // Menu unique dans l'ordre canonique : chaque entrée est poussée si (et
-  // seulement si) l'utilisateur détient la permission qui l'ouvre. Les rôles
-  // sans permission voient simplement le lien manquant, l'ordre reste stable.
-  const liens = [
-    { to: '/dashboard', cle: 'layout.nav.dashboard', Icone: IconDashboard, actif: pathname === '/dashboard' },
-    { to: '/mon-espace', cle: 'layout.nav.monEspace', Icone: IconUser, actif: pathname === '/mon-espace' }
-  ];
-  if (hasPermission('INITIATIVE_CONSULTER')) {
-    liens.push({ to: '/initiatives', cle: 'layout.nav.initiatives', Icone: IconProject, actif: pathname.startsWith('/initiatives') && !dansArchives });
-    liens.push({ to: '/roadmap', cle: 'layout.nav.roadmap', Icone: IconRoadmap, actif: pathname.startsWith('/roadmap') });
-  }
-  if (user?.permissions?.some((p) => ['DEMANDE_SOUMETTRE', 'DEMANDE_EVALUER'].includes(p))) {
-    liens.push({ to: '/demandes', cle: 'layout.nav.demandes', Icone: IconInbox, actif: pathname.startsWith('/demandes') });
-  }
-  if (hasPermission('INITIATIVE_CONSULTER')) {
-    // Registre des risques : lecture ouverte (INITIATIVE_CONSULTER), écriture
-    // réservée à RISQUE_GERER dans la page elle-même.
-    liens.push({ to: '/risques', cle: 'layout.nav.risques', Icone: IconAlert, actif: pathname.startsWith('/risques') });
-    liens.push({ to: '/objectifs', cle: 'layout.nav.objectifs', Icone: IconTarget, actif: pathname.startsWith('/objectifs') });
-    liens.push({ to: '/initiatives?archive=1', cle: 'layout.nav.archives', Icone: IconArchive, actif: dansArchives });
-    // Journal global : même permission que la lecture des initiatives —
-    // aucun nouveau droit ouvert par la page. Le chemin est exact (et non
-    // « startsWith ») pour ne pas rester actif sur /historique-connexions.
-    liens.push({ to: '/historique', cle: 'layout.nav.historique', Icone: IconClock, actif: pathname === '/historique' });
-  }
-  if (user?.permissions?.some((p) => ['BUDGET_CONSULTER', 'DEPENSE_SAISIR'].includes(p))) {
-    liens.push({ to: '/depenses', cle: 'layout.nav.depenses', Icone: IconWallet, actif: pathname.startsWith('/depenses') });
-  }
-  if (hasPermission('UTILISATEUR_GERER')) {
-    liens.push({ to: '/audit', cle: 'layout.nav.audit', Icone: IconLayers, actif: pathname.startsWith('/audit') });
-    liens.push({ to: '/utilisateurs', cle: 'layout.nav.utilisateurs', Icone: IconUsers, actif: pathname.startsWith('/utilisateurs') });
-    // Journal des connexions (e-mails + IP) : administrateurs seuls,
-    // même droit que la gestion des comptes — aucun nouveau droit créé.
-    liens.push({ to: '/historique-connexions', cle: 'layout.nav.connexions', Icone: IconClock, actif: pathname.startsWith('/historique-connexions') });
-  }
-  if (user?.permissions?.some((p) => ['ROLE_GERER', 'PERMISSION_GERER'].includes(p))) {
-    liens.push({ to: '/roles', cle: 'layout.nav.roles', Icone: IconShield, actif: pathname.startsWith('/roles') });
-  }
-  if (hasPermission('IA_UTILISER')) {
-    liens.push({ to: '/assistant', cle: 'layout.nav.assistant', Icone: IconAssistant, actif: pathname.startsWith('/assistant') });
-  }
-
-  const miettes = filAriane(pathname, search);
   const initiales = `${user?.prenom?.[0] ?? ''}${user?.nom?.[0] ?? ''}`.toUpperCase();
   const libelleRole = ref.role(user?.role?.code, user?.role?.libelle);
 
+  const miettes = filAriane(pathname, search);
+
+  // Détermine si une route est active (pour surlignage).
+  const estActive = (to) => {
+    if (to === '/initiatives?archive=1') return dansArchives;
+    return pathname === to || pathname.startsWith(to + '/');
+  };
+
   return (
-    <div className="app-shell">
-      <aside className={`sidebar${tiroir ? ' ouverte' : ''}${menuReduit ? ' reduite' : ''}`}>
-        <div className="sidebar-brand">
-          <img
-            className="brand-logo"
-            src="/images/logo-it6.png"
-            alt="IT6 Academy"
-            width="132"
-            height="138"
-          />
-          <div className="sidebar-brand-texte">
-            <strong>{t('layout.brand.slogan')}</strong>
-            <small>IT6 Consulting</small>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Barre latérale desktop */}
+      <aside className="fixed left-0 top-0 z-20 h-screen w-64 border-r border-border bg-card transition-transform duration-300 -translate-x-full lg:translate-x-0" aria-label="Navigation principale">
+        <div className="h-full flex flex-col">
+          <div className="p-4 border-b border-border">
+            <div className="flex items-center gap-2">
+              <img
+                className="h-8 w-8 rounded-md"
+                src="/images/logo-it6.png"
+                alt="IT6 Academy"
+              />
+              <span className="font-semibold text-sm">{t('layout.brand.nom')}</span>
+            </div>
           </div>
-          <button className="sidebar-fermer" onClick={() => setTiroir(false)} aria-label={t('layout.sidebar.fermer')}>
-            <IconClose size={18} />
-          </button>
-        </div>
 
-        <nav className="sidebar-nav">
-          {liens.map((lien) => (
-            <Link key={lien.to} to={lien.to} className={lien.actif ? 'nav-link active' : 'nav-link'}>
-              <lien.Icone size={18} />
-              <span>{t(lien.cle)}</span>
-            </Link>
-          ))}
-        </nav>
+          <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+            {LINKS.map((section) => (
+              <div key={section.section}>
+                <h3 className="px-3 mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {t(section.section)}
+                </h3>
+                {section.items.map((lien) => {
+                  const active = estActive(lien.to);
+                  const hasRight = lien.Icone === IconUsers
+                    ? hasPermission('UTILISATEUR_GERER')
+                    : lien.Icone === IconShield
+                    ? user?.permissions?.some((p) => ['ROLE_GERER', 'PERMISSION_GERER'].includes(p))
+                    : lien.Icone === IconAssistant
+                    ? hasPermission('IA_UTILISER')
+                    : lien.Icone === IconWallet
+                    ? user?.permissions?.some((p) => ['BUDGET_CONSULTER', 'DEPENSE_SAISIR'].includes(p))
+                    : true;
+                  if (!hasRight) return null;
+                  return (
+                    <Link
+                      key={lien.to}
+                      to={lien.to}
+                      className={cn(
+                        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                        active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      )}
+                    >
+                      <lien.Icone size={18} />
+                      <span>{t(lien.cle)}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
+          </nav>
 
-        <div className="sidebar-pied">
-          <span className="texte-muet">{t('layout.pied')}</span>
+          <div className="p-3 border-t border-border">
+            <p className="text-xs text-muted-foreground">{user?.prenom} {user?.nom}</p>
+            <p className="text-xs font-medium">{libelleRole}</p>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
+            >
+              <IconLogout size={16} />
+              {t('layout.deconnexion')}
+            </button>
+          </div>
         </div>
       </aside>
 
-      {tiroir && <div className="sidebar-voile" onClick={() => setTiroir(false)} />}
+      {/* Voile du tiroir mobile */}
+      {tiroir && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setTiroir(false)}
+        />
+      )}
 
-      <div className="app-corps">
-        <header className="topbar">
-          <MotifZellige className="motif-bande" taille={12} />
+      {/* Zone de contenu principale */}
+      <div className={`lg:pl-64 min-h-screen`}>
+        {/* Topbar */}
+        <header className="sticky top-0 z-10 flex h-16 items-center gap-2 px-4 border-b border-border bg-background/95 backdrop-blur">
           <button
-            className="topbar-burger"
             onClick={basculerMenu}
+            className="lg:hidden rounded-md p-1.5 text-muted-foreground ring-offset-background transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             aria-label={t('layout.burger.aria')}
-            aria-expanded={tiroir || !menuReduit}
+            aria-expanded={tiroir}
           >
             <IconMenu size={20} />
           </button>
 
-          <nav className="fil-ariane" aria-label="Fil d'Ariane">
+          <nav className="flex-1" aria-label="Fil d'Ariane">
             {miettes.map((cle, idx) => (
-              <span key={`${cle}-${idx}`} className={idx === miettes.length - 1 ? 'fil-ariane-courant' : ''}>
-                {idx > 0 && <span className="fil-ariane-sep">/</span>}
+              <span key={`${cle}-${idx}`} className={idx === miettes.length - 1 ? 'font-medium' : 'text-muted-foreground'}>
+                {idx > 0 && <span className="mx-1 text-muted-foreground">/</span>}
                 {t(cle)}
               </span>
             ))}
           </nav>
 
-          <form className="topbar-recherche" onSubmit={soumettreRecherche} role="search">
-            <IconSearch size={16} />
-            <input
-              type="search"
-              placeholder={t('layout.recherche.placeholder')}
-              value={recherche}
-              onChange={(e) => setRecherche(e.target.value)}
-              aria-label={t('layout.recherche.aria')}
-            />
-          </form>
+          <div className="flex-1 flex justify-end">
+            <form
+              onSubmit={soumettreRecherche}
+              className="hidden sm:flex items-center gap-2"
+              role="search"
+            >
+              <IconSearch size={16} className="text-muted-foreground" />
+              <input
+                type="search"
+                placeholder={t('layout.recherche.placeholder')}
+                value={recherche}
+                onChange={(e) => setRecherche(e.target.value)}
+                aria-label={t('layout.recherche.aria')}
+                className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </form>
 
-          <LanguageSwitcher />
+            <LanguageSwitcher className="hidden sm:flex" />
+            <ThemeToggle className="hidden sm:flex" />
+            <NotificationsBell />
 
-          <NotificationsBell />
+            <div className="ml-3 flex items-center" ref={refMenu}>
+              <button
+                className="rounded-md p-1.5 text-muted-foreground ring-offset-background transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                onClick={() => setMenuProfil((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={menuProfil}
+              >
+                <span className="relative inline-block">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                    {initiales}
+                  </span>
+                </span>
+              </button>
 
-          <div className="topbar-utilisateur" ref={refMenu}>
-            <button className="topbar-profil" onClick={() => setMenuProfil((v) => !v)} aria-haspopup="menu" aria-expanded={menuProfil}>
-              <span className="avatar avatar-petit">{initiales}</span>
-              <span className="topbar-profil-texte">
-                <strong>{user?.prenom} {user?.nom}</strong>
-                <small>{libelleRole}</small>
-              </span>
-              <IconChevronDown size={16} />
-            </button>
-
-            {menuProfil && (
-              <div className="menu-deroulant" role="menu">
-                <div className="menu-deroulant-entete">
-                  <strong>{user?.prenom} {user?.nom}</strong>
-                  <small>{libelleRole}</small>
-                  {user?.email && <small className="texte-muet">{user.email}</small>}
+              {menuProfil && (
+                <div className="absolute right-0 mt-2 w-48 rounded-md border border-input bg-card py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:origin-top-right">
+                  <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                    {user?.prenom} {user?.nom}
+                  </div>
+                  <div className="px-3 py-1 text-xs text-muted-foreground">{libelleRole}</div>
+                  <Separator className="my-1" />
+                  <Link
+                    to="/mot-de-passe"
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent"
+                    onClick={() => setMenuProfil(false)}
+                  >
+                    <IconSettings size={16} />
+                    {t('layout.menu.motDePasse')}
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
+                  >
+                    <IconLogout size={16} />
+                    {t('layout.deconnexion')}
+                  </button>
                 </div>
-                <Link
-                  to="/mot-de-passe"
-                  className="menu-deroulant-item"
-                  role="menuitem"
-                  onClick={() => setMenuProfil(false)}
-                >
-                  <IconSettings size={16} />
-                  {t('layout.menu.motDePasse')}
-                </Link>
-                <button className="menu-deroulant-item" onClick={handleLogout} role="menuitem">
-                  <IconLogout size={16} />
-                  {t('layout.deconnexion')}
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </header>
 
-        <main className="main-content">
+        <main className="flex-1 p-4 lg:p-6">
           <Outlet />
         </main>
       </div>
+
+      {/* Barre de navigation mobile en bas */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background">
+        <div className="flex items-center justify-around px-2 py-2">
+          {LINKS.flatMap((s) => s.items).map((lien) => {
+            const active = estActive(lien.to);
+            const hasRight = lien.Icone === IconUsers
+              ? hasPermission('UTILISATEUR_GERER')
+              : lien.Icone === IconShieldCheck
+              ? user?.permissions?.some((p) => ['ROLE_GERER', 'PERMISSION_GERER'].includes(p))
+              : lien.Icone === IconAssistant
+              ? hasPermission('IA_UTILISER')
+              : lien.Icone === IconWallet
+              ? user?.permissions?.some((p) => ['BUDGET_CONSULTER', 'DEPENSE_SAISIR'].includes(p))
+              : true;
+            if (!hasRight) return null;
+            return (
+              <Link
+                key={lien.to}
+                to={lien.to}
+                className={cn(
+                  'flex flex-col items-center gap-1 rounded-md p-1.5 text-xs font-medium transition-colors',
+                  active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                )}
+              >
+                <lien.Icone size={20} />
+                <span>{t(lien.cle)}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }
