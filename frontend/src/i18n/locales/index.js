@@ -19,6 +19,8 @@ import suivi from './suivi';
 import users from './users';
 import roles from './roles';
 import motdepasse from './motdepasse';
+import inscription from './inscription';
+import onboarding from './onboarding';
 import assistant from './assistant';
 
 /**
