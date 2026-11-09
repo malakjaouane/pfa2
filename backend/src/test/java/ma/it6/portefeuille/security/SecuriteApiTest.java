@@ -28,9 +28,13 @@ import ma.it6.portefeuille.entity.RolePermissionId;
 import ma.it6.portefeuille.entity.Utilisateur;
 import ma.it6.portefeuille.repository.OrganisationRepository;
 import ma.it6.portefeuille.repository.RoleRepository;
+import ma.it6.portefeuille.repository.InitiativeRepository;
 import ma.it6.portefeuille.repository.MembreInitiativeRepository;
+import ma.it6.portefeuille.repository.PlanRepository;
+import ma.it6.portefeuille.repository.PlanRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
 import ma.it6.portefeuille.service.MembreInitiativeService;
+import ma.it6.portefeuille.service.PlanService;
 import ma.it6.portefeuille.exception.BadRequestException;
 import ma.it6.portefeuille.service.email.EmailService;
 import ma.it6.portefeuille.service.AssistantIaService;
@@ -48,6 +52,7 @@ import ma.it6.portefeuille.service.JournalAuditService;
 import ma.it6.portefeuille.service.MonEspaceService;
 import ma.it6.portefeuille.service.ObjectifService;
 import ma.it6.portefeuille.service.RisqueService;
+import ma.it6.portefeuille.service.PlanService;
 import ma.it6.portefeuille.service.UtilisateurService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -212,6 +217,12 @@ class SecuriteApiTest {
     void autoriserModificationsInitiative() {
         when(membreInitiativeService.peutModifier(anyLong(), anyLong())).thenReturn(true);
     }
+    @MockitoBean
+    private InitiativeRepository initiativeRepository;
+    @MockitoBean
+    private PlanRepository planRepository;
+    @MockitoBean
+    private PlanService planService;
 
     // =================================================================
     // 0. Assistant IA : permission dédiée IA_UTILISER + journal admin

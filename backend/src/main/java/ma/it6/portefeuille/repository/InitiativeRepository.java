@@ -18,6 +18,8 @@ public interface InitiativeRepository extends JpaRepository<Initiative, Long>, J
 
     boolean existsByCodeAndIdInitiativeNot(String code, Long idInitiative);
 
+    long countByIdOrganisation(Long idOrganisation);
+
     /**
      * Nombre d'initiatives rattachées à un objectif stratégique —
      * garde-fou de la suppression d'un objectif : la clé étrangère est en

@@ -16,6 +16,8 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
 
     boolean existsByEmailAndIdUserNot(String email, Long idUser);
 
+    long countByIdOrganisation(Long idOrganisation);
+
     /**
      * Charge un utilisateur avec son rôle et ses permissions (autorisations
      * utilisées par Spring Security).
