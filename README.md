@@ -519,18 +519,19 @@ Les sources `diagrammes-mermaid.md` et `plantuml/*.puml` complètent ce jeu
 
 Toute l'interface — application et vitrine — applique le **design system
 « Zellige contemporain »** décrit dans [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) :
-un socle sobre dans l'esprit Linear / Notion / Stripe, avec une identité
-marocaine contemporaine. Les tokens vivent dans `frontend/src/index.css`
+un socle sobre dans l'esprit Linear / Notion / Stripe, avec la charte
+**Rose poudré `#EBC9C4` · Blanc `#FFFFFF` · Bordeaux `#5C1A2B`**. Les tokens
+vivent dans `frontend/src/index.css`
 (mode clair et mode sombre) et sont exposés en classes utilitaires par le
 thème Tailwind (`frontend/tailwind.config.js`) :
 
 | Rôle | Usage | Token | Valeur (clair) |
 |---|---|---|---|
-| Bleu Majorelle | actions primaires, liens, focus | `--primary` | `#0067A5` |
-| Ocre safran | accents chauds, badges, icônes *(surfaces, jamais du texte)* | `--accent` | `#E8820D` |
-| Turquoise | surlignage, mentions | `--highlight` | `#0D97AF` |
-| Fond sable | arrière-plan des pages | `--background` | `#FBFAF8` |
-| Texte anthracite | titres et contenu | `--foreground` | `#17191E` |
+| Bordeaux | actions primaires, liens, navigation active | `--primary` | `#5C1A2B` |
+| Rose poudré | accents : surfaces, hovers, badges *(jamais du texte sur clair)* | `--accent` | `#EBC9C4` |
+| Rose soutenu | surlignage, mentions | `--highlight` | `#DF9B90` |
+| Blanc | arrière-plan des pages | `--background` | `#FFFFFF` |
+| Encre chaude | titres et contenu | `--foreground` | `#221D1B` |
 
 Concrètement :
 

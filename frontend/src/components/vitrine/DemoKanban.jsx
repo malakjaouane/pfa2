@@ -12,7 +12,7 @@ import { IconCheck, IconClock, IconPause, IconArrowRight } from '../Icons';
 
 const STATUTS = [
   { cle: 'common.statut.aPlanifier', couleur: '#848484' },
-  { cle: 'common.statut.enCours', couleur: '#24C2CE' },
+  { cle: 'common.statut.enCours', couleur: '#5C1A2B' },
   { cle: 'common.statut.enPause', couleur: '#FCA822' },
   { cle: 'common.statut.terminee', couleur: '#1E8E5A' }
 ];

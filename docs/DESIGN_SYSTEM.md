@@ -1,8 +1,9 @@
 # Design System — Phase 3 : refonte du design
 
 > **Statut : validé — fondations implémentées** (tokens clair/sombre, purge
-> ServiceNow, code mort supprimé, kit Radix ajouté). Le reste de la phase suit
-> ce document.
+> ServiceNow, code mort supprimé, kit Radix ajouté). Charte **Rose poudré /
+> Blanc / Bordeaux** appliquée (tokens clair + sombre, vitrine, liens et
+> boutons legacy). Le reste de la phase suit ce document.
 > Objectif : app moderne et vivante (esprit Linear / Notion / Stripe) avec une
 > identité marocaine contemporaine. Fin de l'imitation ServiceNow.
 
@@ -10,15 +11,21 @@
 
 ## 1. Identité — « Zellige contemporain »
 
-Le socle suit la retenue des produits Linear/Notion/Stripe : base neutre chaude,
+Le socle suit la retenue des produits Linear/Notion/Stripe : base neutre,
 **une** couleur de marque forte, filets fins, ombres discrètes, typographie serrée,
-beaucoup d'espace. La signature marocaine vient du **bleu Majorelle** (marque),
-de l'**ocre safran** (accent), du **turquoise zellige** (surlignage) et du motif
-`MotifZellige.jsx` — utilisé avec parcimonie : page de connexion, hero de la
-vitrine, fonds vides décoratifs. Jamais sous un formulaire ni derrière du texte dense.
+beaucoup d'espace. La charte tient en trois couleurs :
 
-La charte actuelle **navy `#032D42` / cyan `#24C2CE` / vert `#00875A`** (« wasabi »,
-ADN ServiceNow) est supprimée (§8).
+- **Bordeaux `#5C1A2B`** — marque : actions primaires, liens, navigation active, barres ;
+- **Rose poudré `#EBC9C4`** — accents : surfaces douces, hovers, badges, halos (jamais en texte sur clair : le texte d'accent est bordeaux) ;
+- **Blanc `#FFFFFF`** — fonds et cartes.
+
+Le motif `MotifZellige.jsx` prolonge l'identité — utilisé avec parcimonie : page
+de connexion, hero de la vitrine, fonds vides décoratifs. Jamais sous un formulaire
+ni derrière du texte dense.
+
+La charte historique **navy `#032D42` / cyan `#24C2CE` / vert `#00875A`** (« wasabi »,
+ADN ServiceNow) puis la charte intermédiaire **Majorelle `#0067A5` / ocre `#E8820D` /
+turquoise `#0D97AF`** sont supprimées (§8).
 
 ---
 
@@ -28,29 +35,29 @@ ADN ServiceNow) est supprimée (§8).
 
 | Token | HSL | Usage |
 |---|---|---|
-| `--background` | `40 33% 98%` (#FBFAF8) | fond de page — blanc chaud |
-| `--foreground` | `220 25% 10%` (#17191E) | texte principal |
+| `--background` | `0 0% 100%` (#FFFFFF) | fond de page — blanc |
+| `--foreground` | `345 12% 12%` (#221D1B) | texte principal — encre chaude |
 | `--card` / `--popover` | `0 0% 100%` | cartes, menus |
-| `--primary` | `204 100% 32%` (#0067A5) | **Majorelle** — actions primaires |
-| `--primary-fg` | `210 40% 98%` | texte sur primaire |
-| `--accent` | `28 90% 45%` (#E8820D) | **ocre safran** — surfaces, icônes, badges. Jamais en texte sur clair (variante texte : `26 75% 35%`) |
-| `--highlight` | `187 80% 32%` (#0D97AF) | **turquoise** — surlignage, lien secondaire |
-| `--muted` / `--muted-fg` | `40 20% 95%` / `220 8% 46%` | fonds secondaires, texte secondaire |
-| `--border` / `--input` | `40 15% 90%` | filets, champs |
-| `--success` | `152 55% 32%` | vert succès (remplace `#00875A`) |
+| `--primary` | `345 56% 23%` (#5C1A2B) | **Bordeaux** — actions primaires |
+| `--primary-fg` | `0 0% 100%` | texte sur primaire |
+| `--accent` | `8 49% 85%` (#EBC9C4) | **Rose poudré** — surfaces, hovers, badges. Jamais en texte sur clair (texte : bordeaux `345 56% 23%`) |
+| `--highlight` | `8 55% 72%` (#DF9B90) | **rose soutenu** — surlignage |
+| `--muted` / `--muted-fg` | `8 40% 95%` / `345 8% 42%` | fonds secondaires, texte secondaire |
+| `--border` / `--input` | `8 30% 90%` (#EDE0DE) | filets, champs — neutres rosés |
+| `--success` | `152 55% 32%` | vert succès (sémantique conservée) |
 | `--destructive` | `0 72% 51%` | erreurs, suppression |
 
 ### 2.2 Couleurs — mode sombre (classe `.dark`, déjà câblée)
 
 | Token | HSL |
 |---|---|
-| `--background` | `220 18% 7%` (#101216) |
-| `--foreground` | `40 20% 96%` |
-| `--card` | `220 16% 10%` |
-| `--border` | `220 12% 18%` |
-| `--primary` | `204 82% 52%` (Majorelle éclairci) |
-| `--accent` | `30 88% 58%` |
-| `--muted-fg` | `220 8% 62%` |
+| `--background` | `345 14% 8%` (#171312) — bordeaux profond |
+| `--foreground` | `8 49% 85%` (#EBC9C4) — rose poudré |
+| `--card` | `345 12% 11%` |
+| `--border` | `345 16% 22%` |
+| `--primary` | `8 49% 85%` (rose poudré, texte bordeaux — 8,4:1) |
+| `--accent` | `345 35% 26%` (survol : bordeaux rosé) |
+| `--muted-fg` | `8 25% 68%` |
 
 **Contrastes** : texte courant ≥ 7:1, texte d'action ≥ 4.5:1 (AA), anneau de focus
 visible dans les deux modes — vérifiés au calibrage avec un outil de contraste.
