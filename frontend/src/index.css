@@ -2,45 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design system « Zellige contemporain » — docs/DESIGN_SYSTEM.md.
+ * Tous les tokens de couleur, rayon, ombre et police vivent ici ; le thème
+ * Tailwind (tailwind.config.js) ne fait que les exposer en classes utilitaires.
+ */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Neutres chauds — blanc sable */
+    --background: 40 33% 98%; /* #FBFAF8 */
+    --foreground: 220 25% 10%; /* #17191E */
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 220 25% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 220 25% 10%;
 
-    --primary: 203.9 88% 32.6%; /* #0067a5 — bleu Majorelle / zellige */
+    /* Marque — bleu Majorelle (zellige) */
+    --primary: 204 100% 32%; /* #0067A5 */
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 40 18% 94%;
+    --secondary-foreground: 220 25% 10%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 40 20% 95%; /* #F2F0EC */
+    --muted-foreground: 220 8% 46%; /* #6B7078 */
 
-    --accent: 38 92% 50%; /* ocre / terre cuite — zellige */
-    --accent-foreground: 210 40% 98%;
+    /* Accent chaud — ocre safran : surfaces, icônes, badges.
+     * Jamais en texte sur fond clair (variante texte : 26 75% 35%). */
+    --accent: 32 89% 48%; /* #E8820D */
+    --accent-foreground: 220 25% 10%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Surlignage — turquoise zellige */
+    --highlight: 187 80% 32%; /* #0D97AF */
+    --highlight-foreground: 0 0% 100%;
 
-    /* États de succès (alertes, badges) — reprend le vert du thème legacy
-     * (--green-text de styles.css) pour un rendu identique en Tailwind. */
-    --success: 152 57% 35%;
+    --destructive: 0 72% 51%; /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 203.9 88% 32.6%;
+    --success: 152 55% 32%; /* vert succès */
 
-    --radius: 0.5rem;
+    --border: 40 15% 90%; /* #E6E3DE */
+    --input: 40 15% 90%;
+    --ring: 204 100% 32%;
 
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --radius: 0.5rem; /* 8 px — base de l'échelle xs 4 · sm 6 · md 8 · lg 12 · xl 16 */
+
+    /* Ombres — filet d'abord, ombre ensuite (voir DESIGN_SYSTEM.md §2.4) */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+    --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    --shadow-lg: 0 12px 24px -6px rgb(0 0 0 / 0.1), 0 4px 8px -4px rgb(0 0 0 / 0.05);
 
     --font-sans: 'Inter', system-ui, sans-serif;
     --font-arabic: 'Cairo', system-ui, sans-serif;
@@ -48,35 +60,40 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%; /* #09090b */
-    --foreground: 210 40% 98%;
+    /* Neutres — anthracite froid */
+    --background: 220 18% 7%; /* #101216 */
+    --foreground: 40 20% 96%; /* #F5F3F0 */
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 220 16% 10%;
+    --card-foreground: 40 20% 96%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 16% 10%;
+    --popover-foreground: 40 20% 96%;
 
-    --primary: 197.2 72.2% 52.2%; /* #2aa9e0 — bleu Majorelle clair */
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Majorelle éclairci pour tenir le contraste sur fond sombre */
+    --primary: 204 82% 52%;
+    --primary-foreground: 220 20% 8%;
 
-    --secondary: 217.2 32.6% 17.5%; /* #18181b */
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 14% 15%;
+    --secondary-foreground: 40 20% 96%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 220 14% 13%;
+    --muted-foreground: 220 8% 62%;
 
-    --accent: 38 92% 50%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 30 88% 58%; /* #F2AB36 */
+    --accent-foreground: 220 20% 8%;
 
-    --destructive: 0 62.8% 30.6%; /* #f87171 atténué */
-    --destructive-foreground: 210 40% 98%;
+    --highlight: 187 75% 55%;
+    --highlight-foreground: 220 20% 8%;
+
+    --destructive: 0 72% 60%;
+    --destructive-foreground: 0 0% 100%;
 
     --success: 150 55% 45%; /* vert plus lumineux sur fond sombre */
 
-    --border: 217.2 32.6% 17.5%; /* #27272a */
-    --input: 217.2 32.6% 17.5%;
-    --ring: 203.9 88% 32.6%;
+    --border: 220 12% 18%; /* #2A2E36 */
+    --input: 220 12% 18%;
+    --ring: 204 82% 52%;
   }
 
   * {
