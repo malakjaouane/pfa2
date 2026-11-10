@@ -264,6 +264,11 @@ public class SecurityConfig {
                         // réservé aux administrateurs (loi 09-08 / CNDP).
                         .requestMatchers(HttpMethod.GET, "/api/ia/statut").authenticated()
                         .requestMatchers("/api/ia/assistant", "/api/ia/resume/**").hasAuthority("IA_UTILISER")
+                        // Création d'initiative depuis texte libre (4G) :
+                        // permission INITIATIVE_CREER.
+                        .requestMatchers(HttpMethod.POST, "/api/ia/creer-initiative").hasAuthority("INITIATIVE_CREER")
+                        .requestMatchers(HttpMethod.POST, "/api/ia/creer-initiative/confirmer")
+                        .hasAuthority("INITIATIVE_CREER")
                         .requestMatchers(HttpMethod.GET, "/api/ia/journal").hasAuthority("UTILISATEUR_GERER")
                         // Actuator : santé et info de l'application, réservés
                         // aux administrateurs (supervision production).
