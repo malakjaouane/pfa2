@@ -79,11 +79,6 @@ services:
       IA_FORMAT: ${IA_FORMAT:-anthropic}
       IA_BASE_URL: ${IA_BASE_URL:-https://api.anthropic.com}
       IA_MODELE: ${IA_MODELE:-claude-haiku-4-5}
-      ANTHROPIC_MODELE: ${ANTHROPIC_MODELE:-claude-haiku-4-5}
-      IA_ACTIF: ${IA_ACTIF:-true}
-      IA_FORMAT: ${IA_FORMAT:-anthropic}
-      IA_BASE_URL: ${IA_BASE_URL:-https://api.anthropic.com}
-      IA_MODELE: ${IA_MODELE:-claude-haiku-4-5}
       IA_MAX_TOKENS: ${IA_MAX_TOKENS:-1024}
       # SMTP (Mailpit en developpement ; a configurer en production)
       MAIL_HOST: ${MAIL_HOST:-mailpit}
