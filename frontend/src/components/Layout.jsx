@@ -19,56 +19,60 @@ import {
   IconAlert,
   IconTarget,
   IconWallet,
-  IconLayers,
   IconUsers,
   IconLogout,
-  IconArchive,
   IconClock,
   IconSearch,
   IconMenu,
   IconClose,
   IconSettings,
-  IconAssistant,
   IconShield,
 } from './Icons';
 
 const LINKS = [
   {
-    section: 'layout.nav.portefeuille',
+    section: 'layout.nav.pilotage',
     items: [
       { to: '/dashboard', cle: 'layout.nav.dashboard', Icone: IconDashboard },
+    ],
+  },
+  {
+    section: 'layout.nav.portefeuille',
+    items: [
       { to: '/initiatives', cle: 'layout.nav.initiatives', Icone: IconProject },
       { to: '/roadmap', cle: 'layout.nav.roadmap', Icone: IconRoadmap },
-      { to: '/demandes', cle: 'layout.nav.demandes', Icone: IconInbox },
-      { to: '/objectifs', cle: 'layout.nav.objectifs', Icone: IconTarget },
-      { to: '/initiatives?archive=1', cle: 'layout.nav.archives', Icone: IconArchive },
+      { to: '/demandes', cle: 'layout.nav.demandes', Icone: IconInbox, perms: ['DEMANDE_SOUMETTRE', 'DEMANDE_EVALUER'] },
+      { to: '/objectifs', cle: 'layout.nav.objectifs', Icone: IconTarget, perms: ['INITIATIVE_CONSULTER'] },
     ],
   },
   {
     section: 'layout.nav.suivi',
     items: [
-      { to: '/risques', cle: 'layout.nav.risques', Icone: IconAlert },
-      { to: '/depenses', cle: 'layout.nav.depenses', Icone: IconWallet },
-      { to: '/commentaires', cle: 'layout.nav.commentaires', Icone: IconAssistant },
-    ],
-  },
-  {
-    section: 'layout.nav.administration',
-    items: [
-      { to: '/utilisateurs', cle: 'layout.nav.utilisateurs', Icone: IconUsers },
-      { to: '/roles', cle: 'layout.nav.roles', Icone: IconShield },
-      { to: '/entites', cle: 'layout.nav.entites', Icone: IconDashboard },
+      { to: '/risques', cle: 'layout.nav.risques', Icone: IconAlert, perms: ['INITIATIVE_CONSULTER'] },
+      { to: '/depenses', cle: 'layout.nav.depenses', Icone: IconWallet, perms: ['BUDGET_CONSULTER', 'DEPENSE_SAISIR'] },
     ],
   },
   {
     section: 'layout.nav.activite',
     items: [
-      { to: '/historique', cle: 'layout.nav.historique', Icone: IconClock },
-      { to: '/historique-connexions', cle: 'layout.nav.connexions', Icone: IconClock },
-      { to: '/audit', cle: 'layout.nav.audit', Icone: IconLayers },
-      { to: '/ia/journal', cle: 'layout.nav.journalIA', Icone: IconAssistant },
+      { to: '/activite', cle: 'layout.nav.activiteSecurite', Icone: IconClock, perms: ['INITIATIVE_CONSULTER', 'UTILISATEUR_GERER'] },
     ],
   },
+  {
+    section: 'layout.nav.administration',
+    items: [
+      { to: '/utilisateurs', cle: 'layout.nav.utilisateurs', Icone: IconUsers, perms: ['UTILISATEUR_GERER'] },
+      { to: '/roles', cle: 'layout.nav.roles', Icone: IconShield, perms: ['ROLE_GERER', 'PERMISSION_GERER'] },
+    ],
+  },
+];
+
+/** Destinations de la barre mobile en bas : 4 liens + « Plus » (tiroir). */
+const NAV_MOBILE = [
+  { to: '/dashboard', cle: 'layout.nav.dashboard', Icone: IconDashboard },
+  { to: '/initiatives', cle: 'layout.nav.initiatives', Icone: IconProject },
+  { to: '/demandes', cle: 'layout.nav.demandes', Icone: IconInbox, perms: ['DEMANDE_SOUMETTRE', 'DEMANDE_EVALUER'] },
+  { to: '/activite', cle: 'layout.nav.activite', Icone: IconClock, perms: ['INITIATIVE_CONSULTER', 'UTILISATEUR_GERER'] },
 ];
 
 /** Fil d'Ariane (clés de traduction) déduit de la route courante. */
@@ -88,6 +92,7 @@ function filAriane(pathname, search) {
   if (pathname.startsWith('/mon-espace')) return ['layout.fil.portefeuille', 'layout.nav.monEspace'];
   if (pathname.startsWith('/risques')) return ['layout.fil.suivi', 'layout.nav.risques'];
   if (pathname.startsWith('/depenses')) return ['layout.fil.suivi', 'layout.nav.depenses'];
+  if (pathname.startsWith('/activite')) return ['layout.fil.activite', 'layout.nav.activiteSecurite'];
   if (pathname.startsWith('/audit')) return ['layout.fil.activite', 'layout.nav.audit'];
   if (pathname.startsWith('/historique-connexions')) return ['layout.fil.activite', 'layout.nav.connexions'];
   if (pathname.startsWith('/historique')) return ['layout.fil.activite', 'layout.nav.historique'];
@@ -146,7 +151,6 @@ export default function Layout() {
   };
 
   const { pathname, search } = location;
-  const dansArchives = pathname === '/initiatives' && search.includes('archive=1');
 
   const initiales = `${user?.prenom?.[0] ?? ''}${user?.nom?.[0] ?? ''}`.toUpperCase();
   const libelleRole = ref.role(user?.role?.code, user?.role?.libelle);
@@ -155,14 +159,29 @@ export default function Layout() {
 
   // Détermine si une route est active (pour surlignage).
   const estActive = (to) => {
-    if (to === '/initiatives?archive=1') return dansArchives;
+    // L'entrée « Activité et sécurité » englobe les anciennes routes
+    // /historique, /historique-connexions et /audit (page fusionnée).
+    if (to === '/activite') {
+      return pathname.startsWith('/activite')
+        || ['/historique', '/historique-connexions', '/audit'].includes(pathname);
+    }
     return pathname === to || pathname.startsWith(to + '/');
   };
 
+  // Droits d'accès explicites par entrée de menu (aucune heuristique d'icône).
+  const peutVoir = (lien) =>
+    !lien.perms || lien.perms.some((permission) => hasPermission(permission));
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Barre latérale desktop */}
-      <aside className="fixed left-0 top-0 z-20 h-screen w-64 border-r border-border bg-card transition-transform duration-300 -translate-x-full lg:translate-x-0" aria-label="Navigation principale">
+      {/* Barre latérale desktop (tiroir mobile ouvert par le burger / « Plus ») */}
+      <aside
+        className={cn(
+          'fixed left-0 top-0 z-sheet h-screen w-64 border-r border-border bg-card transition-transform duration-300 lg:translate-x-0',
+          tiroir ? 'translate-x-0' : '-translate-x-full'
+        )}
+        aria-label="Navigation principale"
+      >
         <div className="h-full flex flex-col">
           <div className="p-4 border-b border-border">
             <div className="flex items-center gap-2">
@@ -176,23 +195,14 @@ export default function Layout() {
           </div>
 
           <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
-            {LINKS.map((section) => (
+            {LINKS.filter((section) => section.items.some(peutVoir)).map((section) => (
               <div key={section.section}>
                 <h3 className="px-3 mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
                   {t(section.section)}
                 </h3>
                 {section.items.map((lien) => {
                   const active = estActive(lien.to);
-                  const hasRight = lien.Icone === IconUsers
-                    ? hasPermission('UTILISATEUR_GERER')
-                    : lien.Icone === IconShield
-                    ? user?.permissions?.some((p) => ['ROLE_GERER', 'PERMISSION_GERER'].includes(p))
-                    : lien.Icone === IconAssistant
-                    ? hasPermission('IA_UTILISER')
-                    : lien.Icone === IconWallet
-                    ? user?.permissions?.some((p) => ['BUDGET_CONSULTER', 'DEPENSE_SAISIR'].includes(p))
-                    : true;
-                  if (!hasRight) return null;
+                  if (!peutVoir(lien)) return null;
                   return (
                     <Link
                       key={lien.to}
@@ -318,7 +328,7 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className="flex-1 p-4 lg:p-6">
+        <main className="flex-1 p-4 pb-24 lg:p-6 lg:pb-6">
           <Outlet />
         </main>
       </div>
@@ -327,35 +337,34 @@ export default function Layout() {
 
       <Toaster />
 
-      {/* Barre de navigation mobile en bas */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background">
-        <div className="flex items-center justify-around px-2 py-2">
-          {LINKS.flatMap((s) => s.items).map((lien) => {
+      {/* Barre de navigation mobile en bas : 4 destinations + « Plus » */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-bottom-nav border-t border-border bg-background">
+        <div className="flex items-stretch justify-around px-1 py-1">
+          {NAV_MOBILE.filter(peutVoir).map((lien) => {
             const active = estActive(lien.to);
-            const hasRight = lien.Icone === IconUsers
-              ? hasPermission('UTILISATEUR_GERER')
-              : lien.Icone === IconShield
-              ? user?.permissions?.some((p) => ['ROLE_GERER', 'PERMISSION_GERER'].includes(p))
-              : lien.Icone === IconAssistant
-              ? hasPermission('IA_UTILISER')
-              : lien.Icone === IconWallet
-              ? user?.permissions?.some((p) => ['BUDGET_CONSULTER', 'DEPENSE_SAISIR'].includes(p))
-              : true;
-            if (!hasRight) return null;
             return (
               <Link
                 key={lien.to}
                 to={lien.to}
                 className={cn(
-                  'flex flex-col items-center gap-1 rounded-md p-1.5 text-xs font-medium transition-colors',
+                  'flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-[11px] font-medium transition-colors',
                   active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
               >
                 <lien.Icone size={20} />
-                <span>{t(lien.cle)}</span>
+                <span className="w-full truncate text-center">{t(lien.cle)}</span>
               </Link>
             );
           })}
+          <button
+            onClick={basculerMenu}
+            aria-label={t('layout.burger.aria')}
+            aria-expanded={tiroir}
+            className="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            <IconMenu size={20} />
+            <span className="w-full truncate text-center">{t('layout.nav.plus')}</span>
+          </button>
         </div>
       </nav>
     </div>
