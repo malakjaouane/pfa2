@@ -74,9 +74,9 @@ export default function InscriptionPage() {
 
   if (succes) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <MotifZellige className="absolute inset-0 opacity-30 pointer-events-none" />
-        <Card className="w-full max-w-md shadow-xl">
+      <div className="login-page">
+        <MotifZellige className="motif-fond-login" />
+        <Card className="relative z-10 w-full max-w-md shadow-xl">
           <CardHeader className="text-center">
             <Link to="/login" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-4">
               ← {seConnecter}
@@ -105,9 +105,9 @@ export default function InscriptionPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <MotifZellige className="absolute inset-0 opacity-30 pointer-events-none" />
-      <Card className="w-full max-w-md shadow-xl">
+    <div className="login-page">
+      <MotifZellige className="motif-fond-login" />
+      <Card className="relative z-10 w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <Link to="/login" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-4">
             ← {t('login.retour')}

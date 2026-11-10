@@ -1,6 +1,7 @@
 /** Libellés de la page de connexion. */
 export default {
   fr: {
+    'login.titre': 'IT6 Consulting',
     'login.retour': "Retour à l'accueil",
     'login.sousTitre': "Outil de gestion d'un portefeuille d'initiatives digitales",
     'login.email': 'Email',
@@ -14,6 +15,7 @@ export default {
   },
 
   en: {
+    'login.titre': 'IT6 Consulting',
     'login.retour': 'Back to home',
     'login.sousTitre': 'Tool for managing a portfolio of digital initiatives',
     'login.email': 'Email',
@@ -27,6 +29,7 @@ export default {
   },
 
   ar: {
+    'login.titre': 'IT6 Consulting',
     'login.retour': 'العودة إلى الرئيسية',
     'login.sousTitre': 'أداة لإدارة حافظة المبادرات الرقمية',
     'login.email': 'البريد الإلكتروني',
@@ -40,6 +43,7 @@ export default {
   },
 
   es: {
+    'login.titre': 'IT6 Consulting',
     'login.retour': 'Volver al inicio',
     'login.sousTitre': 'Herramienta de gestión de un portafolio de iniciativas digitales',
     'login.email': 'Correo electrónico',
