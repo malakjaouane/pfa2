@@ -130,6 +130,15 @@
             <version>1.20.3</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- Stockage des pièces jointes sur Amazon S3 (optionnel, sélectionné
+             par stockage.type=s3). Le système de fichiers local reste le
+             défaut et ne dépend d'aucune librairie externe. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.25.14</version>
+        </dependency>
     </dependencies>
 
     <build>

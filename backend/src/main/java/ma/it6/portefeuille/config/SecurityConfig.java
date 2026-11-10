@@ -196,6 +196,16 @@ public class SecurityConfig {
                         .hasAuthority("COMMENTAIRE_AJOUTER")
                         .requestMatchers(HttpMethod.DELETE, "/api/commentaires/**")
                         .hasAuthority("COMMENTAIRE_AJOUTER")
+                        // Pièces jointes sur initiatives et commentaires (4A) :
+                        // upload = écriture sur l'initiative (INITIATIVE_MODIFIER),
+                        // téléchargement = lecture (INITIATIVE_CONSULTER),
+                        // suppression = uploader ou administrateur d'organisation.
+                        .requestMatchers(HttpMethod.POST, "/api/initiatives/*/pieces-jointes")
+                        .hasAuthority("INITIATIVE_MODIFIER")
+                        .requestMatchers(HttpMethod.GET, "/api/pieces-jointes/*/telecharger")
+                        .hasAuthority("INITIATIVE_CONSULTER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/pieces-jointes/*")
+                        .hasAnyAuthority("INITIATIVE_MODIFIER", "UTILISATEUR_GERER")
                         // Registre global des risques (toutes initiatives) :
                         // lecture = INITIATIVE_CONSULTER, comme le registre
                         // par initiative.
