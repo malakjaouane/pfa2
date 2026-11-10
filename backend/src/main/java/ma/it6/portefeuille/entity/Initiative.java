@@ -69,6 +69,15 @@ public class Initiative extends BaseOrganisation {
     @JoinColumn(name = "id_objectif")
     private ObjectifStrategique objectif;
 
+    @Column(name = "valeur")
+    private Integer valeur; // 1-5
+
+    @Column(name = "effort")
+    private Integer effort; // 1-5
+
+    @Column(name = "score_priorisation")
+    private Integer scorePriorisation; // calcule : valeur * 25 / effort
+
     @OneToMany(mappedBy = "initiative", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("ordre ASC")
     private List<Etape> etapes = new ArrayList<>();

@@ -241,6 +241,9 @@ public class SecurityConfig {
                         // Réordonnancement des étapes : à placer avant la règle générale PUT
                         .requestMatchers(HttpMethod.PUT, "/api/initiatives/*/etapes/ordre")
                         .hasAuthority("ETAPE_GERER")
+                        // Priorisation (4C) : à placer avant la règle générale PATCH
+                        .requestMatchers(HttpMethod.PATCH, "/api/initiatives/*/priorisation")
+                        .hasAuthority("INITIATIVE_MODIFIER")
                         .requestMatchers(HttpMethod.PATCH, "/api/initiatives/**").hasAuthority("INITIATIVE_ARCHIVER")
                         .requestMatchers(HttpMethod.PUT, "/api/initiatives/**").hasAuthority("INITIATIVE_MODIFIER")
                         // Étapes / jalons — lecture (GET) déjà autorisée par le

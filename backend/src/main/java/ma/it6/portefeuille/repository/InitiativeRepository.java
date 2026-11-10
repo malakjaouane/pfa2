@@ -21,6 +21,14 @@ public interface InitiativeRepository extends JpaRepository<Initiative, Long>, J
     long countByIdOrganisation(Long idOrganisation);
 
     /**
+     * Toutes les initiatives d'une organisation (pour le recalcul des scores
+     * de priorisation). Le filtre Hibernate filtreParOrganisation est deja
+     * actif, cette methode est donc redondante en production mais utile en
+     * test unitaire.
+     */
+    java.util.List<Initiative> findByIdOrganisation(Long idOrganisation);
+
+    /**
      * Nombre d'initiatives rattachées à un objectif stratégique —
      * garde-fou de la suppression d'un objectif : la clé étrangère est en
      * {@code ON DELETE SET NULL}, le serveur refuse donc plutôt que de
