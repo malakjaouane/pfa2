@@ -148,6 +148,15 @@
             <artifactId>poi-ooxml</artifactId>
             <version>5.2.5</version>
         </dependency>
+
+        <!-- Generation de rapports PDF cote serveur (4F : export comite
+             de pilotage). PDFBox est la reference Java pour generer des
+             documents PDF sans dependance proprietare. -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.31</version>
+        </dependency>
     </dependencies>
 
     <build>

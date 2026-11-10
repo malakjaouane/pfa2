@@ -253,7 +253,7 @@ public class SecurityConfig {
                         // « /api/initiatives/** » en INITIATIVE_CONSULTER ci-dessus :
                         // les visiteurs voient donc les étapes et jalons. Écriture
                         // réservée à ETAPE_GERER / JALON_GERER.
-                        .requestMatchers("/api/etapes/**", "/api/initiatives/*/etapes").hasAuthority("ETAPE_GERER")
+                        .requestMatchers(HttpMethod.PUT, "/api/etapes/**", "/api/initiatives/*/etapes").hasAuthority("ETAPE_GERER")
                         .requestMatchers("/api/jalons/**", "/api/initiatives/*/jalons").hasAuthority("JALON_GERER")
                         // Gestion des permissions d'un rôle
                         .requestMatchers(HttpMethod.PUT, "/api/roles/*/permissions").hasAuthority("ROLE_GERER")
