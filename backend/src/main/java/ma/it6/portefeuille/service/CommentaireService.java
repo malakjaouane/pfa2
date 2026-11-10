@@ -11,11 +11,15 @@ import ma.it6.portefeuille.mapper.UtilisateurMapper;
 import ma.it6.portefeuille.repository.CommentaireRepository;
 import ma.it6.portefeuille.repository.InitiativeRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
+import ma.it6.portefeuille.security.OrganisationContext;
+import ma.it6.portefeuille.service.NotificationService;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Fil de discussion d'une initiative — commentaires.
@@ -32,6 +36,11 @@ import java.util.List;
  *   <li>commentaire inexistant → 404 ;</li>
  *   <li>corps vide ou trop long → 400 (validation du contrôleur).</li>
  * </ul>
+ *
+ * <p>Mentions @ (4E) : une mention {@code @email} ou {@code @nom} dans le
+ * corps du commentaire notifie l'utilisateur visé s'il appartient à la même
+ * organisation. Les mentions sont résolues après création du commentaire et
+ * n'empêchent pas sa publication en cas d'erreur.</p>
  */
 @Service
 public class CommentaireService {
@@ -39,16 +48,22 @@ public class CommentaireService {
     /** Plafond de longueur rappelé ici pour la coupe propre. */
     static final int LONGUEUR_MAXIMALE = 4000;
 
+    /** Motif des mentions : @ suivi d'un identifiant (lettre, chiffre, point, tiret, bas de soulage). */
+    private static final Pattern MENTION_PATTERN = Pattern.compile("@([\\w.-]+)");
+
     private final CommentaireRepository commentaireRepository;
     private final InitiativeRepository initiativeRepository;
     private final UtilisateurRepository utilisateurRepository;
+    private final NotificationService notificationService;
 
     public CommentaireService(CommentaireRepository commentaireRepository,
                               InitiativeRepository initiativeRepository,
-                              UtilisateurRepository utilisateurRepository) {
+                              UtilisateurRepository utilisateurRepository,
+                              NotificationService notificationService) {
         this.commentaireRepository = commentaireRepository;
         this.initiativeRepository = initiativeRepository;
         this.utilisateurRepository = utilisateurRepository;
+        this.notificationService = notificationService;
     }
 
     /** Fil complet d'une initiative, plus récent d'abord. */
@@ -73,7 +88,14 @@ public class CommentaireService {
                 .auteur(utilisateur(idAuteur))
                 .contenu(contenu)
                 .build();
-        return toResponse(commentaireRepository.save(commentaire));
+        commentaire = commentaireRepository.save(commentaire);
+
+        // Détection des mentions @ et notification des utilisateurs visés
+        // (même organisation). Les mentions n'empêchent pas la publication
+        // du commentaire en cas d'erreur.
+        notifierMentions(commentaire, contenu, idAuteur);
+
+        return toResponse(commentaire);
     }
 
     /**
@@ -126,6 +148,66 @@ public class CommentaireService {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication != null && authentication.getAuthorities().stream()
                 .anyMatch(a -> "UTILISATEUR_GERER".equals(a.getAuthority()));
+    }
+
+    // ------------------------------------------------------------------
+    // Mentions @ (4E)
+    // ------------------------------------------------------------------
+
+    /** Détecte les mentions @ dans le contenu et notifie les utilisateurs
+     *  visés s'ils appartiennent à la même organisation. Les erreurs
+     *  d'envoi n'empêchent pas la publication du commentaire. */
+    private void notifierMentions(Commentaire commentaire, String contenu, Long idAuteur) {
+        Matcher m = MENTION_PATTERN.matcher(contenu);
+        Long idOrganisation = OrganisationContext.getId();
+        if (idOrganisation == null) {
+            return;
+        }
+        while (m.find()) {
+            String mention = m.group(1).trim();
+            if (mention.isEmpty()) {
+                continue;
+            }
+            Utilisateur cible = resoudreMention(mention, idOrganisation);
+            if (cible != null && !cible.getIdUser().equals(idAuteur)) {
+                try {
+                    notificationService.envoyer(
+                            cible.getIdUser(),
+                            "Vous avez été mentionné dans un commentaire",
+                            "Vous avez été mentionné dans un commentaire sur l'initiative « "
+                                    + commentaire.getInitiative().getNom()
+                                    + " » par " + commentaire.getAuteur().getPrenom()
+                                    + " " + commentaire.getAuteur().getNom()
+                                    + ".\n\nContenu : " + couper(commentaire.getContenu()));
+                } catch (Exception e) {
+                    // Échec d'envoi : le commentaire reste publié.
+                }
+            }
+        }
+    }
+
+    /** Résout une mention @email ou @nom vers un utilisateur de la même
+     *  organisation. Retourne null si aucun utilisateur ne correspond. */
+    private Utilisateur resoudreMention(String mention, Long idOrganisation) {
+        // 1. Essai par e-mail exact
+        if (mention.contains("@")) {
+            return utilisateurRepository.findByEmail(mention)
+                    .filter(u -> Boolean.TRUE.equals(u.getActif())
+                            && idOrganisation.equals(u.getIdOrganisation()))
+                    .orElse(null);
+        }
+        // 2. Essai par nom complet (prénom nom ou nom)
+        String[] parties = mention.split("\\s+", 2);
+        String nom = parties[parties.length - 1];
+        String prenom = parties.length > 1 ? parties[0] : null;
+        return utilisateurRepository.findAll().stream()
+                .filter(u -> Boolean.TRUE.equals(u.getActif()))
+                .filter(u -> idOrganisation.equals(u.getIdOrganisation()))
+                .filter(u -> nom.equalsIgnoreCase(u.getNom())
+                        || (prenom != null && prenom.equalsIgnoreCase(u.getPrenom())
+                                && nom.equalsIgnoreCase(u.getNom())))
+                .findFirst()
+                .orElse(null);
     }
 
     static CommentaireResponse toResponse(Commentaire c) {
