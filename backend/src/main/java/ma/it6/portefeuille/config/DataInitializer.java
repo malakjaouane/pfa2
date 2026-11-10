@@ -119,7 +119,13 @@ public class DataInitializer implements CommandLineRunner {
     /** Cree l'organisation par defaut si la migration V5 ne l'a pas encore inseree. */
     private Organisation creerOrganisationParDefaut() {
         return organisationRepository.save(Organisation.builder()
-                .nom("IT6 Consulting").slug("it6").plan("gratuit").statut("active")
+                // 'pro' et non 'gratuit' : le seed deploie 4 initiatives
+                // alors que le plan gratuit n'en autorise que 3 — sur
+                // 'gratuit', toute creation serait refusee (400 LIMITE_PLAN)
+                // dans la demonstration. Les nouvelles inscriptions, elles,
+                // restent en 'gratuit' (AuthController) : la limite du plan
+                // gratuit reste donc applicable et demonstrable.
+                .nom("IT6 Consulting").slug("it6").plan("pro").statut("active")
                 .build());
     }
 
@@ -296,6 +302,11 @@ public class DataInitializer implements CommandLineRunner {
                 // Hors dev : premier login forcé de choisir son propre mot de
                 // passe (le livré ne doit pas survivre à la mise en service).
                 .doitChangerMotDePasse(!Profils.estDeveloppement(environment))
+                // Compte provisionné (pas une inscription) : déjà vérifié,
+                // sinon le login est bloqué par EMAIL_NON_VERIFIE sur une
+                // base vierge (la migration V6 ne couvre que les comptes
+                // existants au moment de sa exécution).
+                .emailVerifie(true)
                 .telephone("0611111111").actif(true).role(admin).entite(it6).build());
 
         // Comptes de démonstration (Resp@123 / Visi@123) : profil dev
@@ -308,11 +319,13 @@ public class DataInitializer implements CommandLineRunner {
         utilisateurRepository.save(Utilisateur.builder()
                 .nom("Alaoui").prenom("Karim").email("responsable@it6.ma")
                 .motDePasse(passwordEncoder.encode(RESPONSABLE_PASSWORD))
+                .emailVerifie(true)
                 .telephone("0622222222").actif(true).role(responsable).entite(dv).build());
 
         utilisateurRepository.save(Utilisateur.builder()
                 .nom("Benali").prenom("Salma").email("visiteur@it6.ma")
                 .motDePasse(passwordEncoder.encode(VISITEUR_PASSWORD))
+                .emailVerifie(true)
                 .telephone("0633333333").actif(true).role(visiteur).entite(si).build());
     }
 
