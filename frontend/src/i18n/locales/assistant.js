@@ -26,7 +26,14 @@ export default {
     'assistant.suggestion3': 'Quels jalons sont prévus cette semaine ?',
     'assistant.ariaConversation': 'Conversation avec l\'assistant IA',
     'assistant.legal':
-      'L\'assistant répond uniquement à partir des données de votre portefeuille ; chaque action sensible reste soumise à vos permissions (loi 09-08 / CNDP). Chaque question est journalisée.'
+      'L\'assistant répond uniquement à partir des données de votre portefeuille ; chaque action sensible reste soumise à vos permissions (loi 09-08 / CNDP). Chaque question est journalisée.',
+    'assistant.creerDepuisTexte': 'Créer une initiative depuis texte',
+    'assistant.creerDepuisTextePlaceholder': 'Décrivez l\'initiative à créer (ex. : une campagne de marketing digital avec budget 10 000 MAD et échéance fin mars)...',
+    'assistant.creerDepuisTexteGénérer': 'Générer l\'initiative',
+    'assistant.creerDepuisTexteConfirmer': 'Confirmer la création',
+    'assistant.creerDepuisTexteAnnuler': 'Annuler',
+    'assistant.creerDepuisTexteSuccès': 'Initiative créée avec succès',
+    'assistant.creerDepuisTexteErreur': 'Erreur lors de la création de l\'initiative'
   },
   en: {
     'assistant.titre': 'AI assistant',
@@ -51,7 +58,14 @@ export default {
     'assistant.suggestion3': 'Which milestones are planned this week?',
     'assistant.ariaConversation': 'Conversation with the AI assistant',
     'assistant.legal':
-      'The assistant answers only from your portfolio data; every sensitive action remains subject to your permissions (Law 09-08 / CNDP). Every question is logged.'
+      'The assistant answers only from your portfolio data; every sensitive action remains subject to your permissions (Law 09-08 / CNDP). Every question is logged.',
+    'assistant.creerDepuisTexte': 'Create initiative from text',
+    'assistant.creerDepuisTextePlaceholder': 'Describe the initiative to create (e.g. a digital marketing campaign with budget 10,000 MAD and deadline end of March)...',
+    'assistant.creerDepuisTexteGénérer': 'Generate initiative',
+    'assistant.creerDepuisTexteConfirmer': 'Confirm creation',
+    'assistant.creerDepuisTexteAnnuler': 'Cancel',
+    'assistant.creerDepuisTexteSuccès': 'Initiative created successfully',
+    'assistant.creerDepuisTexteErreur': 'Error creating initiative'
   },
   ar: {
     'assistant.titre': 'المساعد الذكاء الاصطناعي',
@@ -75,7 +89,14 @@ export default {
     'assistant.suggestion3': 'ما المعالم المبرمجة هذا الأسبوع؟',
     'assistant.ariaConversation': 'محادثة مع المساعد الذكاء الاصطناعي',
     'assistant.legal':
-      'يجيب المساعد انطلاقًا من بيانات محفظتك فقط؛ وكل إجراء حساس يبقى خاضعًا لأذوناتك (قانون 09-08 / CNDC). وكل سؤال يُسجَّل.'
+      'يجيب المساعد انطلاقًا من بيانات محفظتك فقط؛ وكل إجراء حساس يبقى خاضعًا لأذوناتك (قانون 09-08 / CNDC). وكل سؤال يُسجَّل.',
+    'assistant.creerDepuisTexte': 'إنشاء مبادرة من نص',
+    'assistant.creerDepuisTextePlaceholder': 'وصف المبادرة المراد إنشاؤها (مثال: حملة تسويقية رقمية بميزانية 10,000 درهم وتاريخ انتهاء نهاية مارس)...',
+    'assistant.creerDepuisTexteGénérer': 'إنشاء المبادرة',
+    'assistant.creerDepuisTexteConfirmer': 'تأكيد الإنشاء',
+    'assistant.creerDepuisTexteAnnuler': 'إلغاء',
+    'assistant.creerDepuisTexteSuccès': 'تم إنشاء المبادرة بنجاح',
+    'assistant.creerDepuisTexteErreur': 'خطأ في إنشاء المبادرة'
   },
   es: {
     'assistant.titre': 'Asistente de IA',
@@ -100,6 +121,13 @@ export default {
     'assistant.suggestion3': '¿Qué hitos hay esta semana?',
     'assistant.ariaConversation': 'Conversación con el asistente de IA',
     'assistant.legal':
-      'El asistente responde únicamente a partir de los datos de su portafolio; toda acción sensible sigue sometida a sus permisos (Ley 09-08 / CNDP). Cada pregunta se registra.'
+      'El asistente responde únicamente a partir de los datos de su portafolio; toda acción sensible sigue sometida a sus permisos (Ley 09-08 / CNDP). Cada pregunta se registra.',
+    'assistant.creerDepuisTexte': 'Crear iniciativa desde texto',
+    'assistant.creerDesdeTextePlaceholder': 'Describe la iniciativa a crear (ej. una campaña de marketing digital con presupuesto 10,000 MAD y fecha límite finales de marzo)...',
+    'assistant.creerDesdeTexteGénérer': 'Generar iniciativa',
+    'assistant.creerDesdeTexteConfirmer': 'Confirmar creación',
+    'assistant.creerDepuisTexteAnnuler': 'Cancelar',
+    'assistant.creerDesdeTexteSuccès': 'Iniciativa creada con éxito',
+    'assistant.creerDepuisTexteErreur': 'Error al crear la iniciativa'
   }
 };

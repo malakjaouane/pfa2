@@ -5,6 +5,7 @@ import { IconAlert, IconAssistant } from '../components/Icons';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { useToast } from '../components/ui/use-toast';
 
@@ -16,6 +17,10 @@ import { useToast } from '../components/ui/use-toast';
  * interdit au modèle d'inventer (loi 09-08 / CNDP). Si l'assistant est
  * indisponible (clé absente ou kill switch), l'état est affiché
  * explicitement et le formulaire est désactivé — jamais d'erreur muette.</p>
+ *
+ * <p>Fonctionnalité 4G : création d'initiative depuis texte libre via
+ * {@code POST /api/ia/creer-initiative} puis confirmation via
+ * {@code POST /api/ia/creer-initiative/confirmer}.</p>
  */
 export default function AssistantPage() {
   const { t, langue } = useI18n();
@@ -25,6 +30,11 @@ export default function AssistantPage() {
   const [question, setQuestion] = useState('');
   const [envoi, setEnvoi] = useState(false);
   const refFin = useRef(null);
+
+  // Création d'initiative depuis texte libre (4G)
+  const [texteCreation, setTexteCreation] = useState('');
+  const [initiativeDepuisTexte, setInitiativeDepuisTexte] = useState(null);
+  const [envoiCreation, setEnvoiCreation] = useState(false);
 
   useEffect(() => {
     let actif = true;
@@ -51,6 +61,35 @@ export default function AssistantPage() {
       toast({ title: messageErreur(err), variant: 'destructive' });
     } finally {
       setEnvoi(false);
+    }
+  };
+
+  const genererDepuisTexte = async () => {
+    const t = texteCreation.trim();
+    if (!t || envoiCreation) return;
+    setEnvoiCreation(true);
+    try {
+      const { data } = await api.post('/ia/creer-initiative', { texte: t });
+      setInitiativeDepuisTexte(data);
+    } catch (err) {
+      toast({ title: messageErreur(err), variant: 'destructive' });
+    } finally {
+      setEnvoiCreation(false);
+    }
+  };
+
+  const confirmerCreation = async () => {
+    if (!initiativeDepuisTexte) return;
+    setEnvoiCreation(true);
+    try {
+      await api.post('/ia/creer-initiative/confirmer', initiativeDepuisTexte);
+      toast({ title: t('assistant.creerDepuisTexteSuccès'), variant: 'success' });
+      setInitiativeDesdeTexte(null);
+      setTexteCreation('');
+    } catch (err) {
+      toast({ title: messageErreur(err), variant: 'destructive' });
+    } finally {
+      setEnvoiCreation(false);
     }
   };
 
@@ -155,6 +194,114 @@ export default function AssistantPage() {
           )}
         </div>
       </form>
+
+      {/* Création d'initiative depuis texte libre (4G) */}
+      <section className="mb-6 p-[18px] shadow-sm">
+        <CardContent className="pt-0">
+          <h3 className="text-base font-semibold text-foreground mb-3">
+            {t('assistant.creerDepuisTexte')}
+          </h3>
+          <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); genererDepuisTexte(); }}>
+            <textarea
+              rows={4}
+              value={texteCreation}
+              onChange={(e) => setTexteCreation(e.target.value)}
+              placeholder={t('assistant.creerDepuisTextePlaceholder')}
+              className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <Button
+              type="submit"
+              disabled={!texteCreation.trim() || envoiCreation}
+            >
+              {envoiCreation ? t('assistant.enCours') : t('assistant.creerDepuisTexteGénérer')}
+            </Button>
+          </form>
+        </CardContent>
+      </section>
+
+      {initiativeDepuisTexte && (
+        <Card className="mb-6 p-[18px] shadow-sm">
+          <CardContent className="pt-0">
+            <div className="space-y-3">
+              <h3 className="text-base font-semibold text-foreground">
+                {t('assistant.creerDepuisTexteConfirmer')}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="creerCode">{t('initiatives.colCode')}</Label>
+                  <Input
+                    id="creerCode"
+                    value={initiativeDepuisTexte.code || ''}
+                    onChange={(e) => setInitiativeDepuisTexte({ ...initiativeDepuisTexte, code: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="creerNom">{t('initiatives.colInitiative')}</Label>
+                  <Input
+                    id="creerNom"
+                    value={initiativeDepuisTexte.nom || ''}
+                    onChange={(e) => setInitiativeDepuisTexte({ ...initiativeDepuisTexte, nom: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="creerDescription">{t('initiativeForm.description')}</Label>
+                  <textarea
+                    id="creerDescription"
+                    rows={3}
+                    value={initiativeDepuisTexte.description || ''}
+                    onChange={(e) => setInitiativeDesdeTexte({ ...initiativeDesdeTexte, description: e.target.value })}
+                    className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="creerDateDebut">{t('initiativeForm.dateDebut')}</Label>
+                  <Input
+                    id="creerDateDebut"
+                    type="date"
+                    value={initiativeDesdeTexte.dateDebut || ''}
+                    onChange={(e) => setInitiativeDesdeTexte({ ...initiativeDesdeTexte, dateDebut: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="creerDateFin">{t('initiativeForm.dateFinPrevue')}</Label>
+                  <Input
+                    id="creerDateFin"
+                    type="date"
+                    value={initiativeDesdeTexte.dateFinPrevue || ''}
+                    onChange={(e) => setInitiativeDesdeTexte({ ...initiativeDesdeTexte, dateFinPrevue: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="creerBudget">{t('initiativeForm.budget')}</Label>
+                  <Input
+                    id="creerBudget"
+                    type="number"
+                    step="0.01"
+                    value={initiativeDesdeTexte?.budget || ''}
+                    onChange={(e) => setInitiativeDesdeTexte({ ...initiativeDesdeTexte, budget: e.target.value ? Number(e.target.value) : undefined })}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end pt-4">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setInitiativeDesdeTexte(null)}
+                >
+                  {t('assistant.creerDesdeTexteAnnuler')}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={confirmerCreation}
+                  disabled={envoiCreation}
+                >
+                  {envoiCreation ? t('assistant.enCours') : t('assistant.creerDepuisTexteConfirmer')}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <p className="text-xs text-muted-foreground ia-legal">{t('assistant.legal')}</p>
     </div>
