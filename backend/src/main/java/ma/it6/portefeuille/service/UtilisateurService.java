@@ -99,6 +99,12 @@ public class UtilisateurService {
                 .motDePasse(passwordEncoder.encode(request.motDePasse()))
                 .telephone(request.telephone())
                 .actif(request.actif() == null || request.actif())
+                // Compte provisionné par un administrateur : aucun e-mail de
+                // verification n'est envoye par ce chemin, le login serait
+                // bloque a jamais par EMAIL_NON_VERIFIE. L'administrateur
+                // garantit l'identite (il choisit aussi le mot de passe) —
+                // meme logique que l'invitation (2B4) et le seed dev.
+                .emailVerifie(true)
                 .role(role)
                 .entite(resoudreEntite(request.idEntite()))
                 .build();
