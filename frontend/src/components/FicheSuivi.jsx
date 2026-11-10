@@ -9,14 +9,11 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 
-/** Formulaires vides (statut « ouverte » par défaut, échéance facultative). */
 const risqueVide = {
   titre: '', description: '', probabilite: '3', impact: '3',
   statut: 'ouverte', echeance: '', planAction: '', idResponsable: ''
 };
-const depenseVide = { libelle: '', montant: '', dateDepense: '', categorie: '' };
-
-/** Notes 1-5 du registre (étiquettes d'options). */
+const depenseVide = { libelle: '', montant: '', dateDepense: '', categorie: '', fichier: null };
 const NOTES = [1, 2, 3, 4, 5];
 
 const formaterDateHeure = (valeur, langue) =>
@@ -28,23 +25,6 @@ const formaterMontant = (valeur, langue) =>
   new Intl.NumberFormat(langue, { style: 'currency', currency: 'MAD', maximumFractionDigits: 0 })
     .format(Number(valeur ?? 0));
 
-const statutRisque = (r) =>
-  r.statut === 'close' ? 'gris' : r.statut === 'attenuation' ? 'ambre' : 'bleu';
-
-/**
- * Blocs de suivi d'une initiative : alertes calculées, fil de commentaires
- * immuable, registre des risques (score p × i, 1-25) et dépenses.
- *
- * Composant autonome : chacun de ses quatre blocs porte ses propres
- * permissions (COMMENTAIRE_AJOUTER 18, RISQUE_GERER 19, DEPENSE_SAISIR 20,
- * suppression d'un commentaire par son auteur ou UTILISATEUR_GERER) et se
- * recharge après chaque écriture. Une initiative archivée reste visible en
- * lecture : les formulaires disparaissent, le serveur refuserait de toute
- * façon toute écriture.
- *
- * @param {number} idInitiative  initiative servie
- * @param {boolean} archivee     fiche en lecture seule
- */
 export default function FicheSuivi({ idInitiative, archivee = false }) {
   const { t, langue } = useI18n();
   const { user, hasPermission } = useAuth();
@@ -58,25 +38,23 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
   const [alertes, setAlertes] = useState([]);
   const [commentaires, setCommentaires] = useState([]);
   const [risques, setRisques] = useState([]);
-  const [depenses, setDepenses] = useState(null); // null = pas le droit (DEPENSE_SAISIR)
+  const [depenses, setDepenses] = useState(null);
   const [responsables, setResponsables] = useState([]);
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
 
   const [nouveauCommentaire, setNouveauCommentaire] = useState('');
   const [nouveauRisque, setNouveauRisque] = useState(risqueVide);
-  const [editionRisque, setEditionRisque] = useState(null); // { idRisque, ... }
+  const [editionRisque, setEditionRisque] = useState(null);
   const [nouvelleDepense, setNouvelleDepense] = useState(depenseVide);
+  const [envoiCreation, setEnvoiCreation] = useState(false);
 
   const charger = useCallback(() => {
-    // Les quatre lectures suivent les permissions de la fiche elle-même ;
-    // les dépenses, elles, exigent DEPENSE_SAISIR — un visiteur ne doit
-    // pas recevoir un 403 à chaque affichage, on n'appelle pas du tout.
-    api.get(`/initiatives/${idInitiative}/alertes`).then((r) => setAlertes(r.data ?? [])).catch(() => {});
-    api.get(`/initiatives/${idInitiative}/commentaires`).then((r) => setCommentaires(r.data ?? [])).catch(() => {});
-    api.get(`/initiatives/${idInitiative}/risques`).then((r) => setRisques(r.data ?? [])).catch(() => {});
+    api.get('/initiatives/' + idInitiative + '/alertes').then((r) => setAlertes(r.data ?? [])).catch(() => {});
+    api.get('/initiatives/' + idInitiative + '/commentaires').then((r) => setCommentaires(r.data ?? [])).catch(() => {});
+    api.get('/initiatives/' + idInitiative + '/risques').then((r) => setRisques(r.data ?? [])).catch(() => {});
     if (peutSaisirDepenses) {
-      api.get(`/initiatives/${idInitiative}/depenses`).then((r) => setDepenses(r.data ?? [])).catch(() => {});
+      api.get('/initiatives/' + idInitiative + '/depenses').then((r) => setDepenses(r.data ?? [])).catch(() => {});
     }
   }, [idInitiative, peutSaisirDepenses]);
 
@@ -87,14 +65,11 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
     }
   }, [charger, peutGererRisques, archivee]);
 
-  /** Affiche brièvement un message de succès après une écriture. */
   const signaler = (cle) => {
     setErreur('');
     setInfo(cle);
     charger();
   };
-
-  // ---------------- Commentaires ----------------
 
   const publierCommentaire = async (e) => {
     e.preventDefault();
@@ -102,7 +77,7 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
     if (!contenu) return;
     setInfo('');
     try {
-      await api.post(`/initiatives/${idInitiative}/commentaires`, { contenu });
+      await api.post('/initiatives/' + idInitiative + '/commentaires', { contenu });
       setNouveauCommentaire('');
       signaler('suivi.commentaires.ajoute');
     } catch (err) {
@@ -114,14 +89,12 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
     if (!window.confirm(t('suivi.commentaires.confirmSupprimer'))) return;
     setInfo('');
     try {
-      await api.delete(`/commentaires/${c.idCommentaire}`);
+      await api.delete('/commentaires/' + c.idCommentaire);
       signaler('suivi.commentaires.supprime');
     } catch (err) {
       setErreur(messageErreur(err));
     }
   };
-
-  // ---------------- Risques ----------------
 
   const corpsRisque = (form) => ({
     titre: form.titre,
@@ -139,9 +112,9 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
     setInfo('');
     try {
       if (editionRisque) {
-        await api.put(`/risques/${editionRisque.idRisque}`, corpsRisque(editionRisque));
+        await api.put('/risques/' + editionRisque.idRisque, corpsRisque(editionRisque));
       } else {
-        await api.post(`/initiatives/${idInitiative}/risques`, corpsRisque(nouveauRisque));
+        await api.post('/initiatives/' + idInitiative + '/risques', corpsRisque(nouveauRisque));
         setNouveauRisque(risqueVide);
       }
       setEditionRisque(null);
@@ -155,14 +128,13 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
     if (!window.confirm(t('risques.confirmSupprimer', { titre: risque.titre }))) return;
     setInfo('');
     try {
-      await api.delete(`/risques/${risque.idRisque}`);
+      await api.delete('/risques/' + risque.idRisque);
       signaler('risques.supprime');
     } catch (err) {
       setErreur(messageErreur(err));
     }
   };
 
-  /** Champs communs aux formulaires d'ajout et d'édition d'un risque. */
   const champsRisque = (form, setForm) => (
     <>
       <Input
@@ -203,7 +175,7 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
         className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {['ouverte', 'attenuation', 'close'].map((s) => (
-          <option key={s} value={s}>{t(`suivi.risques.statut.${s}`)}</option>
+          <option key={s} value={s}>{t('suivi.risques.statut.' + s)}</option>
         ))}
       </select>
       <input
@@ -232,13 +204,11 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
     </>
   );
 
-  // ---------------- Dépenses ----------------
-
   const soumettreDepense = async (e) => {
     e.preventDefault();
     setInfo('');
     try {
-      await api.post(`/initiatives/${idInitiative}/depenses`, {
+      await api.post('/initiatives/' + idInitiative + '/depenses', {
         libelle: nouvelleDepense.libelle,
         montant: Number(nouvelleDepense.montant),
         dateDepense: nouvelleDepense.dateDepense,
@@ -251,8 +221,25 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
     }
   };
 
+  const uploaderPieceJointe = async () => {
+    if (!nouvelleDepense.fichier) return;
+    setEnvoiCreation(true);
+    try {
+      const formData = new FormData();
+      formData.append('fichier', nouvelleDepense.fichier);
+      await api.post('/api/initiatives/' + idInitiative + '/pieces-jointes', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setNouvelleDepense({ ...nouvelleDepense, fichier: null });
+    } catch (err) {
+      setErreur(messageErreur(err));
+    } finally {
+      setEnvoiCreation(false);
+    }
+  };
+
   const totalDepenses = Array.isArray(depenses)
-    ? depenses.reduce((somme, d) => somme + Number(d.montant ?? 0), 0)
+    ? depenses.reduce((s, d) => s + Number(d.montant ?? 0), 0)
     : 0;
 
   if (!peutConsulter) return null;
@@ -270,29 +257,27 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
         </div>
       )}
 
-      {/* Alertes de l'initiative (calculées, aucune table) : retards,
-          jalons proches, risques critiques, budget dépassé. */}
+      {/* Alertes */}
       <section className="mb-4 rounded-xl border border-input bg-card p-[18px] shadow-sm">
         <div className="flex items-center justify-between mb-3 section-entete">
           <h3 className="text-base font-semibold text-foreground">{t('suivi.blocAlertes')}</h3>
           {alertes.length > 0 && (
             <Badge
               variant={alertes.some((a) => a.niveau === 'ROUGE') ? 'destructive' : 'secondary'}
-              className={`border-transparent ${
-                alertes.some((a) => a.niveau === 'ROUGE') ? 'bg-destructive/15 text-destructive' : 'bg-amber/15 text-amber-800'
-              }`}
+              className={alertes.some((a) => a.niveau === 'ROUGE') ? 'bg-destructive/15 text-destructive' : 'bg-amber/15 text-amber-800'}
             >
               {alertes.length}
             </Badge>
           )}
         </div>
-        {alertes.length === 0
-          ? <p className="text-sm text-muted-foreground">{t('suivi.alertesVide')}</p>
-          : <ListeAlertes alertes={alertes} avecLiens={false} />}
+        {alertes.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t('suivi.alertesVide')}</p>
+        ) : (
+          <ListeAlertes alertes={alertes} avecLiens={false} />
+        )}
       </section>
 
-      {/* Fil de commentaires : immuable — on publie, on supprime, on ne
-          modifie jamais (la ligne reste dans le journal des accès). */}
+      {/* Commentaires */}
       <section className="mb-4 rounded-xl border border-input bg-card p-[18px] shadow-sm">
         <div className="flex items-center justify-between mb-3 section-entete">
           <h3 className="text-base font-semibold text-foreground">{t('suivi.commentaires.titre')}</h3>
@@ -312,7 +297,7 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
                     variant="destructive"
                     size="sm"
                     onClick={() => supprimerCommentaire(c)}
-                    aria-label={`${t('suivi.commentaires.supprimer')} : ${c.contenu.slice(0, 40)}`}
+                    aria-label={t('suivi.commentaires.supprimer') + ' : ' + c.contenu.slice(0, 40)}
                   >
                     {t('suivi.commentaires.supprimer')}
                   </Button>
@@ -334,10 +319,7 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
               className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <div className="suivi-form-actions flex items-center justify-end">
-              <Button
-                type="submit"
-                disabled={!nouveauCommentaire.trim()}
-              >
+              <Button type="submit" disabled={!nouveauCommentaire.trim()}>
                 {t('suivi.commentaires.publier')}
               </Button>
             </div>
@@ -345,26 +327,19 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
         )}
       </section>
 
-      {/* Registre des risques : score = probabilité × impact (1-25),
-          quatre bandes de santé, statut et échéance. Écriture réservée à
-          RISQUE_GERER (19). */}
+      {/* Risques */}
       <section className="mb-4 rounded-xl border border-input bg-card p-[18px] shadow-sm">
         <div className="flex items-center justify-between mb-3 section-entete">
           <h3 className="text-base font-semibold text-foreground">{t('suivi.risques.titre')}</h3>
           {risques.length > 0 && (
             <Badge
               variant={risques.some((r) => r.niveau === 'ROUGE') ? 'destructive' : 'success'}
-              className={`border-transparent ${
-                risques.some((r) => r.niveau === 'ROUGE') ? 'bg-destructive/15 text-destructive' : 'bg-success/15 text-success'
-              }`}
+              className={risques.some((r) => r.niveau === 'ROUGE') ? 'bg-destructive/15 text-destructive' : 'bg-success/15 text-success'}
             >
               {risques.length}
             </Badge>
           )}
-          <Link
-            to={`/risques?initiative=${idInitiative}`}
-            className="text-xs text-primary hover:underline"
-          >
+          <Link to={'/risques?initiative=' + idInitiative} className="text-xs text-primary hover:underline">
             {t('risques.titre')}
           </Link>
         </div>
@@ -377,12 +352,7 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
                   {champsRisque(editionRisque, setEditionRisque)}
                   <div className="suivi-form-actions flex items-center justify-end gap-2">
                     <Button type="submit">{t('initiativeDetail.ok')}</Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditionRisque(null)}
-                    >
+                    <Button type="button" variant="outline" size="sm" onClick={() => setEditionRisque(null)}>
                       {t('suivi.risques.annuler')}
                     </Button>
                   </div>
@@ -394,19 +364,10 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
                     <small className="block mt-1 text-muted-foreground">{risque.description}</small>
                     <span className="flex flex-wrap gap-2 mt-2">
                       <SanteBadge sante={{ niveau: risque.niveau }} />
-                      <Badge variant="secondary" className={`border-transparent bg-muted/50 text-muted-foreground`}>
-                        {t('monEspace.score')} {risque.score}/25
+                      <Badge variant="secondary" className={risque.statut === 'close' ? 'bg-muted/50 text-muted-foreground' : risque.statut === 'attenuation' ? 'bg-amber/15 text-amber-800' : 'bg-blue/15 text-blue-800'}>
+                        {t('suivi.risques.statut.' + risque.statut)}
                       </Badge>
-                      <Badge
-                        variant="secondary"
-                        className={`border-transparent ${
-                          risque.statut === 'close' ? 'bg-muted/50 text-muted-foreground' :
-                          risque.statut === 'attenuation' ? 'bg-amber/15 text-amber-800' : 'bg-blue/15 text-blue-800'
-                        }`}
-                      >
-                        {t(`suivi.risques.statut.${risque.statut}`)}
-                      </Badge>
-                      <Badge variant="secondary" className={`border-transparent bg-muted/50 text-muted-foreground`}>
+                      <Badge variant="secondary" className="border-transparent bg-muted/50 text-muted-foreground">
                         {t('suivi.risques.probabilite')} {risque.probabilite} · {t('suivi.risques.impact')} {risque.impact}
                       </Badge>
                     </span>
@@ -441,15 +402,8 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
                           planAction: risque.planAction ?? '',
                           idResponsable: risque.responsable?.idUser ?? ''
                         })}
-                      >
-                        {t('initiativeDetail.editer')}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => supprimerRisque(risque)}
-                      >
+                        >{t('initiativeDetail.editer')}</Button>
+                      <Button type="button" variant="destructive" size="sm" onClick={() => supprimerRisque(risque)}>
                         {t('initiativeDetail.supprimer')}
                       </Button>
                     </div>
@@ -461,7 +415,7 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
           {peutGererRisques && !archivee && (
             <form className="mt-4 space-y-2 suivi-form" onSubmit={soumettreRisque}>
               {champsRisque(nouveauRisque, setNouveauRisque)}
-              <div className="suivi-form-actions flex items-center justify-end">
+              <div className="suivi-form-actions flex items-center justify-end gap-2">
                 <Button type="submit">{t('suivi.risques.creer')}</Button>
               </div>
             </form>
@@ -469,9 +423,7 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
         </div>
       </section>
 
-      {/* Dépenses de l'initiative : information financière — lecture et
-          écriture réservées à DEPENSE_SAISIR (20). Le registre complet
-          (filtres, totaux, export) vit sur sa propre page. */}
+      {/* Dépenses */}
       {peutSaisirDepenses && (
         <section className="mb-4 rounded-xl border border-input bg-card p-[18px] shadow-sm">
           <div className="flex items-center justify-between mb-3 section-entete">
@@ -481,53 +433,46 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
                 {t('suivi.depenses.total', { montant: formaterMontant(totalDepenses, langue) })}
               </Badge>
             )}
-            <Link
-              to={`/depenses?initiative=${idInitiative}`}
-              className="text-xs text-primary hover:underline"
-            >
+            <Link to={'/depenses?initiative=' + idInitiative} className="text-xs text-primary hover:underline">
               {t('depenses.titre')}
             </Link>
           </div>
-          {!Array.isArray(depenses) || depenses.length === 0
-            ? <p className="text-sm text-muted-foreground">{t('suivi.depenses.vide')}</p>
-            : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="border-b border-muted/30">
-                      {[
-                        t('depenses.colDate'),
-                        t('depenses.colLibelle'),
-                        t('depenses.colMontant'),
-                        t('depenses.colCategorie'),
-                        t('depenses.colSaisisseur')
-                      ].map((libelle) => (
-                        <th key={libelle} className="text-left pb-2 text-xs text-muted-foreground font-medium">
-                          {libelle}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {depenses.map((d) => (
-                      <tr key={d.idDepense} className="border-b border-muted/10 hover:bg-muted/50">
-                        <td className="py-2 text-xs text-foreground">{d.dateDepense}</td>
-                        <td className="py-2 text-xs text-foreground">{d.libelle}</td>
-                        <td className="py-2 text-xs text-right font-mono">
-                          {formaterMontant(d.montant, langue)}
-                        </td>
-                        <td className="py-2 text-xs text-muted-foreground">
-                          {d.categorie ?? '—'}
-                        </td>
-                        <td className="py-2 text-xs text-muted-foreground" title={d.saisisseur?.email ?? ''}>
-                          {d.saisisseur?.nomComplet ?? '—'}
-                        </td>
-                      </tr>
+          {!Array.isArray(depenses) || depenses.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('suivi.depenses.vide')}</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-muted/30">
+                    {[
+                      t('depenses.colDate'),
+                      t('depenses.colLibelle'),
+                      t('depenses.colMontant'),
+                      t('depenses.colCategorie'),
+                      t('depenses.colSaisisseur')
+                    ].map((libelle) => (
+                      <th key={libelle} className="text-left pb-2 text-xs text-muted-foreground font-medium">
+                        {libelle}
+                      </th>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {depenses.map((d) => (
+                    <tr key={d.idDepense} className="border-b border-muted/10 hover:bg-muted/50">
+                      <td className="py-2 text-xs text-foreground">{d.dateDepense}</td>
+                      <td className="py-2 text-xs text-foreground">{d.libelle}</td>
+                      <td className="py-2 text-xs text-right font-mono">{formaterMontant(d.montant, langue)}</td>
+                      <td className="py-2 text-xs text-muted-foreground">{d.categorie ?? '—'}</td>
+                      <td className="py-2 text-xs text-muted-foreground" title={d.saisisseur?.email ?? ''}>
+                        {d.saisisseur?.nomComplet ?? '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           {!archivee && (
             <form className="mt-4 space-y-2 suivi-form" onSubmit={soumettreDepense}>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -563,6 +508,19 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
                   placeholder={t('suivi.depenses.champCategorie')}
                   aria-label={t('suivi.depenses.champCategorie')}
                 />
+                <Input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xlsx,.csv"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setNouvelleDepense({ ...nouvelleDepense, fichier: e.target.files[0] });
+                    }
+                  }}
+                  className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <Button type="button" onClick={uploaderPieceJointe} disabled={!nouvelleDepense.fichier || envoiCreation}>
+                  {envoiCreation ? t('assistant.enCours') : t('suivi.depenses.chargerPièceJointe')}
+                </Button>
                 <Button type="submit" className="mt-auto">{t('suivi.depenses.creer')}</Button>
               </div>
             </form>

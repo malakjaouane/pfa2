@@ -11,6 +11,7 @@ import InitiativesPage from './pages/InitiativesPage';
 import InitiativeFormPage from './pages/InitiativeFormPage';
 import InitiativeDetailPage from './pages/InitiativeDetailPage';
 import PriorisationPage from './pages/PriorisationPage';
+import ImportInitiativesPage from './pages/ImportInitiativesPage';
 import OnboardingPage from './pages/OnboardingPage';
 import UsersPage from './pages/UsersPage';
 import RolesPage from './pages/RolesPage';
@@ -45,6 +46,13 @@ export default function App() {
             element={
               <RequireAuth permissions={['INITIATIVE_CONSULTER']}>
                 <PriorisationPage />
+              </RequireAuth>
+            }
+          />
+          <Route path="/initiatives/import"
+            element={
+              <RequireAuth permissions={['INITIATIVE_CREER']}>
+                <ImportInitiativesPage />
               </RequireAuth>
             }
           />

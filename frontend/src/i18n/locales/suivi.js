@@ -10,6 +10,8 @@
  */
 export default {
   fr: {
+    'suivi.depenses.chargerPièceJointe': 'Joindre pièce jointe',
+    'suivi.depenses.chargerPièceJointeSuccès': 'Pièce jointe ajoutée',
     // --- Cloche de notifications ---
     'suivi.notif.titre': 'Notifications',
     'suivi.notif.aria': 'Notifications et alertes du portefeuille',
@@ -176,6 +178,8 @@ export default {
   },
 
   en: {
+    'suivi.depenses.chargerPièceJointe': 'Attach file',
+    'suivi.depenses.chargerPièceJointeSuccès': 'File attached',
     'suivi.notif.titre': 'Notifications',
     'suivi.notif.aria': 'Portfolio notifications and alerts',
     'suivi.notif.vide': 'No alerts right now.',
@@ -335,6 +339,8 @@ export default {
   },
 
   ar: {
+    'suivi.depenses.chargerPièceJointe': 'إرفاق ملف',
+    'suivi.depenses.chargerPièceJointeSuccès': 'تم إرفاق الملف',
     'suivi.notif.titre': 'الإشعارات',
     'suivi.notif.aria': 'إشعارات وتنبيهات الحافظة',
     'suivi.notif.vide': 'لا توجد تنبيهات حاليا.',
@@ -494,6 +500,8 @@ export default {
   },
 
   es: {
+    'suivi.depenses.chargerPièceJointe': 'Adjuntar archivo',
+    'suivi.depenses.chargerPièceJointeSuccès': 'Archivo adjuntado',
     'suivi.notif.titre': 'Notificaciones',
     'suivi.notif.aria': 'Notificaciones y alertas del portafolio',
     'suivi.notif.vide': 'No hay alertas por ahora.',

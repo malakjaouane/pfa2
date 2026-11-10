@@ -254,6 +254,7 @@ public class SecurityConfig {
                         // les visiteurs voient donc les étapes et jalons. Écriture
                         // réservée à ETAPE_GERER / JALON_GERER.
                         .requestMatchers(HttpMethod.PUT, "/api/etapes/**", "/api/initiatives/*/etapes").hasAuthority("ETAPE_GERER")
+                        .requestMatchers(HttpMethod.POST, "/api/initiatives/*/etapes").hasAuthority("ETAPE_GERER")
                         .requestMatchers("/api/jalons/**", "/api/initiatives/*/jalons").hasAuthority("JALON_GERER")
                         // Gestion des permissions d'un rôle
                         .requestMatchers(HttpMethod.PUT, "/api/roles/*/permissions").hasAuthority("ROLE_GERER")
