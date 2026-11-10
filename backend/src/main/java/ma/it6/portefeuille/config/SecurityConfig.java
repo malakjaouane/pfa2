@@ -184,6 +184,9 @@ public class SecurityConfig {
                         // Initiatives
                         .requestMatchers(HttpMethod.GET, "/api/initiatives/**").hasAuthority("INITIATIVE_CONSULTER")
                         .requestMatchers(HttpMethod.POST, "/api/initiatives").hasAuthority("INITIATIVE_CREER")
+                        // Import d'initiatives (4B) : même droit que la création.
+                        .requestMatchers(HttpMethod.POST, "/api/initiatives/import")
+                        .hasAuthority("INITIATIVE_CREER")
                         // Purge définitive d'une initiative archivée = même
                         // droit que l'archivage (INITIATIVE_ARCHIVER).
                         .requestMatchers(HttpMethod.DELETE, "/api/initiatives/**")
