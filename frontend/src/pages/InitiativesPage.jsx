@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api, { messageErreur } from '../api';
 import { useAuth } from '../AuthContext';
@@ -13,6 +13,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Badge } from '../components/ui/badge';
 import { useToast } from '../components/ui/use-toast';
 import {
   Table,
@@ -43,7 +44,8 @@ const lireDepuisUrl = (params) => ({
   priorite: params.get('priorite') ?? '',
   dateDu: params.get('dateDu') ?? '',
   dateAu: params.get('dateAu') ?? '',
-  voirArchive: params.get('archive') === '1' || params.get('archive') === 'true'
+  voirArchive: params.get('archive') === '1' || params.get('archive') === 'true',
+  tri: params.get('tri') ?? ''
 });
 
 /**
@@ -54,6 +56,7 @@ export default function InitiativesPage() {
   const { hasPermission } = useAuth();
   const { t } = useI18n();
   const ref = useReferentiels();
+  const { toast } = useToast();
   // L'URL est la source de vérité des filtres : la vue filtrée se partage et
   // survit à un rafraîchissement (y compris le lien « Archives »).
   const [searchParams, setSearchParams] = useSearchParams();
@@ -62,7 +65,6 @@ export default function InitiativesPage() {
   const [referentiels, setReferentiels] = useState({ statuts: [], entites: [], responsables: [], priorites: [] });
   const [vue, setVue] = useState('table'); // 'table' | 'kanban'
   const [chargement, setChargement] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     Promise.all([
@@ -97,6 +99,7 @@ export default function InitiativesPage() {
     if (f.dateDu) params.set('dateDu', f.dateDu);
     if (f.dateAu) params.set('dateAu', f.dateAu);
     if (f.voirArchive) params.set('archive', 'true');
+    if (f.tri) params.set('tri', f.tri);
     return params;
   };
 
@@ -105,7 +108,16 @@ export default function InitiativesPage() {
     try {
       const query = construireParams(f).toString();
       const res = await api.get(`/initiatives${query ? `?${query}` : ''}`);
-      setInitiatives(res.data);
+      let data = res.data;
+      // Tri côté frontend si demandé (le backend ne trie pas encore par score).
+      if (f.tri === 'priorisation') {
+        data = [...data].sort((a, b) => {
+          const sa = a.scorePriorisation ?? 0;
+          const sb = b.scorePriorisation ?? 0;
+          return sb - sa;
+        });
+      }
+      setInitiatives(data);
     } catch (err) {
       toast({ title: messageErreur(err), variant: 'destructive' });
     } finally {
@@ -184,6 +196,31 @@ export default function InitiativesPage() {
     { name: 'priorite', aria: t('initiatives.ariaPriorite'), options: referentiels.priorites.map((p) => ({ value: p.idPriorite, label: ref.priorite(p.libelle) })), vide: t('initiatives.filtreToutesPriorites') }
   ].map((s) => champ([s])[0]);
 
+  // Tri appliqué en mémoire (le backend ne trie pas encore par score).
+  const initiativesTriees = useMemo(() => {
+    if (filtres.tri !== 'priorisation') return initiatives;
+    return [...initiatives].sort((a, b) => {
+      const sa = a.scorePriorisation ?? 0;
+      const sb = b.scorePriorisation ?? 0;
+      return sb - sa;
+    });
+  }, [initiatives, filtres.tri]);
+
+  const badgeScore = (score) => {
+    if (score == null) return <span className="text-muted-foreground">—</span>;
+    const variante = score >= 15 ? 'destructive' : score >= 10 ? 'secondary' : 'outline';
+    return (
+      <Badge variant={variante} className={`border-transparent ${
+        score >= 15 ? 'bg-destructive/15 text-destructive' :
+        score >= 10 ? 'bg-blue/15 text-blue-800' :
+        'bg-muted/50 text-muted-foreground'
+      }`}
+      >
+        {score}
+      </Badge>
+    );
+  };
+
   return (
     <div className="mx-auto w-full max-w-[1240px]">
       <header className="mb-6 flex items-start justify-between gap-3">
@@ -195,23 +232,20 @@ export default function InitiativesPage() {
             {t('initiatives.sousTitre')}
           </p>
         </div>
-        {hasPermission('INITIATIVE_CREER') && (
-          <Link to="/initiatives/nouvelle" className="text-sm font-medium text-primary hover:underline">
-            {t('initiatives.nouvelle')}
+        <div className="flex items-center gap-2">
+          <Link
+            to="/priorisation"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            {t('initiatives.voirMatrice')}
           </Link>
-        )}
+          {hasPermission('INITIATIVE_CREER') && (
+            <Link to="/initiatives/nouvelle" className="ml-2 text-sm font-medium text-primary hover:underline">
+              {t('initiatives.nouvelle')}
+            </Link>
+          )}
+        </div>
       </header>
-
-      {info && (
-        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
-          {afficherMessage(t, info)}
-        </div>
-      )}
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {afficherMessage(t, erreur)}
-        </div>
-      )}
 
       <Card className="mb-6 p-[18px] shadow-sm">
         <CardHeader className="pb-2">
@@ -291,6 +325,19 @@ export default function InitiativesPage() {
                 {t('initiatives.voirArchive')}
               </label>
             </div>
+            <div className="flex-none space-y-2 flex items-end">
+              <Label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                {t('initiatives.tri')}
+              </Label>
+              <select
+                value={filtres.tri}
+                onChange={(e) => setFiltres((f) => ({ ...f, tri: e.target.value }))}
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring w-40"
+              >
+                <option value="">{t('initiatives.triAucun')}</option>
+                <option value="priorisation">{t('initiatives.triPriorisation')}</option>
+              </select>
+            </div>
             <div className="flex items-end gap-2">
               <Button type="submit" disabled={chargement}>
                 {t('initiatives.appliquer')}
@@ -335,7 +382,7 @@ export default function InitiativesPage() {
             statuts={referentiels.statuts}
             onDeplacee={apresDeplacement}
           />
-        ) : initiatives.length === 0 ? (
+        ) : initiativesTriees.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
             {t('initiatives.aucunResultat')}
           </p>
@@ -350,6 +397,9 @@ export default function InitiativesPage() {
                 <TableHead>{t('initiatives.colStatut')}</TableHead>
                 <TableHead>{t('sante.colonne')}</TableHead>
                 <TableHead>{t('initiatives.colPriorite')}</TableHead>
+                <TableHead>{t('priorisation.colValeur')}</TableHead>
+                <TableHead>{t('priorisation.colEffort')}</TableHead>
+                <TableHead>{t('priorisation.colScore')}</TableHead>
                 <TableHead>{t('initiatives.colAvancement')}</TableHead>
                 <TableHead>{t('initiatives.colDebut')}</TableHead>
                 <TableHead>{t('initiatives.colFinPrevue')}</TableHead>
@@ -358,7 +408,7 @@ export default function InitiativesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {initiatives.map((i) => (
+              {initiativesTriees.map((i) => (
                 <TableRow key={i.idInitiative} className={i.enRetard ? 'ligne-retard' : ''} title={i.enRetard ? t('initiatives.enRetard') : ''}>
                   <TableCell className="text-muted-foreground">{i.code}</TableCell>
                   <TableCell>
@@ -373,6 +423,15 @@ export default function InitiativesPage() {
                     <SanteBadge sante={i.sante} avecRaison />
                   </TableCell>
                   <TableCell>{ref.priorite(i.priorite?.libelle) ?? '—'}</TableCell>
+                  <TableCell className="text-center">
+                    {i.valeur != null ? <span className="font-medium">{i.valeur}</span> : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {i.effort != null ? <span className="font-medium">{i.effort}</span> : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell className="text-center font-medium">
+                    {badgeScore(i.scorePriorisation)}
+                  </TableCell>
                   <TableCell>
                     <ProgressBar valeur={i.avancement} />
                   </TableCell>

@@ -229,8 +229,11 @@ public class SecurityConfig {
                         .hasAuthority("UTILISATEUR_GERER")
                         // Mon espace et notifications : tout utilisateur
                         // connecté, contenu adapté aux permissions.
-                        .requestMatchers("/api/mon-espace", "/api/notifications")
-                        .authenticated()
+                        .requestMatchers("/api/mon-espace").authenticated()
+                        // Préférences de notification (4D) : tout utilisateur
+                        // connecté peut gérer ses propres préférences.
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/preferences").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/notifications/preferences").authenticated()
                         // Journal des modifications (audit métier) : lecture =
                         // même permission que la lecture des initiatives
                         // (pas de nouveau droit). JOURNAL IMMUABLE : aucun

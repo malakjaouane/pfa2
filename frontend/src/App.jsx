@@ -10,6 +10,7 @@ import DashboardPage from './pages/DashboardPage';
 import InitiativesPage from './pages/InitiativesPage';
 import InitiativeFormPage from './pages/InitiativeFormPage';
 import InitiativeDetailPage from './pages/InitiativeDetailPage';
+import PriorisationPage from './pages/PriorisationPage';
 import OnboardingPage from './pages/OnboardingPage';
 import UsersPage from './pages/UsersPage';
 import RolesPage from './pages/RolesPage';
@@ -39,6 +40,14 @@ export default function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/mon-espace" element={<MonEspacePage />} />
           <Route path="/initiatives" element={<InitiativesPage />} />
+          <Route
+            path="/priorisation"
+            element={
+              <RequireAuth permissions={['INITIATIVE_CONSULTER']}>
+                <PriorisationPage />
+              </RequireAuth>
+            }
+          />
           <Route path="/initiatives/nouvelle" element={<InitiativeFormPage />} />
           <Route path="/roadmap" element={<RoadmapPage />} />
           <Route

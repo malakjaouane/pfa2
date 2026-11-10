@@ -6,9 +6,12 @@ import { badgeTypeJournal, libelleType, texteEvenement } from '../i18n/journal';
 import ListeAlertes from '../components/ListeAlertes';
 import SanteBadge from '../components/SanteBadge';
 import StatutBadge from '../components/StatutBadge';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { useToast } from '../components/ui/use-toast';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Button } from '../components/ui/button';
 
 /** Montants en dirhams, sans décimale d'affichage (l'export garde l'exact). */
 const formaterMontant = (valeur, langue) =>
@@ -35,15 +38,42 @@ const formaterDateHeure = (valeur, langue) =>
  */
 export default function MonEspacePage() {
   const { t, langue } = useI18n();
+  const { toast } = useToast();
   const [donnees, setDonnees] = useState(null);
   const [chargement, setChargement] = useState(true);
+  // Préférences de notification (4D)
+  const [preferences, setPreferences] = useState(null);
+  const [preferencesChargement, setPreferencesChargement] = useState(false);
 
   useEffect(() => {
-    api.get('/mon-espace')
-      .then((res) => setDonnees(res.data))
+    Promise.all([
+      api.get('/mon-espace'),
+      api.get('/api/notifications/preferences')
+    ])
+      .then(([res1, res2]) => {
+        setDonnees(res1.data);
+        setPreferences(res2.data);
+      })
       .catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }))
       .finally(() => setChargement(false));
   }, []);
+
+  const enregistrerPreferences = async () => {
+    setPreferencesChargement(true);
+    try {
+      await api.patch('/api/notifications/preferences', {
+        emailActif: preferences.emailActif,
+        frequence: preferences.frequence,
+        whatsappActif: preferences.whatsappActif,
+        telephone: preferences.telephone
+      });
+      toast({ title: t('notifications.succes'), variant: 'success' });
+    } catch (err) {
+      toast({ title: messageErreur(err), variant: 'destructive' });
+    } finally {
+      setPreferencesChargement(false);
+    }
+  };
 
   if (chargement) {
     return (
@@ -259,6 +289,84 @@ export default function MonEspacePage() {
               )}
             </Card>
           </div>
+
+          {/* Section Préférences de notification (4D) */}
+          <Card className="mb-6 p-[18px] shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold text-foreground">
+                {t('notifications.titre')}
+              </CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">
+                {t('notifications.sousTitre')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); enregistrerPreferences(); }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="emailActif"
+                      checked={preferences?.emailActif ?? false}
+                      onChange={(e) => setPreferences({ ...preferences, emailActif: e.target.checked })}
+                      className="rounded border-input text-primary focus:ring-ring"
+                    />
+                    <Label htmlFor="emailActif" className="text-sm font-medium">
+                      {t('notifications.emailActif')}
+                    </Label>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="frequence" className="text-xs font-medium text-muted-foreground">
+                      {t('notifications.frequence')}
+                    </Label>
+                    <select
+                      id="frequence"
+                      value={preferences?.frequence ?? 'aucune'}
+                      onChange={(e) => setPreferences({ ...preferences, frequence: e.target.value })}
+                      className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="aucune">{t('notifications.frequenceAucune')}</option>
+                      <option value="quotidienne">{t('notifications.frequenceQuotidienne')}</option>
+                      <option value="hebdomadaire">{t('notifications.frequenceHebdomadaire')}</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="whatsappActif"
+                      checked={preferences?.whatsappActif ?? false}
+                      onChange={(e) => setPreferences({ ...preferences, whatsappActif: e.target.checked })}
+                      className="rounded border-input text-primary focus:ring-ring"
+                    />
+                    <Label htmlFor="whatsappActif" className="text-sm font-medium">
+                      {t('notifications.whatsappActif')}
+                    </Label>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="telephone" className="text-xs font-medium text-muted-foreground">
+                      {t('notifications.telephone')}
+                    </Label>
+                    <Input
+                      id="telephone"
+                      type="tel"
+                      value={preferences?.telephone ?? ''}
+                      onChange={(e) => setPreferences({ ...preferences, telephone: e.target.value })}
+                      placeholder={t('notifications.telephonePlaceholder')}
+                      className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end pt-4">
+                  <Button
+                    type="submit"
+                    disabled={preferencesChargement}
+                  >
+                    {preferencesChargement ? t('common.chargement') : t('notifications.enregistrer')}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

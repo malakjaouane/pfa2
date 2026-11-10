@@ -22,6 +22,8 @@ import motdepasse from './motdepasse';
 import inscription from './inscription';
 import onboarding from './onboarding';
 import assistant from './assistant';
+import priorisation from './priorisation';
+import notifications from './notifications';
 
 /**
  * Chaque fichier de ce dossier exporte un « fragment » :
@@ -50,7 +52,9 @@ const FRAGMENTS = [
   motdepasse,
   inscription,
   onboarding,
-  assistant
+  assistant,
+  priorisation,
+  notifications
 ];
 
 const dictionnaires = {};
