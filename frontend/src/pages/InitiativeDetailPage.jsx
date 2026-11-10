@@ -11,6 +11,11 @@ import SanteBadge from '../components/SanteBadge';
 import ProgressBar from '../components/ProgressBar';
 import FicheSuivi from '../components/FicheSuivi';
 import { IconTarget, IconAlert, IconAssistant } from '../components/Icons';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Badge } from '../components/ui/badge';
 
 const etapeVide = { nom: '', description: '', ordre: '', dateDebut: '', dateFinPrevue: '', avancement: 0, idStatutEtape: '' };
 const jalonVide = { nom: '', description: '', datePrevue: '', dateRealisation: '', idStatutJalon: '' };
@@ -116,8 +121,25 @@ export default function InitiativeDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  if (erreur) return <div className="alerte alerte-erreur">{erreur}</div>;
-  if (!initiative) return <div className="center-page">{t('initiativeDetail.chargement')}</div>;
+  if (erreur) {
+    return (
+      <div className="mx-auto w-full max-w-[1240px] py-12">
+        <div className="rounded-md border border-destructive/50 bg-destructive/50 p-4 text-sm text-destructive">
+          {erreur}
+        </div>
+      </div>
+    );
+  }
+  if (!initiative) {
+    return (
+      <div className="mx-auto w-full max-w-[1240px] py-12 flex items-center justify-center">
+        <span className="text-sm text-muted-foreground">{t('initiativeDetail.chargement')}</span>
+      </div>
+    );
+  }
+
+  const formatBudget = (valeur) =>
+    new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MAD', maximumFractionDigits: 0 }).format(valeur ?? 0);
 
   const archiver = async () => {
     if (!window.confirm(t('initiativeDetail.confirmArchiver', { nom: initiative.nom }))) return;
@@ -226,8 +248,8 @@ export default function InitiativeDetailPage() {
    * librement (0-100) après avoir choisi le statut.
    */
   const changerStatutEtape = (e, form, setForm) => {
-    const id = Number(e.target.value);
-    const libelle = statutsEtape.find((s) => s.idStatutEtape === id)?.libelle;
+    const idStatut = Number(e.target.value);
+    const libelle = statutsEtape.find((s) => s.idStatutEtape === idStatut)?.libelle;
     let avancement = form.avancement;
     if (libelle === 'Terminée') avancement = 100;
     else if (libelle === 'En cours') avancement = 50;
@@ -257,221 +279,471 @@ export default function InitiativeDetailPage() {
   const etapesTerminees = etapes.filter((e) => e.statutEtape?.libelle === 'Terminée').length;
   const jalonsAtteints = jalons.filter((j) => j.statutJalon?.libelle === 'Atteint').length;
 
-  const formatBudget = (valeur) =>
-    new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MAD', maximumFractionDigits: 0 }).format(valeur ?? 0);
-
   return (
-    <div className="page">
-      {info && <div className="alerte alerte-succes">{afficherMessage(t, info)}</div>}
+    <div className="mx-auto w-full max-w-[1240px]">
+      {info && (
+        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
+          {afficherMessage(t, info)}
+        </div>
+      )}
+      {erreur && (
+        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
+          {erreur}
+        </div>
+      )}
 
-      <header className="page-entete">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <p className="texte-muet"><Link to="/initiatives">← {t('initiativeDetail.retourListe')}</Link></p>
-          <h2>{initiative.nom}</h2>
-          <p className="texte-muet">
+          <p className="text-xs text-muted-foreground">
+            <Link to="/initiatives">← {t('initiativeDetail.retourListe')}</Link>
+          </p>
+          <h1 className="text-[22px] font-semibold tracking-tight text-foreground">{initiative.nom}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {t('initiativeDetail.code')} {initiative.code} · {initiative.entite?.nom ?? '—'}
-            {initiative.archive && <span className="badge badge-gris">{t('initiativeDetail.archiveeBadge')}</span>}
-            {initiative.objectif && <span className="badge badge-violet"><IconTarget size={12} /> {initiative.objectif.libelle}</span>}
+            {initiative.archive && (
+              <Badge variant="secondary" className="ml-2">{t('initiativeDetail.archiveeBadge')}</Badge>
+            )}
+            {initiative.objectif && (
+              <Badge variant="secondary" className="ml-2 flex items-center gap-1">
+                <IconTarget size={12} /> {initiative.objectif.libelle}
+              </Badge>
+            )}
           </p>
         </div>
-        <div className="actions">
+        <div className="flex items-end gap-2">
           {peutIa && !initiative.archive && (
-            <button
+            <Button
               type="button"
-              className="btn btn-secondaire"
+              variant="secondary"
               onClick={genererResume}
               disabled={resumeEnCours}
             >
               <IconAssistant size={16} />
               {resumeEnCours ? t('initiativeDetail.resumeEnCours') : t('initiativeDetail.resumeIa')}
-            </button>
+            </Button>
           )}
           {peutModifier && !initiative.archive && (
-            <Link to={`/initiatives/${initiative.idInitiative}/modifier`} className="btn btn-primaire">{t('initiativeDetail.modifier')}</Link>
+            <Link
+              to={`/initiatives/${initiative.idInitiative}/modifier`}
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              {t('initiativeDetail.modifier')}
+            </Link>
           )}
           {peutArchiver && !initiative.archive && ['Terminée', 'Annulée'].includes(initiative.statut?.libelle) && (
-            <button className="btn btn-danger" onClick={archiver}>{t('initiativeDetail.archiver')}</button>
+            <Button type="button" variant="destructive" size="sm" onClick={archiver}>
+              {t('initiativeDetail.archiver')}
+            </Button>
           )}
         </div>
       </header>
 
       {resumeIa && (
-        <section className="carte carte-resume-ia">
-          <h3>
-            <IconAssistant size={18} />
-            {t('initiativeDetail.resumeTitre')}
-          </h3>
-          <p>{resumeIa}</p>
-          <p className="texte-muet">{t('assistant.legal')}</p>
-        </section>
+        <Card className="mb-6 p-[18px] shadow-sm carte-resume-ia">
+          <CardContent className="pt-0">
+            <div className="flex items-start gap-2">
+              <IconAssistant size={18} />
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-1">
+                  {t('initiativeDetail.resumeTitre')}
+                </h3>
+                <p className="text-sm text-foreground">{resumeIa}</p>
+                <p className="mt-2 text-xs text-muted-foreground">{t('assistant.legal')}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      <section className="carte">
-        <div className="fiche-grille">
-          <div>
-            <span className="libelle">{t('initiativeDetail.statut')}</span>
-            <StatutBadge libelle={initiative.statut?.libelle} />
-          </div>
-          <div>
-            <span className="libelle">{t('sante.colonne')}</span>
-            <SanteBadge sante={initiative.sante} avecRaison />
-          </div>
-          <div>
-            <span className="libelle">{t('initiativeDetail.priorite')}</span>
-            <strong>{ref.priorite(initiative.priorite?.libelle) ?? '—'}</strong>
-          </div>
-          <div>
-            <span className="libelle">{t('initiativeDetail.objectifStrategique')}</span>
-            <strong>{initiative.objectif ? `${initiative.objectif.libelle} (${initiative.objectif.code})` : t('initiativeDetail.nonRattache')}</strong>
-          </div>
-          <div>
-            <span className="libelle">{t('initiativeDetail.responsable')}</span>
-            <strong>{initiative.responsable?.nomComplet ?? t('initiativeDetail.nonAffecte')}</strong>
-          </div>
-          <div>
-            <span className="libelle">{t('initiativeDetail.dates')}</span>
-            <strong>{initiative.dateDebut ?? '—'} → {initiative.dateFinPrevue ?? '—'}</strong>
-          </div>
-          <div>
-            <span className="libelle">{t('initiativeDetail.budget')}</span>
-            <strong>{formatBudget(initiative.budget)}</strong>
-            <small className="texte-muet">{t('initiativeDetail.budgetAide')}</small>
-          </div>
-          <div>
-            <span className="libelle">{t('initiativeDetail.avancement')}</span>
-            <ProgressBar valeur={initiative.avancement} large />
-            {etapes.length > 0 && (
-              <small className="texte-muet">{t('initiativeDetail.avancementCalcule')}</small>
+      <Card className="mb-6 p-[18px] shadow-sm">
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 fiche-grille">
+            <div>
+              <span className="text-xs font-medium text-muted-foreground libelle block mb-1">
+                {t('initiativeDetail.statut')}
+              </span>
+              <StatutBadge libelle={initiative.statut?.libelle} />
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground libelle block mb-1">
+                {t('sante.colonne')}
+              </span>
+              <SanteBadge sante={initiative.sante} avecRaison />
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground libelle block mb-1">
+                {t('initiativeDetail.priorite')}
+              </span>
+              <strong className="text-sm">{ref.priorite(initiative.priorite?.libelle) ?? '—'}</strong>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground libelle block mb-1">
+                {t('initiativeDetail.objectifStrategique')}
+              </span>
+              <strong className="text-sm">
+                {initiative.objectif ? `${initiative.objectif.libelle} (${initiative.objectif.code})` : t('initiativeDetail.nonRattache')}
+              </strong>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground libelle block mb-1">
+                {t('initiativeDetail.responsable')}
+              </span>
+              <strong className="text-sm">{initiative.responsable?.nomComplet ?? t('initiativeDetail.nonAffecte')}</strong>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground libelle block mb-1">
+                {t('initiativeDetail.dates')}
+              </span>
+              <strong className="text-sm">{initiative.dateDebut ?? '—'} → {initiative.dateFinPrevue ?? '—'}</strong>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground libelle block mb-1">
+                {t('initiativeDetail.budget')}
+              </span>
+              <strong className="text-sm">{formatBudget(initiative.budget)}</strong>
+              <small className="text-xs text-muted-foreground block mt-0.5">
+                {t('initiativeDetail.budgetAide')}
+              </small>
+            </div>
+            <div className="lg:col-span-3">
+              <span className="text-xs font-medium text-muted-foreground libelle block mb-1">
+                {t('initiativeDetail.avancement')}
+              </span>
+              <ProgressBar valeur={initiative.avancement} large />
+              {etapes.length > 0 && (
+                <small className="text-xs text-muted-foreground block mt-1">
+                  {t('initiativeDetail.avancementCalcule')}
+                </small>
+              )}
+            </div>
+            {initiative.enRetard && (
+              <div className="lg:col-span-3">
+                <Badge variant="destructive" className="border-transparent bg-destructive/15 text-destructive flex items-center gap-1">
+                  <IconAlert size={12} /> {t('initiativeDetail.enRetard')}
+                </Badge>
+              </div>
             )}
           </div>
-          {initiative.enRetard && (
-            <div className="champ-plein">
-              <span className="badge badge-rouge"><IconAlert size={12} /> {t('initiativeDetail.enRetard')}</span>
-            </div>
+          {initiative.description && (
+            <p className="mt-3 text-sm text-muted-foreground">{initiative.description}</p>
           )}
-        </div>
-        {initiative.description && <p className="texte-muet">{initiative.description}</p>}
+        </CardContent>
+      </Card>
+
+      <section className="mb-6">
+        <Card className="p-[18px] shadow-sm">
+          <CardContent className="pt-0 pb-0">
+            <div className="flex items-center justify-between gap-3 section-entete">
+              <div>
+                <h3 className="text-base font-semibold text-foreground">
+                  {t('initiativeDetail.etapesTitre', { nombre: etapes.length })}
+                </h3>
+                {etapes.length > 0 && (
+                  <Badge variant="success" className="border-transparent bg-success/15 text-success">
+                    {t('initiativeDetail.etapesTerminees', { faites: etapesTerminees, total: etapes.length })}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </CardContent>
+          <CardContent className="pt-0">
+            {etapes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('initiativeDetail.aucuneEtape')}</p>
+            ) : (
+              <div className="etape-liste">
+                {etapes.map((etape, index) => (
+                  <div key={etape.idEtape} className="etape-item">
+                    {editionEtape?.idEtape === etape.idEtape ? (
+                      <form className="formulaire-inline" onSubmit={soumettreEtape}>
+                        <div className="flex flex-col sm:flex-row gap-2 items-end">
+                          <Input
+                            value={editionEtape.nom}
+                            onChange={(e) => setEditionEtape({ ...editionEtape, nom: e.target.value })}
+                            required
+                            placeholder={t('initiativeDetail.nom')}
+                            className="flex-1"
+                          />
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={editionEtape.avancement}
+                            onChange={(e) => changerAvancementEtape(e, editionEtape, setEditionEtape)}
+                            placeholder="%"
+                            className="w-20"
+                          />
+                          <select
+                            aria-label={t('initiativeDetail.ariaStatutEtape')}
+                            value={editionEtape.idStatutEtape}
+                            onChange={(e) => changerStatutEtape(e, editionEtape, setEditionEtape)}
+                            className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring w-32"
+                          >
+                            {statutsEtape.map((s) => (
+                              <option key={s.idStatutEtape} value={s.idStatutEtape}>
+                                {ref.statutEtape(s.libelle)}
+                              </option>
+                            ))}
+                          </select>
+                          <Button type="submit" className="ml-1">
+                            {t('initiativeDetail.ok')}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditionEtape(null)}
+                          >
+                            {t('initiativeDetail.annuler')}
+                          </Button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <div className="etape-texte">
+                          <strong>{etape.ordre}. {etape.nom}</strong>
+                          {etape.description && <small>{etape.description}</small>}
+                          <span className="texte-muet block mt-0.5">
+                            {etape.dateDebut ?? '—'} → {etape.dateFinPrevue ?? '—'} · {ref.statutEtape(etape.statutEtape?.libelle)}
+                          </span>
+                        </div>
+                        <ProgressBar valeur={etape.avancement} />
+                        {peutEtapes && (
+                          <div className="etape-actions">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setEditionEtape({
+                                idEtape: etape.idEtape,
+                                ...etape,
+                                idStatutEtape: etape.statutEtape?.idStatutEtape ?? ''
+                              })}
+                            >
+                              {t('initiativeDetail.editer')}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => supprimerEtape(etape)}
+                            >
+                              {t('initiativeDetail.supprimer')}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => deplacerEtape(index, -1)}
+                              disabled={index === 0}
+                              title={t('initiativeDetail.monter')}
+                              aria-label={t('initiativeDetail.monter')}
+                            >
+                              ↑
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => deplacerEtape(index, 1)}
+                              disabled={index === etapes.length - 1}
+                              title={t('initiativeDetail.descendre')}
+                              aria-label={t('initiativeDetail.descendre')}
+                            >
+                              ↓
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {peutEtapes && (
+              <form className="formulaire-inline ajout mt-4" onSubmit={soumettreEtape}>
+                <div className="flex flex-col sm:flex-row gap-2 items-end">
+                  <Input
+                    value={nouvelleEtape.nom}
+                    onChange={(e) => setNouvelleEtape({ ...nouvelleEtape, nom: e.target.value })}
+                    required
+                    placeholder={t('initiativeDetail.nouvelleEtape')}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={nouvelleEtape.avancement}
+                    onChange={(e) => changerAvancementEtape(e, nouvelleEtape, setNouvelleEtape)}
+                    placeholder="%"
+                    className="w-20"
+                  />
+                  <select
+                    aria-label={t('initiativeDetail.ariaStatutEtape')}
+                    value={nouvelleEtape.idStatutEtape}
+                    onChange={(e) => changerStatutEtape(e, nouvelleEtape, setNouvelleEtape)}
+                    className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring w-32"
+                  >
+                    <option value="">{t('initiativeDetail.statut')}</option>
+                    {statutsEtape.map((s) => (
+                      <option key={s.idStatutEtape} value={s.idStatutEtape}>{ref.statutEtape(s.libelle)}</option>
+                    ))}
+                  </select>
+                  <Button type="submit">{t('initiativeDetail.ajouter')}</Button>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
       </section>
 
-      <section className="carte">
-        <div className="section-entete">
-          <h3>{t('initiativeDetail.etapesTitre', { nombre: etapes.length })}</h3>
-          {etapes.length > 0 && (
-            <span className="badge badge-vert">
-              {t('initiativeDetail.etapesTerminees', { faites: etapesTerminees, total: etapes.length })}
-            </span>
-          )}
-        </div>
-        {etapes.length === 0 && <p className="texte-muet">{t('initiativeDetail.aucuneEtape')}</p>}
-        <div className="etape-liste">
-          {etapes.map((etape, index) => (
-            <div key={etape.idEtape} className="etape-item">
-              {editionEtape?.idEtape === etape.idEtape ? (
-                <form className="formulaire-inline" onSubmit={soumettreEtape}>
-                  <input value={editionEtape.nom} onChange={(e) => setEditionEtape({ ...editionEtape, nom: e.target.value })} required placeholder={t('initiativeDetail.nom')} />
-                  <input type="number" min="0" max="100" value={editionEtape.avancement}
-                    onChange={(e) => changerAvancementEtape(e, editionEtape, setEditionEtape)} placeholder="%" />
-                  <select aria-label={t('initiativeDetail.ariaStatutEtape')} value={editionEtape.idStatutEtape}
-                    onChange={(e) => changerStatutEtape(e, editionEtape, setEditionEtape)}>
-                    {statutsEtape.map((s) => <option key={s.idStatutEtape} value={s.idStatutEtape}>{ref.statutEtape(s.libelle)}</option>)}
-                  </select>
-                  <button type="submit" className="btn btn-primaire btn-petit">{t('initiativeDetail.ok')}</button>
-                  <button type="button" className="btn btn-secondaire btn-petit" onClick={() => setEditionEtape(null)}>{t('initiativeDetail.annuler')}</button>
-                </form>
-              ) : (
-                <>
-                  <div className="etape-texte">
-                    <strong>{etape.ordre}. {etape.nom}</strong>
-                    {etape.description && <small>{etape.description}</small>}
-                    <span className="texte-muet">
-                      {etape.dateDebut ?? '—'} → {etape.dateFinPrevue ?? '—'} · {ref.statutEtape(etape.statutEtape?.libelle)}
-                    </span>
-                  </div>
-                  <ProgressBar valeur={etape.avancement} />
-                  {peutEtapes && (
-                    <div className="etape-actions">
-                      <button className="btn btn-petit btn-secondaire" onClick={() => setEditionEtape({ idEtape: etape.idEtape, ...etape, idStatutEtape: etape.statutEtape?.idStatutEtape ?? '' })}>{t('initiativeDetail.editer')}</button>
-                      <button className="btn btn-petit btn-danger" onClick={() => supprimerEtape(etape)}>{t('initiativeDetail.supprimer')}</button>
-                      <button className="btn btn-petit btn-secondaire" onClick={() => deplacerEtape(index, -1)} disabled={index === 0} title={t('initiativeDetail.monter')} aria-label={t('initiativeDetail.monter')}>↑</button>
-                      <button className="btn btn-petit btn-secondaire" onClick={() => deplacerEtape(index, 1)} disabled={index === etapes.length - 1} title={t('initiativeDetail.descendre')} aria-label={t('initiativeDetail.descendre')}>↓</button>
-                    </div>
-                  )}
-                </>
-              )}
+      <section className="mb-6">
+        <Card className="p-[18px] shadow-sm">
+          <CardContent className="pt-0 pb-0">
+            <div className="flex items-center justify-between gap-3 section-entete">
+              <div>
+                <h3 className="text-base font-semibold text-foreground">
+                  {t('initiativeDetail.jalonsTitre', { nombre: jalons.length })}
+                </h3>
+                {jalons.length > 0 && (
+                  <Badge variant="secondary" className="border-transparent bg-blue/15 text-blue-800">
+                    {t('initiativeDetail.jalonsAtteints', { faites: jalonsAtteints, total: jalons.length })}
+                  </Badge>
+                )}
+              </div>
             </div>
-          ))}
-        </div>
-        {peutEtapes && (
-          <form className="formulaire-inline ajout" onSubmit={soumettreEtape}>
-            <input value={nouvelleEtape.nom} onChange={(e) => setNouvelleEtape({ ...nouvelleEtape, nom: e.target.value })} required placeholder={t('initiativeDetail.nouvelleEtape')} />
-            <input type="number" min="0" max="100" value={nouvelleEtape.avancement}
-              onChange={(e) => changerAvancementEtape(e, nouvelleEtape, setNouvelleEtape)} placeholder="%" />
-            <select aria-label={t('initiativeDetail.ariaStatutEtape')} value={nouvelleEtape.idStatutEtape} onChange={(e) => changerStatutEtape(e, nouvelleEtape, setNouvelleEtape)}>
-              <option value="">{t('initiativeDetail.statut')}</option>
-              {statutsEtape.map((s) => <option key={s.idStatutEtape} value={s.idStatutEtape}>{ref.statutEtape(s.libelle)}</option>)}
-            </select>
-            <button type="submit" className="btn btn-primaire btn-petit">{t('initiativeDetail.ajouter')}</button>
-          </form>
-        )}
-      </section>
-
-      <section className="carte">
-        <div className="section-entete">
-          <h3>{t('initiativeDetail.jalonsTitre', { nombre: jalons.length })}</h3>
-          {jalons.length > 0 && (
-            <span className="badge badge-bleu">
-              {t('initiativeDetail.jalonsAtteints', { faites: jalonsAtteints, total: jalons.length })}
-            </span>
-          )}
-        </div>
-        {jalons.length === 0 && <p className="texte-muet">{t('initiativeDetail.aucunJalon')}</p>}
-        <div className="etape-liste">
-          {jalons.map((jalon) => (
-            <div key={jalon.idJalon} className="etape-item">
-              {editionJalon?.idJalon === jalon.idJalon ? (
-                <form className="formulaire-inline" onSubmit={soumettreJalon}>
-                  <input value={editionJalon.nom} onChange={(e) => setEditionJalon({ ...editionJalon, nom: e.target.value })} required placeholder={t('initiativeDetail.nom')} />
-                  <input type="date" aria-label={t('initiativeDetail.ariaDatePrevue')} value={editionJalon.datePrevue} onChange={(e) => setEditionJalon({ ...editionJalon, datePrevue: e.target.value })} />
-                  <select aria-label={t('initiativeDetail.ariaStatutJalon')} value={editionJalon.idStatutJalon}
-                    onChange={(e) => setEditionJalon({ ...editionJalon, idStatutJalon: e.target.value })}>
-                    {statutsJalon.map((s) => <option key={s.idStatutJalon} value={s.idStatutJalon}>{ref.statutJalon(s.libelle)}</option>)}
-                  </select>
-                  <button type="submit" className="btn btn-primaire btn-petit">{t('initiativeDetail.ok')}</button>
-                  <button type="button" className="btn btn-secondaire btn-petit" onClick={() => setEditionJalon(null)}>{t('initiativeDetail.annuler')}</button>
-                </form>
-              ) : (
-                <>
-                  <div className="etape-texte">
-                    <strong>{jalon.nom}</strong>
-                    {jalon.enRetard && <span className="badge badge-rouge">{t('initiativeDetail.enRetardJalon')}</span>}
-                    {jalon.description && <small>{jalon.description}</small>}
-                    <span className="texte-muet">
-                      {t('initiativeDetail.jalonPrevu', { date: jalon.datePrevue ?? '—', statut: ref.statutJalon(jalon.statutJalon?.libelle) ?? '' })}
-                      {jalon.dateRealisation ? t('initiativeDetail.jalonRealise', { date: jalon.dateRealisation }) : ''}
-                    </span>
+          </CardContent>
+          <CardContent className="pt-0">
+            {jalons.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('initiativeDetail.aucunJalon')}</p>
+            ) : (
+              <div className="etape-liste">
+                {jalons.map((jalon) => (
+                  <div key={jalon.idJalon} className="etape-item">
+                    {editionJalon?.idJalon === jalon.idJalon ? (
+                      <form className="formulaire-inline" onSubmit={soumettreJalon}>
+                        <div className="flex flex-col sm:flex-row gap-2 items-end">
+                          <Input
+                            value={editionJalon.nom}
+                            onChange={(e) => setEditionJalon({ ...editionJalon, nom: e.target.value })}
+                            required
+                            placeholder={t('initiativeDetail.nom')}
+                            className="flex-1"
+                          />
+                          <Input
+                            type="date"
+                            aria-label={t('initiativeDetail.ariaDatePrevue')}
+                            value={editionJalon.datePrevue}
+                            onChange={(e) => setEditionJalon({ ...editionJalon, datePrevue: e.target.value })}
+                            className="w-40"
+                          />
+                          <select
+                            aria-label={t('initiativeDetail.ariaStatutJalon')}
+                            value={editionJalon.idStatutJalon}
+                            onChange={(e) => setEditionJalon({ ...editionJalon, idStatutJalon: e.target.value })}
+                            className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring w-32"
+                          >
+                            {statutsJalon.map((s) => (
+                              <option key={s.idStatutJalon} value={s.idStatutJalon}>
+                                {ref.statutJalon(s.libelle)}
+                              </option>
+                            ))}
+                          </select>
+                          <Button type="submit" className="ml-1">
+                            {t('initiativeDetail.ok')}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditionJalon(null)}
+                          >
+                            {t('initiativeDetail.annuler')}
+                          </Button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <div className="etape-texte">
+                          <strong>{jalon.nom}</strong>
+                          {jalon.enRetard && (
+                            <Badge variant="destructive" className="border-transparent bg-destructive/15 text-destructive ml-2">
+                              {t('initiativeDetail.enRetardJalon')}
+                            </Badge>
+                          )}
+                          {jalon.description && <small>{jalon.description}</small>}
+                          <span className="texte-muet block mt-0.5">
+                            {t('initiativeDetail.jalonPrevu', {
+                              date: jalon.datePrevue ?? '—',
+                              statut: ref.statutJalon(jalon.statutJalon?.libelle) ?? ''
+                            })}
+                            {jalon.dateRealisation ? t('initiativeDetail.jalonRealise', { date: jalon.dateRealisation }) : ''}
+                          </span>
+                        </div>
+                        {peutJalons && (
+                          <div className="etape-actions">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setEditionJalon({
+                                idJalon: jalon.idJalon,
+                                ...jalon,
+                                idStatutJalon: jalon.statutJalon?.idStatutJalon ?? ''
+                              })}
+                            >
+                              {t('initiativeDetail.editer')}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => supprimerJalon(jalon)}
+                            >
+                              {t('initiativeDetail.supprimer')}
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
-                  {peutJalons && (
-                    <div className="etape-actions">
-                      <button className="btn btn-petit btn-secondaire" onClick={() => setEditionJalon({ idJalon: jalon.idJalon, ...jalon, idStatutJalon: jalon.statutJalon?.idStatutJalon ?? '' })}>{t('initiativeDetail.editer')}</button>
-                      <button className="btn btn-petit btn-danger" onClick={() => supprimerJalon(jalon)}>{t('initiativeDetail.supprimer')}</button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-        {peutJalons && (
-          <form className="formulaire-inline ajout" onSubmit={soumettreJalon}>
-            <input value={nouveauJalon.nom} onChange={(e) => setNouveauJalon({ ...nouveauJalon, nom: e.target.value })} required placeholder={t('initiativeDetail.nouveauJalon')} />
-            <input type="date" aria-label={t('initiativeDetail.ariaDatePrevue')} value={nouveauJalon.datePrevue} onChange={(e) => setNouveauJalon({ ...nouveauJalon, datePrevue: e.target.value })} />
-            <select aria-label={t('initiativeDetail.ariaStatutJalon')} value={nouveauJalon.idStatutJalon} onChange={(e) => setNouveauJalon({ ...nouveauJalon, idStatutJalon: e.target.value })}>
-              <option value="">{t('initiativeDetail.statut')}</option>
-              {statutsJalon.map((s) => <option key={s.idStatutJalon} value={s.idStatutJalon}>{ref.statutJalon(s.libelle)}</option>)}
-            </select>
-            <button type="submit" className="btn btn-primaire btn-petit">{t('initiativeDetail.ajouter')}</button>
-          </form>
-        )}
+                ))}
+              </div>
+            )}
+            {peutJalons && (
+              <form className="formulaire-inline ajout mt-4" onSubmit={soumettreJalon}>
+                <div className="flex flex-col sm:flex-row gap-2 items-end">
+                  <Input
+                    value={nouveauJalon.nom}
+                    onChange={(e) => setNouveauJalon({ ...nouveauJalon, nom: e.target.value })}
+                    required
+                    placeholder={t('initiativeDetail.nouveauJalon')}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="date"
+                    aria-label={t('initiativeDetail.ariaDatePrevue')}
+                    value={nouveauJalon.datePrevue}
+                    onChange={(e) => setNouveauJalon({ ...nouveauJalon, datePrevue: e.target.value })}
+                    className="w-40"
+                  />
+                  <select
+                    aria-label={t('initiativeDetail.ariaStatutJalon')}
+                    value={nouveauJalon.idStatutJalon}
+                    onChange={(e) => setNouveauJalon({ ...nouveauJalon, idStatutJalon: e.target.value })}
+                    className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring w-32"
+                  >
+                    <option value="">{t('initiativeDetail.statut')}</option>
+                    {statutsJalon.map((s) => (
+                      <option key={s.idStatutJalon} value={s.idStatutJalon}>{ref.statutJalon(s.libelle)}</option>
+                    ))}
+                  </select>
+                  <Button type="submit">{t('initiativeDetail.ajouter')}</Button>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
       </section>
 
       {/* Suivi de l'initiative : alertes calculées, fil de commentaires,
@@ -484,105 +756,125 @@ export default function InitiativeDetailPage() {
           filtrables par type et paginées « Charger plus ». Lisible par tous
           ceux qui peuvent voir la fiche (INITIATIVE_CONSULTER), y compris le
           Visiteur : c'est le suivi, pas une écriture. */}
-      <section className="carte">
-        <div className="section-entete">
-          <h3>{t('initiativeDetail.historiqueTitre')}</h3>
-          {historiqueTotal > 0 && (
-            <span className="badge badge-gris">{historiqueTotal}</span>
-          )}
-        </div>
-        {/* Les commandes (filtres + « Voir tout ») restent affichées même
-            quand le filtre courant ne ramène rien : sinon la pastille
-            active devient une impasse — aucun moyen de revenir à
-            « Tous ». Elles ne disparaissent que sur une fiche sans aucun
-            historique et sans filtre posé. */}
-        {(historiqueTotal > 0 || historiqueType) && (
-          <>
-            <div className="section-entete-actions">
-              <p className="texte-muet historique-resume">{t('initiativeDetail.historiqueResume')}</p>
-              {/* Le journal complet vit sur sa propre page : cette fiche ne
-                  garde qu'un fil de lecture, avec un filtre déjà posé sur lui. */}
-              <Link
-                to={`/historique?initiative=${id}`}
-                className="btn btn-petit btn-secondaire"
-              >
-                {t('initiativeDetail.voirToutHistorique')}
-              </Link>
+      <Card className="mb-6 p-[18px] shadow-sm">
+        <CardContent className="pt-0 pb-0">
+          <div className="flex items-center justify-between gap-3 section-entete">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">{t('initiativeDetail.historiqueTitre')}</h3>
+              {historiqueTotal > 0 && (
+                <Badge variant="secondary">{historiqueTotal}</Badge>
+              )}
             </div>
-            <div className="historique-filtres">
-              <div
-                className="vue-toggle"
-                role="group"
-                aria-label={t('initiativeDetail.historiqueAriaFiltre')}
-              >
-                {[
-                  ['', t('initiativeDetail.historiqueFiltreTous')],
-                  ['initiative', t('historique.type.initiative')],
-                  ['etape', t('initiativeDetail.historiqueFiltreEtapes')],
-                  ['jalon', t('initiativeDetail.historiqueFiltreJalons')]
-                ].map(([cle, libelle]) => (
-                  <button
-                    key={cle || 'tous'}
-                    type="button"
-                    className={historiqueType === cle ? 'actif' : ''}
-                    onClick={() => {
-                      setHistoriqueType(cle);
-                      chargerHistorique(0, cle);
-                    }}
-                  >
-                    {libelle}
-                  </button>
-                ))}
+          </div>
+        </CardContent>
+        <CardContent className="pt-0">
+          {/* Les commandes (filtres + « Voir tout ») restent affichées même
+              quand le filtre courant ne ramène rien : sinon la pastille
+              active devient une impasse — aucun moyen de revenir à
+              « Tous ». Elles ne disparaissent que sur une fiche sans aucun
+              historique et sans filtre posé. */}
+          {(historiqueTotal > 0 || historiqueType) && (
+            <>
+              <div className="mb-4 flex items-center justify-between gap-3 section-entete-actions">
+                <p className="text-sm text-muted-foreground historique-resume">
+                  {t('initiativeDetail.historiqueResume')}
+                </p>
+                <Link
+                  to={`/historique?initiative=${id}`}
+                  className="text-xs text-primary hover:underline"
+                >
+                  {t('initiativeDetail.voirToutHistorique')}
+                </Link>
               </div>
-            </div>
-          </>
-        )}
-        {historique.length === 0 ? (
-          <p className="texte-muet">
-            {historiqueType
-              ? t('initiativeDetail.aucunHistoriqueFiltre')
-              : t('initiativeDetail.aucunHistorique')}
-          </p>
-        ) : (
-          <>
-            <ol className="historique">
-              {historique.map((ev) => (
-                <li key={ev.id} className="historique-item">
-                  <span className="historique-date">
-                    {new Date(ev.dateChangement).toLocaleString(langue, {
-                      day: '2-digit', month: 'short', year: 'numeric',
-                      hour: '2-digit', minute: '2-digit'
-                    })}
-                  </span>
-                  <span className="historique-transition">
-                    <span className={`badge ${badgeTypeJournal(ev.typeObjet)}`}>
-                      {libelleType(t, ev.typeObjet)}
+              <div className="historique-filtres mb-4">
+                <div
+                  className="vue-toggle flex items-center gap-1 border border-input rounded-md p-1"
+                  role="group"
+                  aria-label={t('initiativeDetail.historiqueAriaFiltre')}
+                >
+                  {[
+                    ['', t('initiativeDetail.historiqueFiltreTous')],
+                    ['initiative', t('historique.type.initiative')],
+                    ['etape', t('initiativeDetail.historiqueFiltreEtapes')],
+                    ['jalon', t('initiativeDetail.historiqueFiltreJalons')]
+                  ].map(([cle, libelle]) => (
+                    <button
+                      key={cle || 'tous'}
+                      type="button"
+                      className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                        historiqueType === cle
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-muted'
+                      }`}
+                      onClick={() => {
+                        setHistoriqueType(cle);
+                        chargerHistorique(0, cle);
+                      }}
+                    >
+                      {libelle}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+          {historique.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              {historiqueType
+                ? t('initiativeDetail.aucunHistoriqueFiltre')
+                : t('initiativeDetail.aucunHistorique')}
+            </p>
+          ) : (
+            <>
+              <ol className="historique space-y-3">
+                {historique.map((ev) => (
+                  <li key={ev.id} className="historique-item">
+                    <span className="historique-date text-xs text-muted-foreground">
+                      {new Date(ev.dateChangement).toLocaleString(langue, {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                      })}
                     </span>
-                    {texteEvenement(t, ev)}
-                  </span>
-                  {ev.commentaire && (
-                    <span className="historique-commentaire">{ev.commentaire}</span>
-                  )}
-                  <span className="historique-auteur">
-                    {ev.utilisateur?.nomComplet ?? t('initiativeDetail.auteurInconnu')}
-                    {ev.automatique ? ` · ${t('historique.origineAutomatique')}` : ''}
-                  </span>
-                </li>
-              ))}
-            </ol>
-            {historique.length < historiqueTotal && (
-              <button
-                type="button"
-                className="btn btn-petit btn-secondaire historique-plus"
-                onClick={() => chargerHistorique(historiquePage + 1)}
-                disabled={historiquePage + 1 >= Math.ceil(historiqueTotal / TAILLE_HISTORIQUE)}
-              >
-                {t('initiativeDetail.historiqueChargerPlus')}
-              </button>
-            )}
-          </>
-        )}
-      </section>
+                    <span className="historique-transition ml-2 flex items-center gap-1">
+                      <Badge variant="secondary" className={`border-transparent ${
+                        badgeTypeJournal(ev.typeObjet) === 'badge-vert' ? 'bg-success/15 text-success' :
+                        badgeTypeJournal(ev.typeObjet) === 'badge-rouge' ? 'bg-destructive/15 text-destructive' :
+                        badgeTypeJournal(ev.typeObjet) === 'badge-bleu' ? 'bg-blue/15 text-blue-800' :
+                        'bg-muted/50 text-muted-foreground'
+                      }`}
+                      >
+                        {libelleType(t, ev.typeObjet)}
+                      </Badge>{' '}
+                      {texteEvenement(t, ev)}
+                    </span>
+                    {ev.commentaire && (
+                      <span className="historique-commentaire ml-2 text-xs text-muted-foreground">
+                        {ev.commentaire}
+                      </span>
+                    )}
+                    <span className="historique-auteur ml-2 text-xs text-muted-foreground">
+                      {ev.utilisateur?.nomComplet ?? t('initiativeDetail.auteurInconnu')}
+                      {ev.automatique ? ` · ${t('historique.origineAutomatique')}` : ''}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              {historique.length < historiqueTotal && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-4 historique-plus"
+                  onClick={() => chargerHistorique(historiquePage + 1)}
+                  disabled={historiquePage + 1 >= Math.ceil(historiqueTotal / TAILLE_HISTORIQUE)}
+                >
+                  {t('initiativeDetail.historiqueChargerPlus')}
+                </Button>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

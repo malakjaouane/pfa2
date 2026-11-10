@@ -2,6 +2,19 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api, { messageErreur, messageErreurBlob, telechargerFichier } from '../api';
 import { useI18n } from '../i18n/I18nContext';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Badge } from '../components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '../components/ui/table';
 
 /** Taille de page fixe : un registre se feuillette, il ne s'épuise pas. */
 const TAILLE_PAGE = 25;
@@ -128,72 +141,136 @@ export default function AuditPage() {
   const champ = (nom) => (e) => setFiltres((f) => ({ ...f, [nom]: e.target.value }));
 
   return (
-    <div className="page">
-      <header className="page-entete">
+    <div className="mx-auto w-full max-w-[1240px]">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h2>{t('audit.titre')}</h2>
-          <p>{t('audit.sousTitre')}</p>
+          <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+            {t('audit.titre')}
+          </h2>
+          <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+            {t('audit.sousTitre')}
+          </p>
         </div>
-        <div className="actions">
-          <button
-            type="button"
-            className="btn btn-secondaire"
-            onClick={exporterCsv}
-            disabled={lignes.length === 0}
-            title={t('audit.exportAide')}
-          >
-            {t('audit.exportCsv')}
-          </button>
-        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={exporterCsv}
+          disabled={lignes.length === 0}
+          title={t('audit.exportAide')}
+        >
+          {t('audit.exportCsv')}
+        </Button>
       </header>
 
-      {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
-
-      <form className="carte filtre-bar" onSubmit={appliquerFiltres}>
-        <div className="filtre-ligne">
-          <input
-            type="search"
-            placeholder={t('audit.emailPlaceholder')}
-            aria-label={t('audit.email')}
-            value={filtres.email}
-            onChange={champ('email')}
-          />
-          <select aria-label={t('audit.methode')} value={filtres.methode} onChange={champ('methode')}>
-            <option value="">{t('audit.toutesMethodes')}</option>
-            {METHODES.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-          <input
-            type="search"
-            placeholder={t('audit.routePlaceholder')}
-            aria-label={t('audit.route')}
-            value={filtres.route}
-            onChange={champ('route')}
-          />
-          <span className="filtre-periode-libelle">{t('audit.periodeDu')}</span>
-          <input type="date" aria-label={t('audit.periodeDu')} title={t('audit.periodeDu')}
-            value={filtres.du} onChange={champ('du')} />
-          <span className="filtre-sep" aria-hidden="true">→</span>
-          <input type="date" aria-label={t('audit.periodeAu')} title={t('audit.periodeAu')}
-            value={filtres.au} onChange={champ('au')} />
-          <button type="submit" className="btn btn-primaire" disabled={chargement}>
-            {t('audit.appliquer')}
-          </button>
-          <button type="button" className="btn btn-secondaire" onClick={reinitialiser}>
-            {t('audit.reinitialiser')}
-          </button>
+      {erreur && (
+        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
+          {erreur}
         </div>
-      </form>
+      )}
 
-      <div className="carte">
-        <div className="vue-bar">
-          <span className="texte-muet">
-            {total > 0 ? t('risques.compteur', { de: depart, a: arrivee, total }) : ''}
+      <Card className="mb-6 p-[18px] shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold text-muted-foreground">
+            {t('audit.filtres')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <form className="flex flex-wrap items-center gap-3" onSubmit={appliquerFiltres}>
+            <div className="flex-1 min-w-[180px] space-y-2">
+              <Label htmlFor="auditEmail">
+                {t('audit.email')}
+              </Label>
+              <Input
+                id="auditEmail"
+                type="search"
+                placeholder={t('audit.emailPlaceholder')}
+                aria-label={t('audit.email')}
+                value={filtres.email}
+                onChange={champ('email')}
+              />
+            </div>
+            <div className="flex-1 min-w-[140px] space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t('audit.methode')}
+              </Label>
+              <select
+                aria-label={t('audit.methode')}
+                value={filtres.methode}
+                onChange={champ('methode')}
+                className="min-w-[140px] rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{t('audit.toutesMethodes')}</option>
+                {METHODES.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1 min-w-[200px] space-y-2">
+              <Label htmlFor="auditRoute">
+                {t('audit.route')}
+              </Label>
+              <Input
+                id="auditRoute"
+                type="search"
+                placeholder={t('audit.routePlaceholder')}
+                aria-label={t('audit.route')}
+                value={filtres.route}
+                onChange={champ('route')}
+              />
+            </div>
+            <div className="flex-none space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                {t('audit.periodeDu')}
+              </Label>
+              <input
+                type="date"
+                aria-label={t('audit.periodeDu')}
+                title={t('audit.periodeDu')}
+                value={filtres.du}
+                onChange={champ('du')}
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <span className="text-muted-foreground whitespace-nowrap" aria-hidden="true">
+              →
+            </span>
+            <div className="flex-none space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                {t('audit.periodeAu')}
+              </Label>
+              <input
+                type="date"
+                aria-label={t('audit.periodeAu')}
+                title={t('audit.periodeAu')}
+                value={filtres.au}
+                onChange={champ('au')}
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <div className="flex items-end gap-2">
+              <Button type="submit" disabled={chargement}>
+                {t('audit.appliquer')}
+              </Button>
+              <Button type="button" variant="secondary" onClick={reinitialiser}>
+                {t('audit.reinitialiser')}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6 p-[18px] shadow-sm">
+        <div className="mb-3.5 flex items-center justify-between gap-3">
+          <span className="text-sm text-muted-foreground">
+            {total > 0 ? t('audit.compteur', { de: depart, a: arrivee, total }) : ''}
             {filtresActifs && (
               <>
                 {' · '}
-                <button type="button" className="lien-bouton" onClick={reinitialiser}>
+                <button
+                  type="button"
+                  className="text-primary underline underline-offset-2 hover:text-primary/80"
+                  onClick={reinitialiser}
+                >
                   {t('audit.reinitialiser')}
                 </button>
               </>
@@ -202,74 +279,86 @@ export default function AuditPage() {
         </div>
 
         {chargement ? (
-          <div className="center-page">{t('common.chargement')}</div>
-        ) : lignes.length === 0 ? (
-          <p className="texte-muet">{t('audit.aucun')}</p>
-        ) : (
-          <div className="table-enveloppe">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t('audit.colDate')}</th>
-                  <th>{t('audit.colEmail')}</th>
-                  <th>{t('audit.colMethode')}</th>
-                  <th>{t('audit.colRoute')}</th>
-                  <th>{t('audit.colStatut')}</th>
-                  <th>{t('audit.colIp')}</th>
-                  <th>{t('audit.colCorps')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lignes.map((l) => (
-                  <tr key={l.idAudit ?? `${l.dateAction}-${l.route}`}>
-                    <td>{formaterDate(l.dateAction, langue)}</td>
-                    <td title={l.email}>
-                      {l.email || <span className="texte-muet">{t('audit.horsApi')}</span>}
-                    </td>
-                    <td><span className="badge badge-bleu">{l.methode}</span></td>
-                    <td>
-                      {l.idInitiative ? (
-                        <Link to={`/initiatives/${l.idInitiative}`} className="table-lien-code">
-                          {l.route}
-                        </Link>
-                      ) : (
-                        l.route
-                      )}
-                    </td>
-                    <td><span className={`badge ${badgeStatut(l.statutHttp)}`}>{l.statutHttp}</span></td>
-                    <td>{l.ipAdresse ?? <span className="texte-muet">—</span>}</td>
-                    <td><code className="audit-corps">{l.corps || '—'}</code></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+            {t('common.chargement')}
           </div>
+        ) : lignes.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">
+            {t('audit.aucun')}
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('audit.colDate')}</TableHead>
+                <TableHead>{t('audit.colEmail')}</TableHead>
+                <TableHead>{t('audit.colMethode')}</TableHead>
+                <TableHead>{t('audit.colRoute')}</TableHead>
+                <TableHead>{t('audit.colStatut')}</TableHead>
+                <TableHead>{t('audit.colIp')}</TableHead>
+                <TableHead>{t('audit.colCorps')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {lignes.map((l) => (
+                <TableRow key={l.idAudit ?? `${l.dateAction}-${l.route}`}>
+                  <TableCell>{formaterDate(l.dateAction, langue)}</TableCell>
+                  <TableCell title={l.email}>
+                    {l.email || <span className="text-muted-foreground">{t('audit.horsApi')}</span>}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{l.methode}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {l.idInitiative ? (
+                      <Link to={`/initiatives/${l.idInitiative}`} className="text-primary hover:underline">
+                        {l.route}
+                      </Link>
+                    ) : (
+                      l.route
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={badgeStatut(l.statutHttp) === 'badge-vert' ? 'success' : badgeStatut(l.statutHttp) === 'badge-rouge' ? 'destructive' : 'secondary'}>
+                      {l.statutHttp}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{l.ipAdresse ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                  <TableCell>
+                    <code className="text-xs text-muted-foreground">{l.corps || '—'}</code>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
 
         {total > TAILLE_PAGE && (
-          <nav className="pagination" aria-label={t('audit.titre')}>
-            <button
+          <nav className="mt-4 flex items-center justify-center gap-3" aria-label={t('audit.titre')}>
+            <Button
               type="button"
-              className="btn btn-petit btn-secondaire"
+              variant="secondary"
+              size="sm"
               onClick={() => allerPage(filtres.page - 1)}
               disabled={filtres.page === 0 || chargement}
             >
               {t('audit.pagePrecedente')}
-            </button>
-            <span className="texte-muet">
+            </Button>
+            <span className="text-sm text-muted-foreground">
               {t('audit.pageInfo', { courante: filtres.page + 1, total: pagesTotales })}
             </span>
-            <button
+            <Button
               type="button"
-              className="btn btn-petit btn-secondaire"
+              variant="secondary"
+              size="sm"
               onClick={() => allerPage(filtres.page + 1)}
               disabled={filtres.page + 1 >= pagesTotales || chargement}
             >
               {t('audit.pageSuivante')}
-            </button>
+            </Button>
           </nav>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

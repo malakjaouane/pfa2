@@ -3,6 +3,10 @@ import { useI18n } from '../i18n/I18nContext';
 import { afficherMessage } from '../i18n/message';
 import api, { messageErreur } from '../api';
 import { IconAlert, IconAssistant } from '../components/Icons';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
 
 /**
  * Page « Assistant IA » — chat « Demande à ton portefeuille ».
@@ -54,97 +58,112 @@ export default function AssistantPage() {
   const indisponible = statut != null && !statut.disponible;
 
   return (
-    <div className="page ia-page">
-      <header className="page-entete">
+    <div className="mx-auto w-full max-w-[1240px] ia-page">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h2>{t('assistant.titre')}</h2>
-          <p>{t('assistant.sousTitre')}</p>
+          <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+            {t('assistant.titre')}
+          </h2>
+          <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+            {t('assistant.sousTitre')}
+          </p>
         </div>
         {statut && (
-          <span className={statut.disponible ? 'badge badge-vert' : 'badge badge-gris'}>
+          <Badge variant={statut.disponible ? 'success' : 'secondary'}>
             {statut.disponible ? t('assistant.etatActif') : t('assistant.etatIndispo')}
-          </span>
+          </Badge>
         )}
       </header>
 
       {indisponible && (
-        <div className="alerte alerte-erreur ia-indispo" role="status">
+        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive" role="status">
           <IconAlert size={18} />
-          <div>
+          <div className="ml-2 flex flex-col">
             <strong>{t('assistant.indispoTitre')}</strong>
             <p>{statut.actif ? t('assistant.indispoCle') : t('assistant.indispoDesactive')}</p>
           </div>
         </div>
       )}
-      {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
+      {erreur && (
+        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
+          {afficherMessage(t, erreur)}
+        </div>
+      )}
 
-      <div className="carte ia-conversation" role="log" aria-live="polite" aria-label={t('assistant.ariaConversation')}>
-        {messages.length === 0 && !envoi && (
-          <p className="texte-muet ia-vide">{t('assistant.bienvenue')}</p>
-        )}
-        {messages.map((m, i) => (
-          <div key={`${m.role}-${i}`} className={`ia-message ${m.role}`}>
-            <div className="ia-bulle">
-              {m.role === 'assistant' && <IconAssistant size={16} />}
-              <span>{m.texte}</span>
+      <Card className="mb-6 p-[18px] shadow-sm ia-conversation" role="log" aria-live="polite" aria-label={t('assistant.ariaConversation')}>
+        <CardContent className="pt-0">
+          {messages.length === 0 && !envoi && (
+            <p className="text-sm text-muted-foreground ia-vide">{t('assistant.bienvenue')}</p>
+          )}
+          {messages.map((m, i) => (
+            <div key={`${m.role}-${i}`} className={`ia-message ${m.role}`}>
+              <div className="ia-bulle">
+                {m.role === 'assistant' && <IconAssistant size={16} />}
+                <span>{m.texte}</span>
+              </div>
             </div>
-          </div>
-        ))}
-        {envoi && (
-          <div className="ia-message assistant">
-            <div className="ia-bulle ia-attente">
-              <span className="ia-points" aria-hidden="true"><i /><i /><i /></span>
-              {t('assistant.enCours')}
+          ))}
+          {envoi && (
+            <div className="ia-message assistant">
+              <div className="ia-bulle ia-attente">
+                <span className="ia-points" aria-hidden="true"><i /><i /><i /></span>
+                {t('assistant.enCours')}
+              </div>
             </div>
-          </div>
-        )}
-        <div ref={refFin} />
-      </div>
+          )}
+          <div ref={refFin} />
+        </CardContent>
+      </Card>
 
-      <div className="ia-suggestions">
-        <span className="texte-muet">{t('assistant.suggestions')}</span>
-        {[1, 2, 3].map((n) => (
-          <button
-            key={n}
-            type="button"
-            className="ia-suggestion"
-            disabled={envoi || indisponible}
-            onClick={() => poser(t(`assistant.suggestion${n}`))}
-          >
-            {t(`assistant.suggestion${n}`)}
-          </button>
-        ))}
+      <div className="ia-suggestions mb-6">
+        <span className="text-xs text-muted-foreground">{t('assistant.suggestions')}</span>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {[1, 2, 3].map((n) => (
+            <Button
+              key={n}
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={envoi || indisponible}
+              onClick={() => poser(t(`assistant.suggestion${n}`))}
+            >
+              {t(`assistant.suggestion${n}`)}
+            </Button>
+          ))}
+        </div>
       </div>
 
       <form className="ia-saisie" onSubmit={(e) => { e.preventDefault(); poser(); }}>
-        <input
-          type="text"
-          maxLength={1000}
-          value={question}
-          placeholder={t('assistant.placeholder')}
-          aria-label={t('assistant.placeholder')}
-          onChange={(e) => setQuestion(e.target.value)}
-          disabled={envoi || indisponible}
-        />
-        <button
-          type="submit"
-          className="btn btn-primaire"
-          disabled={envoi || indisponible || !question.trim()}
-        >
-          {envoi ? t('assistant.enCours') : t('assistant.envoyer')}
-        </button>
-        {messages.length > 0 && (
-          <button
-            type="button"
-            className="btn btn-secondaire"
-            onClick={() => { setMessages([]); setErreur(''); }}
+        <div className="flex gap-2">
+          <Input
+            type="text"
+            maxLength={1000}
+            value={question}
+            placeholder={t('assistant.placeholder')}
+            aria-label={t('assistant.placeholder')}
+            onChange={(e) => setQuestion(e.target.value)}
+            disabled={envoi || indisponible}
+            className="flex-1"
+          />
+          <Button
+            type="submit"
+            disabled={envoi || indisponible || !question.trim()}
           >
-            {t('assistant.effacer')}
-          </button>
-        )}
+            {envoi ? t('assistant.enCours') : t('assistant.envoyer')}
+          </Button>
+          {messages.length > 0 && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => { setMessages([]); setErreur(''); }}
+            >
+              {t('assistant.effacer')}
+            </Button>
+          )}
+        </div>
       </form>
 
-      <p className="texte-muet ia-legal">{t('assistant.legal')}</p>
+      <p className="text-xs text-muted-foreground ia-legal">{t('assistant.legal')}</p>
     </div>
   );
 }

@@ -9,6 +9,18 @@ import KanbanBoard from '../components/KanbanBoard';
 import { useI18n } from '../i18n/I18nContext';
 import { afficherMessage } from '../i18n/message';
 import { useReferentiels } from '../i18n/referentiels';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '../components/ui/table';
 
 const vide = {
   recherche: '',
@@ -174,67 +186,150 @@ export default function InitiativesPage() {
   ].map((s) => champ([s])[0]);
 
   return (
-    <div className="page">
-      <header className="page-entete">
+    <div className="mx-auto w-full max-w-[1240px]">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h2>{t('initiatives.titre')}</h2>
-          <p>{t('initiatives.sousTitre')}</p>
+          <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+            {t('initiatives.titre')}
+          </h2>
+          <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+            {t('initiatives.sousTitre')}
+          </p>
         </div>
         {hasPermission('INITIATIVE_CREER') && (
-          <Link to="/initiatives/nouvelle" className="btn btn-primaire">{t('initiatives.nouvelle')}</Link>
+          <Link to="/initiatives/nouvelle" className="text-sm font-medium text-primary hover:underline">
+            {t('initiatives.nouvelle')}
+          </Link>
         )}
       </header>
 
-      {info && <div className="alerte alerte-succes">{afficherMessage(t, info)}</div>}
-      {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
-
-      <form className="carte filtre-bar" onSubmit={appliquerFiltres}>
-        <div className="filtre-ligne">
-          <input
-            type="search"
-            placeholder={t('initiatives.recherchePlaceholder')}
-            value={filtres.recherche}
-            onChange={(e) => setFiltres((f) => ({ ...f, recherche: e.target.value }))}
-          />
-          {selects.map((sel) => (
-            <select key={sel.name} aria-label={sel.aria} value={sel.value} onChange={sel.onChange}>
-              <option value="">{sel.vide}</option>
-              {sel.options.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          ))}
+      {info && (
+        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
+          {afficherMessage(t, info)}
         </div>
-        <div className="filtre-ligne">
-          <span className="filtre-periode-libelle">{t('initiatives.periodeTitre')}</span>
-          <input type="date" aria-label={t('initiatives.periodeDu')} title={t('initiatives.periodeDu')}
-            value={filtres.dateDu} onChange={(e) => setFiltres((f) => ({ ...f, dateDu: e.target.value }))} />
-          <span className="filtre-sep" aria-hidden="true">→</span>
-          <input type="date" aria-label={t('initiatives.periodeAu')} title={t('initiatives.periodeAu')}
-            value={filtres.dateAu} onChange={(e) => setFiltres((f) => ({ ...f, dateAu: e.target.value }))} />
-          <small className="texte-muet filtre-aide">{t('initiatives.periodeAide')}</small>
-          <label className="case">
-            <input type="checkbox" checked={filtres.voirArchive}
-              onChange={(e) => setFiltres((f) => ({ ...f, voirArchive: e.target.checked }))} />
-            {t('initiatives.voirArchive')}
-          </label>
-          <button type="submit" className="btn btn-primaire" disabled={chargement}>{t('initiatives.appliquer')}</button>
-          <button type="button" className="btn btn-secondaire" onClick={reinitialiser}>{t('initiatives.reinitialiser')}</button>
+      )}
+      {erreur && (
+        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
+          {afficherMessage(t, erreur)}
         </div>
-      </form>
+      )}
 
-      <div className="carte">
-        <div className="vue-bar">
-          <div className="vue-toggle">
-            <button type="button" className={vue === 'table' ? 'actif' : ''} onClick={() => setVue('table')}>{t('initiatives.vueTableau')}</button>
-            <button type="button" className={vue === 'kanban' ? 'actif' : ''} onClick={() => setVue('kanban')}>{t('initiatives.vueKanban')}</button>
+      <Card className="mb-6 p-[18px] shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold text-muted-foreground">
+            {t('initiatives.filtres')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <form className="flex flex-wrap items-start gap-3" onSubmit={appliquerFiltres}>
+            <div className="flex-1 min-w-[180px] space-y-2">
+              <Label htmlFor="initiativeRecherche">
+                {t('initiatives.recherchePlaceholder')}
+              </Label>
+              <Input
+                id="initiativeRecherche"
+                type="search"
+                placeholder={t('initiatives.recherchePlaceholder')}
+                value={filtres.recherche}
+                onChange={(e) => setFiltres((f) => ({ ...f, recherche: e.target.value }))}
+              />
+            </div>
+            {selects.map((sel) => (
+              <div key={sel.name} className="flex-1 min-w-[160px] space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  {sel.aria}
+                </Label>
+                <select
+                  aria-label={sel.aria}
+                  value={sel.value}
+                  onChange={sel.onChange}
+                  className="min-w-[160px] rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">{sel.vide}</option>
+                  {sel.options.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+            <div className="flex-none space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                {t('initiatives.periodeTitre')}
+              </Label>
+              <div className="flex items-center gap-1">
+                <input
+                  type="date"
+                  aria-label={t('initiatives.periodeDu')}
+                  title={t('initiatives.periodeDu')}
+                  value={filtres.dateDu}
+                  onChange={(e) => setFiltres((f) => ({ ...f, dateDu: e.target.value }))}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <span className="text-muted-foreground whitespace-nowrap" aria-hidden="true">
+                  →
+                </span>
+                <input
+                  type="date"
+                  aria-label={t('initiatives.periodeAu')}
+                  title={t('initiatives.periodeAu')}
+                  value={filtres.dateAu}
+                  onChange={(e) => setFiltres((f) => ({ ...f, dateAu: e.target.value }))}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+              <small className="text-xs text-muted-foreground filtre-aide">
+                {t('initiatives.periodeAide')}
+              </small>
+            </div>
+            <div className="flex-none space-y-2 flex items-end">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={filtres.voirArchive}
+                  onChange={(e) => setFiltres((f) => ({ ...f, voirArchive: e.target.checked }))}
+                  className="rounded border-input text-primary focus:ring-ring"
+                />
+                {t('initiatives.voirArchive')}
+              </label>
+            </div>
+            <div className="flex items-end gap-2">
+              <Button type="submit" disabled={chargement}>
+                {t('initiatives.appliquer')}
+              </Button>
+              <Button type="button" variant="secondary" onClick={reinitialiser}>
+                {t('initiatives.reinitialiser')}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6 p-[18px] shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 border border-input rounded-md p-1">
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${vue === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+              onClick={() => setVue('table')}
+            >
+              {t('initiatives.vueTableau')}
+            </button>
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${vue === 'kanban' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+              onClick={() => setVue('kanban')}
+            >
+              {t('initiatives.vueKanban')}
+            </button>
           </div>
-          <span className="texte-muet">
+          <span className="text-sm text-muted-foreground">
             {t(initiatives.length > 1 ? 'initiatives.nombrePluriel' : 'initiatives.nombreSingulier', { n: initiatives.length })}
           </span>
         </div>
         {chargement ? (
-          <div className="center-page">{t('initiatives.chargement')}</div>
+          <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+            {t('initiatives.chargement')}
+          </div>
         ) : vue === 'kanban' ? (
           <KanbanBoard
             initiatives={initiatives}
@@ -242,61 +337,90 @@ export default function InitiativesPage() {
             onDeplacee={apresDeplacement}
           />
         ) : initiatives.length === 0 ? (
-          <p className="texte-muet">{t('initiatives.aucunResultat')}</p>
+          <p className="text-sm text-muted-foreground text-center py-8">
+            {t('initiatives.aucunResultat')}
+          </p>
         ) : (
-          <div className="table-enveloppe">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t('initiatives.colCode')}</th>
-                  <th>{t('initiatives.colInitiative')}</th>
-                  <th>{t('initiatives.colEntite')}</th>
-                  <th>{t('initiatives.colResponsable')}</th>
-                  <th>{t('initiatives.colStatut')}</th>
-                  <th>{t('sante.colonne')}</th>
-                  <th>{t('initiatives.colPriorite')}</th>
-                  <th>{t('initiatives.colAvancement')}</th>
-                  <th>{t('initiatives.colDebut')}</th>
-                  <th>{t('initiatives.colFinPrevue')}</th>
-                  <th title={t('initiatives.budgetAide')}>{t('initiatives.colBudget')}</th>
-                  <th>{t('initiatives.colActions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {initiatives.map((i) => (
-                  <tr key={i.idInitiative} className={i.enRetard ? 'ligne-retard' : ''} title={i.enRetard ? t('initiatives.enRetard') : ''}>
-                    <td className="texte-muet">{i.code}</td>
-                    <td><Link to={`/initiatives/${i.idInitiative}`}>{i.nom}</Link></td>
-                    <td>{i.entite?.nom ?? '—'}</td>
-                    <td>{i.responsable?.nomComplet ?? '—'}</td>
-                    <td><StatutBadge libelle={i.statut?.libelle} /></td>
-                    <td><SanteBadge sante={i.sante} avecRaison /></td>
-                    <td>{ref.priorite(i.priorite?.libelle) ?? '—'}</td>
-                    <td><ProgressBar valeur={i.avancement} /></td>
-                    <td>{i.dateDebut ?? '—'}</td>
-                    <td>{i.dateFinPrevue ?? '—'}</td>
-                    <td>{i.budget?.toLocaleString('fr-FR')} MAD</td>
-                    <td>
-                      <div className="actions">
-                        <Link to={`/initiatives/${i.idInitiative}`} className="btn btn-petit">{t('initiatives.voir')}</Link>
-                        {hasPermission('INITIATIVE_MODIFIER') && !i.archive && (
-                          <Link to={`/initiatives/${i.idInitiative}/modifier`} className="btn btn-petit btn-secondaire">{t('initiatives.modifier')}</Link>
-                        )}
-                        {peutArchiver(i) && (
-                          <button className="btn btn-petit btn-danger" onClick={() => archiver(i)}>{t('initiatives.archiver')}</button>
-                        )}
-                        {i.archive && hasPermission('INITIATIVE_ARCHIVER') && (
-                          <button className="btn btn-petit btn-danger" onClick={() => purger(i)}>{t('initiatives.purger')}</button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          )}
-      </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('initiatives.colCode')}</TableHead>
+                <TableHead>{t('initiatives.colInitiative')}</TableHead>
+                <TableHead>{t('initiatives.colEntite')}</TableHead>
+                <TableHead>{t('initiatives.colResponsable')}</TableHead>
+                <TableHead>{t('initiatives.colStatut')}</TableHead>
+                <TableHead>{t('sante.colonne')}</TableHead>
+                <TableHead>{t('initiatives.colPriorite')}</TableHead>
+                <TableHead>{t('initiatives.colAvancement')}</TableHead>
+                <TableHead>{t('initiatives.colDebut')}</TableHead>
+                <TableHead>{t('initiatives.colFinPrevue')}</TableHead>
+                <TableHead title={t('initiatives.budgetAide')}>{t('initiatives.colBudget')}</TableHead>
+                <TableHead className="text-right">{t('initiatives.colActions')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {initiatives.map((i) => (
+                <TableRow key={i.idInitiative} className={i.enRetard ? 'ligne-retard' : ''} title={i.enRetard ? t('initiatives.enRetard') : ''}>
+                  <TableCell className="text-muted-foreground">{i.code}</TableCell>
+                  <TableCell>
+                    <Link to={`/initiatives/${i.idInitiative}`}>{i.nom}</Link>
+                  </TableCell>
+                  <TableCell>{i.entite?.nom ?? '—'}</TableCell>
+                  <TableCell>{i.responsable?.nomComplet ?? '—'}</TableCell>
+                  <TableCell>
+                    <StatutBadge libelle={i.statut?.libelle} />
+                  </TableCell>
+                  <TableCell>
+                    <SanteBadge sante={i.sante} avecRaison />
+                  </TableCell>
+                  <TableCell>{ref.priorite(i.priorite?.libelle) ?? '—'}</TableCell>
+                  <TableCell>
+                    <ProgressBar valeur={i.avancement} />
+                  </TableCell>
+                  <TableCell>{i.dateDebut ?? '—'}</TableCell>
+                  <TableCell>{i.dateFinPrevue ?? '—'}</TableCell>
+                  <TableCell className="text-right">
+                    {i.budget?.toLocaleString('fr-FR')} MAD
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center gap-1">
+                      <Link to={`/initiatives/${i.idInitiative}`} className="text-xs text-primary hover:underline">
+                        {t('initiatives.voir')}
+                      </Link>
+                      {hasPermission('INITIATIVE_MODIFIER') && !i.archive && (
+                        <Link
+                          to={`/initiatives/${i.idInitiative}/modifier`}
+                          className="ml-1 text-xs text-primary hover:underline"
+                        >
+                          {t('initiatives.modifier')}
+                        </Link>
+                      )}
+                      {peutArchiver(i) && (
+                        <button
+                          type="button"
+                          className="ml-1 text-xs text-destructive hover:underline"
+                          onClick={() => archiver(i)}
+                        >
+                          {t('initiatives.archiver')}
+                        </button>
+                      )}
+                      {i.archive && hasPermission('INITIATIVE_ARCHIVER') && (
+                        <button
+                          type="button"
+                          className="ml-1 text-xs text-destructive hover:underline"
+                          onClick={() => purger(i)}
+                        >
+                          {t('initiatives.purger')}
+                        </button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Card>
     </div>
   );
 }

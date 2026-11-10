@@ -4,6 +4,18 @@ import api, { messageErreur, messageErreurBlob, telechargerFichier } from '../ap
 import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import SanteBadge from '../components/SanteBadge';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '../components/ui/table';
 
 /** Taille de page fixe : un registre se feuillette, il ne s'épuise pas. */
 const TAILLE_PAGE = 25;
@@ -137,65 +149,110 @@ export default function RisquesPage() {
   const champ = (nom) => (e) => setFiltres((f) => ({ ...f, [nom]: e.target.value }));
 
   return (
-    <div className="page">
-      <header className="page-entete">
+    <div className="mx-auto w-full max-w-[1240px]">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h2>{t('risques.titre')}</h2>
-          <p>{t('risques.sousTitre')}</p>
+          <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+            {t('risques.titre')}
+          </h2>
+          <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+            {t('risques.sousTitre')}
+          </p>
         </div>
-        <div className="actions">
-          <button
-            type="button"
-            className="btn btn-secondaire"
-            onClick={exporterCsv}
-            disabled={lignes.length === 0}
-            title={t('risques.exportAide')}
-          >
-            {t('risques.exportCsv')}
-          </button>
-        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={exporterCsv}
+          disabled={lignes.length === 0}
+          title={t('risques.exportAide')}
+        >
+          {t('risques.exportCsv')}
+        </Button>
       </header>
 
-      {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
-
-      <form className="carte filtre-bar" onSubmit={appliquerFiltres}>
-        <div className="filtre-ligne">
-          <input
-            type="search"
-            placeholder={t('risques.recherche')}
-            aria-label={t('risques.recherche')}
-            value={filtres.recherche}
-            onChange={champ('recherche')}
-          />
-          <select aria-label={t('risques.colStatut')} value={filtres.statut} onChange={champ('statut')}>
-            <option value="">{t('risques.tousStatuts')}</option>
-            {STATUTS.map((s) => (
-              <option key={s} value={s}>{t(`suivi.risques.statut.${s}`)}</option>
-            ))}
-          </select>
-          <select aria-label={t('risques.colInitiative')} value={filtres.initiative} onChange={champ('initiative')}>
-            <option value="">{t('risques.toutesInitiatives')}</option>
-            {initiatives.map((i) => (
-              <option key={i.idInitiative} value={i.idInitiative}>{i.code}</option>
-            ))}
-          </select>
-          <button type="submit" className="btn btn-primaire" disabled={chargement}>
-            {t('risques.appliquer')}
-          </button>
-          <button type="button" className="btn btn-secondaire" onClick={reinitialiser}>
-            {t('risques.reinitialiser')}
-          </button>
+      {erreur && (
+        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
+          {erreur}
         </div>
-      </form>
+      )}
 
-      <div className="carte">
-        <div className="vue-bar">
-          <span className="texte-muet">
+      <Card className="mb-6 p-[18px] shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold text-muted-foreground">
+            {t('risques.filtres')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <form className="flex flex-wrap items-center gap-3" onSubmit={appliquerFiltres}>
+            <div className="flex-1 min-w-[180px] space-y-2">
+              <Label htmlFor="risqueRecherche">
+                {t('risques.recherche')}
+              </Label>
+              <Input
+                id="risqueRecherche"
+                type="search"
+                placeholder={t('risques.recherche')}
+                aria-label={t('risques.recherche')}
+                value={filtres.recherche}
+                onChange={champ('recherche')}
+              />
+            </div>
+            <div className="flex-1 min-w-[160px] space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t('risques.colStatut')}
+              </Label>
+              <select
+                aria-label={t('risques.colStatut')}
+                value={filtres.statut}
+                onChange={champ('statut')}
+                className="min-w-[160px] rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{t('risques.tousStatuts')}</option>
+                {STATUTS.map((s) => (
+                  <option key={s} value={s}>{t(`suivi.risques.statut.${s}`)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1 min-w-[180px] space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t('risques.colInitiative')}
+              </Label>
+              <select
+                aria-label={t('risques.colInitiative')}
+                value={filtres.initiative}
+                onChange={champ('initiative')}
+                className="min-w-[180px] rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{t('risques.toutesInitiatives')}</option>
+                {initiatives.map((i) => (
+                  <option key={i.idInitiative} value={i.idInitiative}>{i.code}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-end gap-2">
+              <Button type="submit" disabled={chargement}>
+                {t('risques.appliquer')}
+              </Button>
+              <Button type="button" variant="secondary" onClick={reinitialiser}>
+                {t('risques.reinitialiser')}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6 p-[18px] shadow-sm">
+        <div className="mb-3.5 flex items-center justify-between gap-3">
+          <span className="text-sm text-muted-foreground">
             {total > 0 ? t('risques.compteur', { de: depart, a: arrivee, total }) : ''}
             {filtresActifs && (
               <>
                 {' · '}
-                <button type="button" className="lien-bouton" onClick={reinitialiser}>
+                <button
+                  type="button"
+                  className="text-primary underline underline-offset-2 hover:text-primary/80"
+                  onClick={reinitialiser}
+                >
                   {t('risques.reinitialiser')}
                 </button>
               </>
@@ -204,95 +261,117 @@ export default function RisquesPage() {
         </div>
 
         {chargement ? (
-          <div className="center-page">{t('common.chargement')}</div>
-        ) : lignes.length === 0 ? (
-          <p className="texte-muet">{t('risques.aucun')}</p>
-        ) : (
-          <div className="table-enveloppe">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t('risques.colTitre')}</th>
-                  <th>{t('risques.colInitiative')}</th>
-                  <th>{t('risques.colScore')}</th>
-                  <th>{t('risques.colStatut')}</th>
-                  <th>{t('risques.colEcheance')}</th>
-                  <th>{t('risques.colResponsable')}</th>
-                  {peutGerer && <th aria-label={t('risques.supprimer')} />}
-                </tr>
-              </thead>
-              <tbody>
-                {lignes.map((r) => (
-                  <tr key={r.idRisque}>
-                    <td>
-                      <strong>{r.titre}</strong>
-                      {r.description && (
-                        <div className="texte-muet">{r.description}</div>
-                      )}
-                    </td>
-                    <td>
-                      {r.idInitiative ? (
-                        <Link to={`/initiatives/${r.idInitiative}`} className="table-lien-code">
-                          {r.codeInitiative}
-                        </Link>
-                      ) : (
-                        <span className="texte-muet">—</span>
-                      )}
-                    </td>
-                    <td>
-                      <SanteBadge sante={{ niveau: r.niveau }} />
-                      <span className="texte-muet"> {r.score}/25</span>
-                    </td>
-                    <td>
-                      <span className={`badge badge-${r.statut === 'close' ? 'gris' : r.statut === 'attenuation' ? 'ambre' : 'bleu'}`}>
-                        {t(`suivi.risques.statut.${r.statut}`)}
-                      </span>
-                    </td>
-                    <td>{r.echeance ? formaterDate(r.echeance, langue) : <span className="texte-muet">—</span>}</td>
-                    <td title={r.responsable?.email ?? ''}>{r.responsable?.nomComplet ?? <span className="texte-muet">—</span>}</td>
-                    {peutGerer && (
-                      <td>
-                        <button
-                          type="button"
-                          className="btn btn-petit btn-danger"
-                          onClick={() => supprimer(r)}
-                          aria-label={`${t('risques.supprimer')} : ${r.titre}`}
-                        >
-                          ×
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+            {t('common.chargement')}
           </div>
+        ) : lignes.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">
+            {t('risques.aucun')}
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('risques.colTitre')}</TableHead>
+                <TableHead>{t('risques.colInitiative')}</TableHead>
+                <TableHead>{t('risques.colScore')}</TableHead>
+                <TableHead>{t('risques.colStatut')}</TableHead>
+                <TableHead>{t('risques.colEcheance')}</TableHead>
+                <TableHead>{t('risques.colResponsable')}</TableHead>
+                {peutGerer && <TableHead className="text-right" aria-label={t('risques.supprimer')} />}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {lignes.map((r) => (
+                <TableRow key={r.idRisque}>
+                  <TableCell>
+                    <strong>{r.titre}</strong>
+                    {r.description && (
+                      <div className="mt-1 text-sm text-muted-foreground">{r.description}</div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {r.idInitiative ? (
+                      <Link to={`/initiatives/${r.idInitiative}`} className="text-primary hover:underline">
+                        {r.codeInitiative}
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <SanteBadge sante={{ niveau: r.niveau }} />
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      {r.score}/25
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="secondary"
+                      className={`border-transparent ${
+                        r.statut === 'close'
+                          ? 'bg-muted/50 text-muted-foreground'
+                          : r.statut === 'attenuation'
+                            ? 'bg-amber/15 text-amber-800'
+                            : 'bg-blue/15 text-blue-800'
+                      }`}
+                    >
+                      {t(`suivi.risques.statut.${r.statut}`)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {r.echeance
+                      ? formaterDate(r.echeance, langue)
+                      : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell title={r.responsable?.email ?? ''}>
+                    {r.responsable?.nomComplet ?? <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  {peutGerer && (
+                    <TableCell className="text-right">
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => supprimer(r)}
+                        aria-label={`${t('risques.supprimer')} : ${r.titre}`}
+                      >
+                        ×
+                      </Button>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
 
         {total > TAILLE_PAGE && (
-          <nav className="pagination" aria-label={t('risques.titre')}>
-            <button
+          <nav className="mt-4 flex items-center justify-center gap-3" aria-label={t('risques.titre')}>
+            <Button
               type="button"
-              className="btn btn-petit btn-secondaire"
+              variant="secondary"
+              size="sm"
               onClick={() => allerPage(filtres.page - 1)}
               disabled={filtres.page === 0 || chargement}
             >
               {t('risques.pagePrecedente')}
-            </button>
-            <span className="texte-muet">
+            </Button>
+            <span className="text-sm text-muted-foreground">
               {t('risques.pageInfo', { courante: filtres.page + 1, total: pagesTotales })}
             </span>
-            <button
+            <Button
               type="button"
-              className="btn btn-petit btn-secondaire"
+              variant="secondary"
+              size="sm"
               onClick={() => allerPage(filtres.page + 1)}
               disabled={filtres.page + 1 >= pagesTotales || chargement}
             >
               {t('risques.pageSuivante')}
-            </button>
+            </Button>
           </nav>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

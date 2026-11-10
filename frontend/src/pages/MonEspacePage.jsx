@@ -6,6 +6,8 @@ import { badgeTypeJournal, libelleType, texteEvenement } from '../i18n/journal';
 import ListeAlertes from '../components/ListeAlertes';
 import SanteBadge from '../components/SanteBadge';
 import StatutBadge from '../components/StatutBadge';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 
 /** Montants en dirhams, sans décimale d'affichage (l'export garde l'exact). */
 const formaterMontant = (valeur, langue) =>
@@ -44,7 +46,11 @@ export default function MonEspacePage() {
   }, []);
 
   if (chargement) {
-    return <div className="center-page">{t('common.chargement')}</div>;
+    return (
+      <div className="mx-auto w-full max-w-[1240px] py-12 flex items-center justify-center">
+        <span className="text-sm text-muted-foreground">{t('common.chargement')}</span>
+      </div>
+    );
   }
 
   const d = donnees;
@@ -55,96 +61,117 @@ export default function MonEspacePage() {
     : null;
 
   return (
-    <div className="page">
-      <header className="page-entete">
+    <div className="mx-auto w-full max-w-[1240px]">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h2>{t('monEspace.titre')}</h2>
-          <p>{t('monEspace.sousTitre')}</p>
+          <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+            {t('monEspace.titre')}
+          </h2>
+          <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+            {t('monEspace.sousTitre')}
+          </p>
         </div>
       </header>
 
-      {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
+      {erreur && (
+        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
+          {erreur}
+        </div>
+      )}
 
       {d && (
         <>
-          <section className="carte mon-espace-entete">
-            <div className="mon-espace-compte">
-              <h3>{d.compte?.nomComplet ?? d.compte?.email}</h3>
-              <p className="texte-muet">{d.compte?.email}</p>
-              {d.role && <span className="badge badge-bleu">{d.role}</span>}
-            </div>
-            {budgetConnue && (
-              <div className="mon-espace-budget">
-                <div className="mon-espace-chiffre">
-                  <span className="texte-muet">{t('monEspace.budget')}</span>
-                  <strong>{formaterMontant(d.budgetTotal, langue)}</strong>
+          <Card className="mb-6 p-[18px] shadow-sm">
+            <CardContent className="pt-0">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-base font-semibold text-foreground">
+                    {d.compte?.nomComplet ?? d.compte?.email}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">{d.compte?.email}</p>
+                  {d.role && <Badge variant="secondary">{d.role}</Badge>}
                 </div>
-                <div className="mon-espace-chiffre">
-                  <span className="texte-muet">{t('monEspace.depenses')}</span>
-                  <strong>{depensesConnues ? formaterMontant(d.depensesTotales, langue) : t('monEspace.sansBudget')}</strong>
-                </div>
-                <div className="mon-espace-chiffre">
-                  <span className="texte-muet">{t('monEspace.reste')}</span>
-                  <strong className={reste !== null && reste < 0 ? 'texte-rouge' : ''}>
-                    {formaterMontant(reste ?? 0, langue)}
-                  </strong>
-                </div>
+                {budgetConnue && (
+                  <div className="flex flex-col gap-3 md:flex-row items-end">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-muted-foreground">{t('monEspace.budget')}</span>
+                      <strong className="text-lg">{formaterMontant(d.budgetTotal, langue)}</strong>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-muted-foreground">{t('monEspace.depenses')}</span>
+                      <strong className="text-lg">
+                        {depensesConnues ? formaterMontant(d.depensesTotales, langue) : t('monEspace.sansBudget')}
+                      </strong>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-muted-foreground">{t('monEspace.reste')}</span>
+                      <strong className={`text-lg ${reste !== null && reste < 0 ? 'text-destructive' : ''}`}>
+                        {formaterMontant(reste ?? 0, langue)}
+                      </strong>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </section>
+            </CardContent>
+          </Card>
 
-          <div className="mon-espace-grille">
-            <section className="carte">
-              <div className="section-titre-icone">
-                <h3>{t('monEspace.jalons')}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="p-[18px] shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-semibold text-foreground">{t('monEspace.jalons')}</h3>
                 {d.jalonsProches?.length > 0 && (
-                  <span className="badge badge-gris">{d.jalonsProches.length}</span>
+                  <Badge variant="secondary">{d.jalonsProches.length}</Badge>
                 )}
               </div>
               {d.jalonsProches?.length === 0 ? (
-                <p className="texte-muet">{t('monEspace.jalonsVide')}</p>
+                <p className="text-sm text-muted-foreground">{t('monEspace.jalonsVide')}</p>
               ) : (
-                <ul className="mon-espace-liste">
+                <ul className="space-y-2">
                   {d.jalonsProches.map((j) => (
-                    <li key={j.idJalon} className="mon-espace-item">
+                    <li key={j.idJalon} className="flex items-center gap-2">
                       <Link to={`/initiatives/${j.idInitiative}`}>{j.nom}</Link>
-                      <span className={`badge ${j.enRetard ? 'badge-rouge' : 'badge-orange'}`}>
-                        {j.enRetard
-                          ? t('monEspace.jalonRetard')
-                          : formaterDate(j.datePrevue, langue)}
-                      </span>
+                      <Badge
+                        variant={j.enRetard ? 'destructive' : 'secondary'}
+                        className={`border-transparent ${
+                          j.enRetard ? 'bg-destructive/15 text-destructive' : 'bg-orange/15 text-orange-800'
+                        }`}
+                      >
+                        {j.enRetard ? t('monEspace.jalonRetard') : formaterDate(j.datePrevue, langue)}
+                      </Badge>
                       {j.enRetard && (
-                        <span className="texte-muet">{formaterDate(j.datePrevue, langue)}</span>
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          {formaterDate(j.datePrevue, langue)}
+                        </span>
                       )}
                     </li>
                   ))}
                 </ul>
               )}
-            </section>
+            </Card>
 
-            <section className="carte">
-              <div className="section-titre-icone">
-                <h3>{t('monEspace.alertes')}</h3>
+            <Card className="p-[18px] shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-semibold text-foreground">{t('monEspace.alertes')}</h3>
                 {d.alertes?.length > 0 && (
-                  <span className="badge badge-gris">{d.alertes.length}</span>
+                  <Badge variant="secondary">{d.alertes.length}</Badge>
                 )}
               </div>
               <ListeAlertes alertes={d.alertes ?? []} />
-            </section>
+            </Card>
 
-            <section className="carte">
-              <div className="section-titre-icone">
-                <h3>{t('monEspace.pilotees')}</h3>
+            <Card className="p-[18px] shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-semibold text-foreground">{t('monEspace.pilotees')}</h3>
                 {d.initiativesPilotees?.length > 0 && (
-                  <span className="badge badge-gris">{d.initiativesPilotees.length}</span>
+                  <Badge variant="secondary">{d.initiativesPilotees.length}</Badge>
                 )}
               </div>
               {d.initiativesPilotees?.length === 0 ? (
-                <p className="texte-muet">{t('monEspace.piloteesVide')}</p>
+                <p className="text-sm text-muted-foreground">{t('monEspace.piloteesVide')}</p>
               ) : (
-                <ul className="mon-espace-liste">
+                <ul className="space-y-2">
                   {d.initiativesPilotees.map((i) => (
-                    <li key={i.idInitiative} className="mon-espace-item">
+                    <li key={i.idInitiative} className="flex items-center gap-2">
                       <Link to={`/initiatives/${i.idInitiative}`}>
                         <strong>{i.code}</strong> {i.nom}
                       </Link>
@@ -154,77 +181,81 @@ export default function MonEspacePage() {
                   ))}
                 </ul>
               )}
-            </section>
+            </Card>
 
-            <section className="carte">
-              <div className="section-titre-icone">
-                <h3>{t('monEspace.risques')}</h3>
+            <Card className="p-[18px] shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-semibold text-foreground">{t('monEspace.risques')}</h3>
                 {d.mesRisques?.length > 0 && (
-                  <span className="badge badge-gris">{d.mesRisques.length}</span>
+                  <Badge variant="secondary">{d.mesRisques.length}</Badge>
                 )}
               </div>
               {d.mesRisques?.length === 0 ? (
-                <p className="texte-muet">{t('monEspace.risquesVide')}</p>
+                <p className="text-sm text-muted-foreground">{t('monEspace.risquesVide')}</p>
               ) : (
-                <ul className="mon-espace-liste">
+                <ul className="space-y-2">
                   {d.mesRisques.map((r) => (
-                    <li key={r.idRisque} className="mon-espace-item">
-                      <Link to={`/initiatives/${r.idInitiative}`}>
-                        {r.titre}
-                      </Link>
+                    <li key={r.idRisque} className="flex items-center gap-2">
+                      <Link to={`/initiatives/${r.idInitiative}`}>{r.titre}</Link>
                       <SanteBadge sante={{ niveau: r.niveau }} />
-                      <span className="texte-muet">
+                      <span className="ml-1 text-xs text-muted-foreground">
                         {t('monEspace.score')} {r.score}/25
                       </span>
                     </li>
                   ))}
                 </ul>
               )}
-            </section>
+            </Card>
 
             {d.demandesEnAttente?.length > 0 && (
-              <section className="carte">
-                <div className="section-titre-icone">
-                  <h3>{t('monEspace.demandes')}</h3>
-                  <span className="badge badge-orange">{d.demandesEnAttente.length}</span>
+              <Card className="p-[18px] shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-base font-semibold text-foreground">{t('monEspace.demandes')}</h3>
+                  <Badge variant="secondary">{d.demandesEnAttente.length}</Badge>
                 </div>
-                <ul className="mon-espace-liste">
+                <ul className="space-y-2">
                   {d.demandesEnAttente.map((dem) => (
-                    <li key={dem.idDemande} className="mon-espace-item">
+                    <li key={dem.idDemande} className="flex items-center gap-2">
                       <Link to="/demandes">{dem.titre}</Link>
-                      <span className="texte-muet">
+                      <span className="ml-1 text-xs text-muted-foreground">
                         {formaterDate(dem.dateSoumission, langue)}
                       </span>
                     </li>
                   ))}
                 </ul>
-              </section>
+              </Card>
             )}
 
-            <section className="carte">
-              <div className="section-titre-icone">
-                <h3>{t('monEspace.activite')}</h3>
+            <Card className="p-[18px] shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-semibold text-foreground">{t('monEspace.activite')}</h3>
                 {d.activiteRecente?.length > 0 && (
-                  <span className="badge badge-gris">{d.activiteRecente.length}</span>
+                  <Badge variant="secondary">{d.activiteRecente.length}</Badge>
                 )}
               </div>
               {d.activiteRecente?.length === 0 ? (
-                <p className="texte-muet">{t('monEspace.activiteVide')}</p>
+                <p className="text-sm text-muted-foreground">{t('monEspace.activiteVide')}</p>
               ) : (
-                <ol className="historique">
+                <ol className="space-y-2">
                   {d.activiteRecente.map((ev) => (
-                    <li key={ev.id} className="historique-item">
-                      <span className="historique-date">
+                    <li key={ev.id} className="flex items-start gap-2 text-sm">
+                      <span className="shrink-0 text-muted-foreground">
                         {formaterDateHeure(ev.dateChangement, langue)}
                       </span>
                       <span className="historique-transition">
-                        <span className={`badge ${badgeTypeJournal(ev.typeObjet)}`}>
+                        <Badge variant="secondary" className={`border-transparent ${
+                          badgeTypeJournal(ev.typeObjet) === 'badge-vert' ? 'bg-success/15 text-success' :
+                          badgeTypeJournal(ev.typeObjet) === 'badge-rouge' ? 'bg-destructive/15 text-destructive' :
+                          badgeTypeJournal(ev.typeObjet) === 'badge-bleu' ? 'bg-blue/15 text-blue-800' :
+                          'bg-muted/50 text-muted-foreground'
+                        }`}
+                        >
                           {libelleType(t, ev.typeObjet)}
-                        </span>
+                        </Badge>{' '}
                         {texteEvenement(t, ev)}
                         {ev.initiative && (
-                          <Link to={`/initiatives/${ev.initiative.idInitiative}`}>
-                            {' · '}{ev.initiative.code}
+                          <Link to={`/initiatives/${ev.initiative.idInitiative}`} className="ml-1 text-xs text-muted-foreground hover:underline">
+                            · {ev.initiative.code}
                           </Link>
                         )}
                       </span>
@@ -232,7 +263,7 @@ export default function MonEspacePage() {
                   ))}
                 </ol>
               )}
-            </section>
+            </Card>
           </div>
         </>
       )}

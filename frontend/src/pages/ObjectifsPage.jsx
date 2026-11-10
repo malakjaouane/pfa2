@@ -5,6 +5,11 @@ import { IconCadenas } from '../components/Icons';
 import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import { afficherMessage } from '../i18n/message';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Badge } from '../components/ui/badge';
 
 const formVide = { code: '', libelle: '', description: '' };
 
@@ -151,44 +156,87 @@ export default function ObjectifsPage() {
   };
 
   return (
-    <div className="page">
-      <header className="page-entete">
+    <div className="mx-auto w-full max-w-[1240px]">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h2>{t('objectifs.titre')}</h2>
-          <p>{t('objectifs.sousTitre')}</p>
+          <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+            {t('objectifs.titre')}
+          </h2>
+          <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+            {t('objectifs.sousTitre')}
+          </p>
         </div>
         {peutGerer && (
-          <button className="btn btn-primaire" onClick={() => { setNouveau(!nouveau); setEdition(null); setForm(formVide); }}>
+          <Button
+            type="button"
+            onClick={() => { setNouveau(!nouveau); setEdition(null); setForm(formVide); }}
+          >
             {nouveau ? t('objectifs.fermer') : t('objectifs.nouveau')}
-          </button>
+          </Button>
         )}
       </header>
 
-      {info && <div className="alerte alerte-succes">{afficherMessage(t, info)}</div>}
-      {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
+      {info && (
+        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
+          {afficherMessage(t, info)}
+        </div>
+      )}
+      {erreur && (
+        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
+          {afficherMessage(t, erreur)}
+        </div>
+      )}
 
       {nouveau && peutGerer && (
-        <form className="carte formulaire" onSubmit={enregistrer}>
-          <h3>{t('objectifs.form.titreNouveau')}</h3>
-          <div className="form-grille">
-            <div className="champ">
-              <label>{t('objectifs.form.code')}</label>
-              <input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required placeholder={t('objectifs.form.codePlaceholder')} />
-            </div>
-            <div className="champ">
-              <label>{t('objectifs.form.libelle')}</label>
-              <input value={form.libelle} onChange={(e) => setForm({ ...form, libelle: e.target.value })} required placeholder={t('objectifs.form.libellePlaceholder')} />
-            </div>
-            <div className="champ champ-plein">
-              <label>{t('objectifs.form.description')}</label>
-              <textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-            </div>
-          </div>
-          <div className="form-actions">
-            <button type="button" className="btn btn-secondaire" onClick={() => setNouveau(false)}>{t('objectifs.annuler')}</button>
-            <button type="submit" className="btn btn-primaire" disabled={soumission}>{soumission ? t('objectifs.enregistrement') : t('objectifs.creer')}</button>
-          </div>
-        </form>
+        <Card className="mb-6 p-[18px] shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">{t('objectifs.form.titreNouveau')}</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <form className="space-y-4" onSubmit={enregistrer}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="objectifCode">{t('objectifs.form.code')}</Label>
+                  <Input
+                    id="objectifCode"
+                    value={form.code}
+                    onChange={(e) => setForm({ ...form, code: e.target.value })}
+                    required
+                    placeholder={t('objectifs.form.codePlaceholder')}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="objectifLibelle">{t('objectifs.form.libelle')}</Label>
+                  <Input
+                    id="objectifLibelle"
+                    value={form.libelle}
+                    onChange={(e) => setForm({ ...form, libelle: e.target.value })}
+                    required
+                    placeholder={t('objectifs.form.libellePlaceholder')}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="objectifDescription">{t('objectifs.form.description')}</Label>
+                <textarea
+                  id="objectifDescription"
+                  rows={2}
+                  className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <Button type="button" variant="secondary" onClick={() => setNouveau(false)}>
+                  {t('objectifs.annuler')}
+                </Button>
+                <Button type="submit" disabled={soumission}>
+                  {soumission ? t('objectifs.enregistrement') : t('objectifs.creer')}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
       {/* Barre de suppression en lot : présente dès l'arrivée sur la page
@@ -196,129 +244,170 @@ export default function ObjectifsPage() {
           les objectifs reliés à des initiatives affichent un cadenas et le
           bandeau ci-dessous explique pourquoi rien n'est sélectionnable. */}
       {peutGerer && (
-        <div className="carte vue-bar">
-          <label>
-            <input
-              type="checkbox"
-              checked={toutesCochees}
-              onChange={toutSelectionner}
-              disabled={objectifsAffichees.length === 0}
-              aria-label={t('objectifs.selectionnerTout')}
-            />
-            {t('objectifs.selectionnerTout')}
-            <span className="texte-muet">
-              {' — '}
-              {t('objectifs.selectionnees', { n: selection.length })}
-              {verrouillees > 0 && ` — ${t('objectifs.verrouillees', { n: verrouillees })}`}
-            </span>
-          </label>
-          <div className="actions">
-            <button
-              type="button"
-              className="btn btn-danger"
-              onClick={supprimerSelection}
-              disabled={selection.length === 0}
-            >
-              {t('objectifs.supprimerSelection', { n: selection.length })}
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondaire"
-              onClick={() => setSelection([])}
-              disabled={selection.length === 0}
-            >
-              {t('objectifs.annulerSelection')}
-            </button>
+        <Card className="mb-6 p-[18px] shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 text-sm">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={toutesCochees}
+                  onChange={toutSelectionner}
+                  disabled={objectifsAffichees.length === 0}
+                  aria-label={t('objectifs.selectionnerTout')}
+                  className="rounded border-input text-primary focus:ring-ring"
+                />
+                {t('objectifs.selectionnerTout')}
+              </label>
+              <span className="text-muted-foreground">
+                {' — '}
+                {t('objectifs.selectionnees', { n: selection.length })}
+                {verrouillees > 0 && ` — ${t('objectifs.verrouillees', { n: verrouillees })}`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setSelection([])}
+                disabled={selection.length === 0}
+              >
+                {t('objectifs.annulerSelection')}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={supprimerSelection}
+                disabled={selection.length === 0}
+              >
+                {t('objectifs.supprimerSelection', { n: selection.length })}
+              </Button>
+            </div>
           </div>
-        </div>
+        </Card>
       )}
       {peutGerer && verrouillees > 0 && objectifsAffichees.length === 0 && (
-        <div className="alerte alerte-info">
+        <div className="mb-4 rounded-md border border-info/50 bg-info/50 p-3 text-sm text-info">
           {t('objectifs.toutesVerrouillees', { n: verrouillees })}
         </div>
       )}
 
-      <div className="roles-grille">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {chargement ? (
-          <div className="center-page">{t('objectifs.chargement')}</div>
+          <div className="col-span-full flex items-center justify-center py-12 text-sm text-muted-foreground">
+            {t('objectifs.chargement')}
+          </div>
         ) : objectifs.length === 0 ? (
-          <p className="texte-muet">{t('objectifs.aucun')}</p>
+          <div className="col-span-full text-center py-12 text-sm text-muted-foreground">
+            {t('objectifs.aucun')}
+          </div>
         ) : (
           objectifs.map((o) => {
             const liste = rattachees.get(o.idObjectif) ?? [];
             const enEdition = edition === o.idObjectif;
             return (
-              <div key={o.idObjectif} className="carte">
+              <Card key={o.idObjectif} className="p-[18px] shadow-sm">
                 {enEdition && peutGerer ? (
-                  <form onSubmit={enregistrer}>
-                    <h3>{t('objectifs.form.titreModifier')}</h3>
-                    <div className="champ">
-                      <label>{t('objectifs.form.code')}</label>
-                      <input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
-                    </div>
-                    <div className="champ">
-                      <label>{t('objectifs.form.libelle')}</label>
-                      <input value={form.libelle} onChange={(e) => setForm({ ...form, libelle: e.target.value })} required />
-                    </div>
-                    <div className="champ">
-                      <label>{t('objectifs.form.description')}</label>
-                      <textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-                    </div>
-                    <div className="actions" style={{ marginTop: 10 }}>
-                      <button type="submit" className="btn btn-primaire btn-petit" disabled={soumission}>{t('objectifs.enregistrer')}</button>
-                      <button type="button" className="btn btn-secondaire btn-petit" onClick={() => setEdition(null)}>{t('objectifs.annuler')}</button>
+                  <form className="space-y-4" onSubmit={enregistrer}>
+                    <CardHeader>
+                      <CardTitle className="text-lg font-semibold">
+                        {t('objectifs.form.titreModifier')}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0 space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="editObjectifCode">{t('objectifs.form.code')}</Label>
+                        <Input
+                          id="editObjectifCode"
+                          value={form.code}
+                          onChange={(e) => setForm({ ...form, code: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="editObjectifLibelle">{t('objectifs.form.libelle')}</Label>
+                        <Input
+                          id="editObjectifLibelle"
+                          value={form.libelle}
+                          onChange={(e) => setForm({ ...form, libelle: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="editObjectifDescription">{t('objectifs.form.description')}</Label>
+                        <textarea
+                          id="editObjectifDescription"
+                          rows={2}
+                          className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          value={form.description}
+                          onChange={(e) => setForm({ ...form, description: e.target.value })}
+                        />
+                      </div>
+                    </CardContent>
+                    <div className="flex items-center justify-end gap-2 pt-4">
+                      <Button type="button" variant="secondary" onClick={() => setEdition(null)}>
+                        {t('objectifs.annuler')}
+                      </Button>
+                      <Button type="submit" disabled={soumission} className="ml-2">
+                        {t('objectifs.enregistrer')}
+                      </Button>
                     </div>
                   </form>
                 ) : (
                   <>
-                    <div className="role-entete">
-                      <div>
-                        <span className="badge badge-gris">{o.code}</span>
-                        <h3 style={{ margin: '8px 0 4px' }}>{o.libelle}</h3>
+                    <div className="flex flex-row items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{o.code}</Badge>
+                        <h3 className="text-base font-semibold text-foreground">{o.libelle}</h3>
                       </div>
-                      {peutGerer && (
-                        <div className="actions">
-                          {supprimable(o) ? (
-                            <input
-                              type="checkbox"
-                              checked={selection.includes(o.idObjectif)}
-                              onChange={() => basculer(o.idObjectif)}
-                              aria-label={t('objectifs.caseSelection', { libelle: o.libelle })}
-                            />
-                          ) : (
-                            <span
-                              className="badge badge-gris"
-                              title={t('objectifs.caseLiee', { n: liste.length })}
-                            >
-                              <IconCadenas size={13} /> {t('objectifs.verrouillee')}
-                            </span>
-                          )}
-                          <button
-                            className="btn btn-petit btn-secondaire"
-                            onClick={() => { setEdition(o.idObjectif); setForm({ code: o.code, libelle: o.libelle, description: o.description ?? '' }); setNouveau(false); }}
-                          >
-                            {t('objectifs.modifier')}
-                          </button>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {supprimable(o) ? (
+                          <input
+                            type="checkbox"
+                            checked={selection.includes(o.idObjectif)}
+                            onChange={() => basculer(o.idObjectif)}
+                            aria-label={t('objectifs.caseSelection', { libelle: o.libelle })}
+                            className="mt-0.5 rounded border-input text-primary focus:ring-ring"
+                          />
+                        ) : (
+                          <Badge variant="secondary" title={t('objectifs.caseLiee', { n: liste.length })}>
+                            <IconCadenas size={13} /> {t('objectifs.verrouillee')}
+                          </Badge>
+                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEdition(o.idObjectif);
+                            setForm({ code: o.code, libelle: o.libelle, description: o.description ?? '' });
+                            setNouveau(false);
+                          }}
+                        >
+                          {t('objectifs.modifier')}
+                        </Button>
+                      </div>
                     </div>
-                    {o.description && <p className="texte-muet">{o.description}</p>}
-                    <div className="kpi-contenu" style={{ margin: '10px 0' }}>
-                      <span className="kpi-valeur">{liste.length}</span>
-                      <span className="kpi-libelle">{t(liste.length > 1 ? 'objectifs.kpi.initiativesRattachees' : 'objectifs.kpi.initiativeRattachee')}</span>
+                    {o.description && <p className="mt-2 text-sm text-muted-foreground">{o.description}</p>}
+                    <div className="mt-3 pt-3 border-t border-muted/30">
+                      <div className="flex items-baseline gap-1 mb-1">
+                        <span className="text-xl font-semibold text-foreground">{liste.length}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {t(liste.length > 1 ? 'objectifs.kpi.initiativesRattachees' : 'objectifs.kpi.initiativeRattachee')}
+                        </span>
+                      </div>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        {liste.length === 0 && <li>{t('objectifs.aucuneInitiative')}</li>}
+                        {liste.map((i) => (
+                          <li key={i.idInitiative} className="flex justify-between">
+                            <Link to={`/initiatives/${i.idInitiative}`}>{i.nom}</Link>
+                            <span>{i.statut?.libelle}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <ul style={{ margin: 0, paddingLeft: 18 }}>
-                      {liste.length === 0 && <li className="texte-muet">{t('objectifs.aucuneInitiative')}</li>}
-                      {liste.map((i) => (
-                        <li key={i.idInitiative}>
-                          <Link to={`/initiatives/${i.idInitiative}`}>{i.nom}</Link>
-                          <span className="texte-muet"> — {i.statut?.libelle}</span>
-                        </li>
-                      ))}
-                    </ul>
                   </>
                 )}
-              </div>
+              </Card>
             );
           })
         )}

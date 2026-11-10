@@ -4,6 +4,19 @@ import api, { messageErreur, messageErreurBlob, telechargerFichier } from '../ap
 import { useI18n } from '../i18n/I18nContext';
 import { badgeTypeJournal, libelleChamp, libelleType } from '../i18n/journal';
 import StatutBadge from '../components/StatutBadge';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Badge } from '../components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '../components/ui/table';
 
 /** Taille de page fixe : un tableau de lecture se feuillette, il ne s'épuise pas. */
 const TAILLE_PAGE = 25;
@@ -258,96 +271,175 @@ export default function HistoriquePage() {
   };
 
   return (
-    <div className="page">
-      <header className="page-entete">
+    <div className="mx-auto w-full max-w-[1240px]">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h2>{t('historique.titre')}</h2>
-          <p>{t('historique.sousTitre')}</p>
+          <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+            {t('historique.titre')}
+          </h2>
+          <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+            {t('historique.sousTitre')}
+          </p>
         </div>
-        <div className="actions">
+        <div className="flex items-end gap-3">
           {/* Bascule dans la page (aucune route ni lien de menu) :
               l'URL ?archive=1 documente la vue affichée. */}
-          <div className="vue-toggle" role="group" aria-label={t('historique.vueAria')}>
-            <button type="button" className={!filtres.archives ? 'actif' : ''} onClick={() => basculerVue(false)}>
+          <div className="flex items-center gap-2 border border-input rounded-md p-1" role="group" aria-label={t('historique.vueAria')}>
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${!filtres.archives ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+              onClick={() => basculerVue(false)}
+            >
               {t('historique.vueActives')}
             </button>
-            <button type="button" className={filtres.archives ? 'actif' : ''} onClick={() => basculerVue(true)}>
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${filtres.archives ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+              onClick={() => basculerVue(true)}
+            >
               {t('historique.vueArchives')}
             </button>
           </div>
-          <button
+          <Button
             type="button"
-            className="btn btn-secondaire"
+            variant="secondary"
             onClick={exporterCsv}
             disabled={lignes.length === 0}
             title={t('historique.exportAide')}
           >
             {t('historique.exportCsv')}
-          </button>
+          </Button>
         </div>
       </header>
 
-      {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
-
-      <form className="carte filtre-bar" onSubmit={appliquerFiltres}>
-        <div className="filtre-ligne">
-          <input
-            type="search"
-            placeholder={t('historique.recherchePlaceholder')}
-            aria-label={t('historique.recherchePlaceholder')}
-            value={filtres.recherche}
-            onChange={champRecherche}
-          />
-          <select aria-label={t('historique.ariaType')} value={filtres.type} onChange={champ('type')}>
-            <option value="">{t('historique.tousTypes')}</option>
-            {TYPES.map((type) => (
-              <option key={type} value={type}>{libelleType(t, type)}</option>
-            ))}
-          </select>
-          <select aria-label={t('historique.ariaUtilisateur')} value={filtres.utilisateur} onChange={champ('utilisateur')}>
-            <option value="">{t('historique.tousUtilisateurs')}</option>
-            {auteurs.map((a) => (
-              <option key={a.idUser} value={a.idUser}>{a.nomComplet}</option>
-            ))}
-          </select>
+      {erreur && (
+        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
+          {erreur}
         </div>
-        <div className="filtre-ligne">
-          <span className="filtre-periode-libelle">{t('historique.periodeTitre')}</span>
-          <input type="date" aria-label={t('historique.periodeDu')} title={t('historique.periodeDu')}
-            value={filtres.du} onChange={champ('du')} />
-          <span className="filtre-sep" aria-hidden="true">→</span>
-          <input type="date" aria-label={t('historique.periodeAu')} title={t('historique.periodeAu')}
-            value={filtres.au} onChange={champ('au')} />
-          <small className="texte-muet filtre-aide">{t('historique.periodeAide')}</small>
-          <button type="submit" className="btn btn-primaire" disabled={chargement}>{t('historique.appliquer')}</button>
-          <button type="button" className="btn btn-secondaire" onClick={reinitialiser}>{t('historique.reinitialiser')}</button>
-        </div>
-      </form>
+      )}
 
-      <div className="carte">
-        <div className="vue-bar">
-          <div className="vue-toggle" role="group" aria-label={t('historique.triAria')}>
+      <Card className="mb-6 p-[18px] shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold text-muted-foreground">
+            {t('historique.filtres')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <form className="flex flex-wrap items-start gap-3" onSubmit={appliquerFiltres}>
+            <div className="flex-1 min-w-[200px] space-y-2">
+              <Label htmlFor="historiqueRecherche">
+                {t('historique.recherchePlaceholder')}
+              </Label>
+              <Input
+                id="historiqueRecherche"
+                type="search"
+                placeholder={t('historique.recherchePlaceholder')}
+                aria-label={t('historique.recherchePlaceholder')}
+                value={filtres.recherche}
+                onChange={champRecherche}
+              />
+            </div>
+            <div className="flex-1 min-w-[160px] space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t('historique.ariaType')}
+              </Label>
+              <select
+                aria-label={t('historique.ariaType')}
+                value={filtres.type}
+                onChange={champ('type')}
+                className="min-w-[160px] rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{t('historique.tousTypes')}</option>
+                {TYPES.map((type) => (
+                  <option key={type} value={type}>{libelleType(t, type)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1 min-w-[200px] space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t('historique.ariaUtilisateur')}
+              </Label>
+              <select
+                aria-label={t('historique.ariaUtilisateur')}
+                value={filtres.utilisateur}
+                onChange={champ('utilisateur')}
+                className="min-w-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{t('historique.tousUtilisateurs')}</option>
+                {auteurs.map((a) => (
+                  <option key={a.idUser} value={a.idUser}>{a.nomComplet}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-none space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                {t('historique.periodeTitre')}
+              </Label>
+              <div className="flex items-center gap-1">
+                <input
+                  type="date"
+                  aria-label={t('historique.periodeDu')}
+                  title={t('historique.periodeDu')}
+                  value={filtres.du}
+                  onChange={champ('du')}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <span className="text-muted-foreground whitespace-nowrap" aria-hidden="true">
+                  →
+                </span>
+                <input
+                  type="date"
+                  aria-label={t('historique.periodeAu')}
+                  title={t('historique.periodeAu')}
+                  value={filtres.au}
+                  onChange={champ('au')}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+              <small className="text-xs text-muted-foreground filtre-aide">
+                {t('historique.periodeAide')}
+              </small>
+            </div>
+            <div className="flex items-end gap-2">
+              <Button type="submit" disabled={chargement}>
+                {t('historique.appliquer')}
+              </Button>
+              <Button type="button" variant="secondary" onClick={reinitialiser}>
+                {t('historique.reinitialiser')}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6 p-[18px] shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 border border-input rounded-md p-1" role="group" aria-label={t('historique.triAria')}>
             <button
               type="button"
-              className={filtres.direction === 'desc' ? 'actif' : ''}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${filtres.direction === 'desc' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
               onClick={() => changerTri('desc')}
             >
               {t('historique.triRecent')}
             </button>
             <button
               type="button"
-              className={filtres.direction === 'asc' ? 'actif' : ''}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${filtres.direction === 'asc' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
               onClick={() => changerTri('asc')}
             >
               {t('historique.triAncien')}
             </button>
           </div>
-          <span className="texte-muet">
+          <span className="text-sm text-muted-foreground">
             {filtres.archives ? t('historique.vueArchivesAide') : t('historique.compteur', { de: depart, a: arrivee, total })}
             {filtresActifs && (
               <>
                 {' · '}
-                <button type="button" className="lien-bouton" onClick={reinitialiser}>
+                <button
+                  type="button"
+                  className="text-primary underline underline-offset-2 hover:text-primary/80"
+                  onClick={reinitialiser}
+                >
                   {t('historique.reinitialiser')}
                 </button>
               </>
@@ -356,7 +448,7 @@ export default function HistoriquePage() {
         </div>
 
         {initiativeFiltree && (
-          <p className="filtre-pastille">
+          <p className="mb-3 flex items-center gap-2">
             {initiativeFiltree.code ? (
               <>
                 <Link to={`/initiatives/${initiativeFiltree.id}`}>
@@ -364,7 +456,7 @@ export default function HistoriquePage() {
                 </Link>
                 <button
                   type="button"
-                  className="pastille-fermer"
+                  className="text-destructive hover:underline text-xs ml-2"
                   onClick={retirerFiltreInitiative}
                   aria-label={t('historique.pastilleRetirer')}
                 >
@@ -376,7 +468,7 @@ export default function HistoriquePage() {
                 <span>{t('historique.pastilleSansNom', { id: initiativeFiltree.id })}</span>
                 <button
                   type="button"
-                  className="pastille-fermer"
+                  className="text-destructive hover:underline text-xs ml-2"
                   onClick={retirerFiltreInitiative}
                   aria-label={t('historique.pastilleRetirer')}
                 >
@@ -388,100 +480,103 @@ export default function HistoriquePage() {
         )}
 
         {chargement ? (
-          <div className="center-page">{t('historique.chargement')}</div>
+          <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+            {t('historique.chargement')}
+          </div>
         ) : lignes.length === 0 ? (
-          <p className="texte-muet">
+          <p className="text-sm text-muted-foreground text-center py-8">
             {filtres.archives ? t('historique.aucuneArchive') : t('historique.aucunResultat')}
           </p>
         ) : (
-          <div className="table-enveloppe">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t('historique.colType')}</th>
-                  <th>{t('historique.colInitiative')}</th>
-                  <th>{t('historique.colChamp')}</th>
-                  <th>{t('historique.colValeurs')}</th>
-                  <th>{t('historique.colDetail')}</th>
-                  <th>{t('historique.colUtilisateur')}</th>
-                  <th>{t('historique.colDate')}</th>
-                  <th>{t('historique.colOrigine')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lignes.map((ev) => (
-                  <tr key={ev.id}>
-                    <td>
-                      <span className={`badge ${badgeTypeJournal(ev.typeObjet)}`}>
-                        {libelleType(t, ev.typeObjet)}
-                      </span>
-                      <span className="texte-muet historique-id"> #{ev.idObjet}</span>
-                    </td>
-                    <td>
-                      {ev.initiative ? (
-                        <>
-                          <Link
-                            to={`/initiatives/${ev.initiative.idInitiative}`}
-                            className="table-lien-code"
-                          >
-                            <Surligner texte={ev.initiative.code} requete={filtres.recherche} />
-                          </Link>
-                          <span className="texte-muet historique-nom">
-                            {' '}
-                            <Surligner texte={ev.initiative.nom} requete={filtres.recherche} />
-                          </span>
-                        </>
-                      ) : (
-                        <span className="texte-muet">—</span>
-                      )}
-                    </td>
-                    <td>{libelleChamp(t, ev.champ)}</td>
-                    <td>{renduValeurs(ev)}</td>
-                    <td title={ev.commentaire ?? ''}>
-                      {ev.commentaire
-                        ? <span className="historique-commentaire">{ev.commentaire}</span>
-                        : <span className="texte-muet">—</span>}
-                    </td>
-                    <td title={ev.utilisateur?.email ?? ''}>
-                      {ev.utilisateur?.nomComplet ?? (
-                        <span className="texte-muet">{t('initiativeDetail.auteurInconnu')}</span>
-                      )}
-                    </td>
-                    <td>{formaterDate(ev.dateChangement, langue)}</td>
-                    <td>
-                      <span className={`badge ${ev.automatique ? 'badge-bleu' : 'badge-gris'}`}>
-                        {ev.automatique ? t('historique.origineAutomatique') : t('historique.origineManuelle')}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('historique.colType')}</TableHead>
+                <TableHead>{t('historique.colInitiative')}</TableHead>
+                <TableHead>{t('historique.colChamp')}</TableHead>
+                <TableHead>{t('historique.colValeurs')}</TableHead>
+                <TableHead>{t('historique.colDetail')}</TableHead>
+                <TableHead>{t('historique.colUtilisateur')}</TableHead>
+                <TableHead>{t('historique.colDate')}</TableHead>
+                <TableHead>{t('historique.colOrigine')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {lignes.map((ev) => (
+                <TableRow key={ev.id}>
+                  <TableCell>
+                    <Badge variant="secondary">{libelleType(t, ev.typeObjet)}</Badge>
+                    <span className="ml-1 text-xs text-muted-foreground historique-id">
+                      #{ev.idObjet}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    {ev.initiative ? (
+                      <>
+                        <Link
+                          to={`/initiatives/${ev.initiative.idInitiative}`}
+                          className="text-primary hover:underline"
+                        >
+                          <Surligner texte={ev.initiative.code} requete={filtres.recherche} />
+                        </Link>
+                        <span className="ml-1 text-xs text-muted-foreground historique-nom">
+                          <Surligner texte={ev.initiative.nom} requete={filtres.recherche} />
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{libelleChamp(t, ev.champ)}</TableCell>
+                  <TableCell>{renduValeurs(ev)}</TableCell>
+                  <TableCell title={ev.commentaire ?? ''}>
+                    {ev.commentaire
+                      ? <span className="historique-commentaire">{ev.commentaire}</span>
+                      : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell title={ev.utilisateur?.email ?? ''}>
+                    {ev.utilisateur?.nomComplet ?? (
+                      <span className="text-muted-foreground">{t('initiativeDetail.auteurInconnu')}</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{formaterDate(ev.dateChangement, langue)}</TableCell>
+                  <TableCell>
+                    <Badge variant={ev.automatique ? 'secondary' : 'outline'}>
+                      {ev.automatique ? t('historique.origineAutomatique') : t('historique.origineManuelle')}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
 
         {total > TAILLE_PAGE && (
-          <nav className="pagination" aria-label={t('historique.titre')}>
-            <button
+          <nav className="mt-4 flex items-center justify-center gap-3" aria-label={t('historique.titre')}>
+            <Button
               type="button"
-              className="btn btn-petit btn-secondaire"
+              variant="secondary"
+              size="sm"
               onClick={() => allerPage(filtres.page - 1)}
               disabled={filtres.page === 0 || chargement}
             >
               {t('historique.pagePrecedente')}
-            </button>
-            <span className="texte-muet">{t('historique.pageInfo', { courante: filtres.page + 1, total: pagesTotales })}</span>
-            <button
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              {t('historique.pageInfo', { courante: filtres.page + 1, total: pagesTotales })}
+            </span>
+            <Button
               type="button"
-              className="btn btn-petit btn-secondaire"
+              variant="secondary"
+              size="sm"
               onClick={() => allerPage(filtres.page + 1)}
               disabled={filtres.page + 1 >= pagesTotales || chargement}
             >
               {t('historique.pageSuivante')}
-            </button>
+            </Button>
           </nav>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

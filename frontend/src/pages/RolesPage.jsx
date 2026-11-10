@@ -3,6 +3,9 @@ import api, { messageErreur } from '../api';
 import { useI18n } from '../i18n/I18nContext';
 import { afficherMessage } from '../i18n/message';
 import { useReferentiels } from '../i18n/referentiels';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 
 /**
  * Gestion des rôles et de leurs permissions (administration).
@@ -61,43 +64,81 @@ export default function RolesPage() {
   };
 
   return (
-    <div className="page">
-      <header className="page-entete">
+    <div className="mx-auto w-full max-w-[1240px]">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h2>{t('roles.titre')}</h2>
-          <p>{t('roles.sousTitre')}</p>
+          <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+            {t('roles.titre')}
+          </h2>
+          <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+            {t('roles.sousTitre')}
+          </p>
         </div>
       </header>
 
-      {info && <div className="alerte alerte-succes">{afficherMessage(t, info)}</div>}
-      {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
+      {info && (
+        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
+          {afficherMessage(t, info)}
+        </div>
+      )}
+      {erreur && (
+        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
+          {afficherMessage(t, erreur)}
+        </div>
+      )}
 
-      <div className="roles-grille">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {roles.map((role) => (
-          <div key={role.idRole} className="carte role-carte">
-            <div className="role-entete">
-              <h3>{ref.role(role.code, role.libelle)}</h3>
-              <span className="badge badge-gris">{role.code}</span>
-            </div>
-            <p className="texte-muet">{t('roles.permissionsActuelles', { nombre: role.permissions.length })}</p>
-            <div className="perm-liste">
-              {permissions.map((perm) => {
-                const coche = selection[role.idRole]?.has(perm.idPermission);
-                return (
-                  <label key={perm.idPermission} className={`perm-ligne ${coche ? 'perm-cochee' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={coche}
-                      onChange={() => basculer(role.idRole, perm.idPermission)}
-                    />
-                    <span>{ref.permission(perm.code, perm.libelle)}</span>
-                    <small>{perm.code}</small>
-                  </label>
-                );
-              })}
-            </div>
-            <button className="btn btn-primaire btn-block" onClick={() => enregistrer(role)}>{t('roles.enregistrer')}</button>
-          </div>
+          <Card key={role.idRole} className="p-[18px] shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <h3 className="text-base font-semibold text-foreground">
+                  {ref.role(role.code, role.libelle)}
+                </h3>
+                <Badge variant="secondary" className="ml-2">
+                  {role.code}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <p className="mb-3 text-xs text-muted-foreground">
+                {t('roles.permissionsActuelles', { nombre: role.permissions.length })}
+              </p>
+              <div className="space-y-1">
+                {permissions.map((perm) => {
+                  const coche = selection[role.idRole]?.has(perm.idPermission);
+                  return (
+                    <label
+                      key={perm.idPermission}
+                      className="flex items-center gap-2 cursor-pointer select-none rounded-md border border-transparent p-1.5 hover:bg-muted transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={coche}
+                        onChange={() => basculer(role.idRole, perm.idPermission)}
+                        className="rounded border-input text-primary focus:ring-ring"
+                      />
+                      <span className="text-sm">
+                        {ref.permission(perm.code, perm.libelle)}
+                      </span>
+                      <small className="ml-1 text-[11px] text-muted-foreground">
+                        {perm.code}
+                      </small>
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="mt-4 flex justify-end">
+                <Button
+                  type="button"
+                  onClick={() => enregistrer(role)}
+                  className="w-full sm:w-auto"
+                >
+                  {t('roles.enregistrer')}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>

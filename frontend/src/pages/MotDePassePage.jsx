@@ -4,6 +4,10 @@ import { useI18n } from '../i18n/I18nContext';
 import { afficherMessage } from '../i18n/message';
 import api, { messageErreur } from '../api';
 import { useAuth } from '../AuthContext';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 
 /**
  * Écran « Changer mon mot de passe » (utilisateur déjà connecté).
@@ -65,68 +69,92 @@ export default function MotDePassePage() {
   };
 
   return (
-    <div className="page">
-      <header className="page-entete">
+    <div className="mx-auto w-full max-w-[1240px]">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h2>{t('motDePasse.titre')}</h2>
-          <p>{t('motDePasse.sousTitre')}</p>
+          <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+            {t('motDePasse.titre')}
+          </h2>
+          <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+            {t('motDePasse.sousTitre')}
+          </p>
         </div>
       </header>
 
       {obligation && (
-        <div className="alerte alerte-info" role="alert">
+        <div className="mb-4 rounded-md border border-info/50 bg-info/50 p-3 text-sm text-info" role="alert">
           {t('motDePasse.obligatoire')}
         </div>
       )}
-      {succes && <div className="alerte alerte-succes">{succes}</div>}
-      {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
+      {succes && (
+        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
+          {succes}
+        </div>
+      )}
+      {erreur && (
+        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
+          {afficherMessage(t, erreur)}
+        </div>
+      )}
 
-      <div className="carte carte-formulaire">
-        <form className="formulaire" onSubmit={soumettre}>
-          <div className="champ">
-            <label>{t('motDePasse.actuel')}</label>
-            <input
-              type={afficher ? 'text' : 'password'}
-              value={actuel}
-              onChange={(e) => setActuel(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </div>
-          <div className="champ">
-            <label>{t('motDePasse.nouveau')}</label>
-            <input
-              type={afficher ? 'text' : 'password'}
-              value={nouveau}
-              onChange={(e) => setNouveau(e.target.value)}
-              autoComplete="new-password"
-              required
-            />
-          </div>
-          <div className="champ">
-            <label>{t('motDePasse.confirmation')}</label>
-            <input
-              type={afficher ? 'text' : 'password'}
-              value={confirmation}
-              onChange={(e) => setConfirmation(e.target.value)}
-              autoComplete="new-password"
-              required
-            />
-          </div>
-          <label className="case">
-            <input
-              type="checkbox"
-              checked={afficher}
-              onChange={(e) => setAfficher(e.target.checked)}
-            />
-            {t('motDePasse.afficher')}
-          </label>
-          <p className="texte-muet">{t('motDePasse.regle')}</p>
-          <button className="btn btn-primaire" type="submit" disabled={envoi}>
-            {envoi ? t('motDePasse.enCours') : t('motDePasse.enregistrer')}
-          </button>
-        </form>
-      </div>
+      <Card className="mb-6 p-[18px] shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">{t('motDePasse.titre')}</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <form className="space-y-4" onSubmit={soumettre}>
+            <div className="space-y-2">
+              <Label htmlFor="motDePasseActuel">{t('motDePasse.actuel')}</Label>
+              <Input
+                id="motDePasseActuel"
+                type={afficher ? 'text' : 'password'}
+                value={actuel}
+                onChange={(e) => setActuel(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="motDePasseNouveau">{t('motDePasse.nouveau')}</Label>
+              <Input
+                id="motDePasseNouveau"
+                type={afficher ? 'text' : 'password'}
+                value={nouveau}
+                onChange={(e) => setNouveau(e.target.value)}
+                autoComplete="new-password"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="motDePasseConfirmation">{t('motDePasse.confirmation')}</Label>
+              <Input
+                id="motDePasseConfirmation"
+                type={afficher ? 'text' : 'password'}
+                value={confirmation}
+                onChange={(e) => setConfirmation(e.target.value)}
+                autoComplete="new-password"
+                required
+              />
+            </div>
+            <div className="flex items-start gap-2">
+              <input
+                id="afficherMotDePasse"
+                type="checkbox"
+                checked={afficher}
+                onChange={(e) => setAfficher(e.target.checked)}
+                className="mt-0.5 rounded-md border-input bg-background focus:ring-ring"
+              />
+              <Label htmlFor="afficherMotDePasse" className="text-sm leading-none cursor-pointer select-none">
+                {t('motDePasse.afficher')}
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground">{t('motDePasse.regle')}</p>
+            <Button type="submit" disabled={envoi} className="w-full">
+              {envoi ? t('motDePasse.enCours') : t('motDePasse.enregistrer')}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

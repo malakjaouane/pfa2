@@ -111,65 +111,125 @@ export default function RoadmapPage() {
 
   const reinitialiser = () => setFiltres({ statut: '', entite: '', objectif: '' });
 
-  if (chargement) return <div className="center-page">{t('roadmap.chargement')}</div>;
-  if (erreur) return <div className="alerte alerte-erreur">{erreur}</div>;
+  if (chargement) {
+    return (
+      <div className="mx-auto w-full max-w-[1240px] py-12 flex items-center justify-center">
+        <span className="text-sm text-muted-foreground">{t('roadmap.chargement')}</span>
+      </div>
+    );
+  }
+  if (erreur) {
+    return (
+      <div className="mx-auto w-full max-w-[1240px] py-12">
+        <div className="rounded-md border border-destructive/50 bg-destructive/50 p-4 text-sm text-destructive">
+          {erreur}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="page roadmap-page">
-      <header className="page-entete">
+    <div className="mx-auto w-full max-w-[1240px] roadmap-page">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h2>{t('roadmap.titre')}</h2>
-          <p>{t('roadmap.sousTitre')}</p>
+          <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+            {t('roadmap.titre')}
+          </h2>
+          <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+            {t('roadmap.sousTitre')}
+          </p>
         </div>
       </header>
 
-      <form className="carte filtre-bar" onSubmit={(e) => e.preventDefault()}>
-        <div className="filtre-ligne">
-          <select aria-label={t('roadmap.ariaStatut')}
-            value={filtres.statut} onChange={(e) => setFiltres((f) => ({ ...f, statut: e.target.value }))}>
-            <option value="">{t('roadmap.filtreTousStatuts')}</option>
-            {statuts.map((s) => <option key={s.idStatut} value={s.idStatut}>{ref.statut(s.libelle)}</option>)}
-          </select>
-          <select aria-label={t('roadmap.ariaEntite')}
-            value={filtres.entite} onChange={(e) => setFiltres((f) => ({ ...f, entite: e.target.value }))}>
-            <option value="">{t('roadmap.filtreToutesEntites')}</option>
-            {entites.map((en) => <option key={en.idEntite} value={en.idEntite}>{en.nom}</option>)}
-          </select>
-          <select aria-label={t('roadmap.ariaObjectif')}
-            value={filtres.objectif} onChange={(e) => setFiltres((f) => ({ ...f, objectif: e.target.value }))}>
-            <option value="">{t('roadmap.filtreTousObjectifs')}</option>
-            {objectifs.map((o) => <option key={o.idObjectif} value={o.idObjectif}>{o.libelle}</option>)}
-          </select>
-          <button type="button" className="btn btn-secondaire" onClick={reinitialiser}>{t('roadmap.reinitialiser')}</button>
-        </div>
-      </form>
+      <Card className="mb-6 p-[18px] shadow-sm">
+        <form className="flex flex-wrap items-center gap-3" onSubmit={(e) => e.preventDefault()}>
+          <div className="flex-1 min-w-[180px] space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground">
+              {t('roadmap.ariaStatut')}
+            </Label>
+            <select
+              aria-label={t('roadmap.ariaStatut')}
+              value={filtres.statut}
+              onChange={(e) => setFiltres((f) => ({ ...f, statut: e.target.value }))}
+              className="min-w-[180px] rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">{t('roadmap.filtreTousStatuts')}</option>
+              {statuts.map((s) => <option key={s.idStatut} value={s.idStatut}>{ref.statut(s.libelle)}</option>)}
+            </select>
+          </div>
+          <div className="flex-1 min-w-[180px] space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground">
+              {t('roadmap.ariaEntite')}
+            </Label>
+            <select
+              aria-label={t('roadmap.ariaEntite')}
+              value={filtres.entite}
+              onChange={(e) => setFiltres((f) => ({ ...f, entite: e.target.value }))}
+              className="min-w-[180px] rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">{t('roadmap.filtreToutesEntites')}</option>
+              {entites.map((en) => <option key={en.idEntite} value={en.idEntite}>{en.nom}</option>)}
+            </select>
+          </div>
+          <div className="flex-1 min-w-[180px] space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground">
+              {t('roadmap.ariaObjectif')}
+            </Label>
+            <select
+              aria-label={t('roadmap.ariaObjectif')}
+              value={filtres.objectif}
+              onChange={(e) => setFiltres((f) => ({ ...f, objectif: e.target.value }))}
+              className="min-w-[180px] rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">{t('roadmap.filtreTousObjectifs')}</option>
+              {objectifs.map((o) => <option key={o.idObjectif} value={o.idObjectif}>{o.libelle}</option>)}
+            </select>
+          </div>
+          <Button type="button" variant="secondary" onClick={reinitialiser}>
+            {t('roadmap.reinitialiser')}
+          </Button>
+        </form>
+      </Card>
 
-      <div className="carte roadmap-legende">
+      <Card className="mb-6 p-[18px] shadow-sm roadmap-legende">
         {statuts.map((s) => (
-          <span key={s.idStatut} className="roadmap-legende-item">
-            <span className="pastille" style={{ background: COULEURS[s.libelle] ?? '#8458B3' }} />
+          <span key={s.idStatut} className="flex items-center gap-1.5">
+            <span
+              className="w-3 h-3 rounded-full"
+              style={{ background: COULEURS[s.libelle] ?? '#8458B3' }}
+            />
             {ref.statut(s.libelle)}
           </span>
         ))}
-        <span className="texte-muet">{t('roadmap.legendeRetard')}</span>
-      </div>
+        <span className="ml-4 text-xs text-muted-foreground">
+          {t('roadmap.legendeRetard')}
+        </span>
+      </Card>
 
       {avecDates.length === 0 ? (
-        <div className="carte">
-          <p className="texte-muet">{t('roadmap.aucune')}</p>
-        </div>
+        <Card className="mb-6 p-[18px] shadow-sm">
+          <p className="text-sm text-muted-foreground">{t('roadmap.aucune')}</p>
+        </Card>
       ) : (
-        <div className="carte roadmap-enveloppe">
+        <Card className="mb-6 p-[18px] shadow-sm roadmap-enveloppe">
           <div className="roadmap-grille">
             <div className="roadmap-titre roadmap-entete-ligne" />
             <div className="roadmap-calendrier roadmap-entete-ligne">
               {mois.map((m) => (
-                <div key={m.toISOString()} className="roadmap-mois" style={{ left: `${pctJour(m)}%`, width: `${100 / mois.length}%` }}>
+                <div
+                  key={m.toISOString()}
+                  className="roadmap-mois"
+                  style={{ left: `${pctJour(m)}%`, width: `${100 / mois.length}%` }}
+                >
                   {t(CLES_MOIS[m.getUTCMonth()])} {m.getUTCFullYear()}
                 </div>
               ))}
               {aujourdHuiDansPeriode && (
-                <div className="roadmap-aujourdhui" style={{ left: `${pctJour(aujourdHui)}%` }} title={t('roadmap.aujourdhui')} />
+                <div
+                  className="roadmap-aujourdhui"
+                  style={{ left: `${pctJour(aujourdHui)}%` }}
+                  title={t('roadmap.aujourdhui')}
+                />
               )}
             </div>
 
@@ -179,7 +239,7 @@ export default function RoadmapPage() {
                 <div key={i.idInitiative} className="roadmap-ligne">
                   <div className="roadmap-titre">
                     <Link to={`/initiatives/${i.idInitiative}`}>{i.nom}</Link>
-                    <small className="texte-muet">
+                    <small className="texte-muet block mt-0.5">
                       {i.code} · {i.entite?.nom} {i.objectif ? `· ${i.objectif.libelle}` : ''}
                     </small>
                   </div>
@@ -194,26 +254,31 @@ export default function RoadmapPage() {
                         avancement: i.avancement
                       })}
                     >
-                      <span className="roadmap-avancement">{t('roadmap.pourcentage', { n: i.avancement })}</span>
+                      <span className="roadmap-avancement">
+                        {t('roadmap.pourcentage', { n: i.avancement })}
+                      </span>
                     </div>
                   </div>
                 </div>
               );
             })}
           </div>
-        </div>
+        </Card>
       )}
 
       {sansDates.length > 0 && (
-        <div className="carte">
-          <h3>{t('roadmap.nonPlanifiees', { n: sansDates.length })}</h3>
+        <Card className="p-[18px] shadow-sm">
+          <h3 className="text-base font-semibold text-foreground mb-2">
+            {t('roadmap.nonPlanifiees', { n: sansDates.length })}
+          </h3>
           {sansDates.map((i) => (
-            <p key={i.idInitiative}>
-              <Link to={`/initiatives/${i.idInitiative}`}>{i.nom}</Link> <span className="texte-muet">({i.code})</span>{' '}
+            <p key={i.idInitiative} className="text-sm text-foreground">
+              <Link to={`/initiatives/${i.idInitiative}`}>{i.nom}</Link>{' '}
+              <span className="texte-muet">({i.code})</span>{' '}
               <StatutBadge libelle={i.statut?.libelle} />
             </p>
           ))}
-        </div>
+        </Card>
       )}
     </div>
   );

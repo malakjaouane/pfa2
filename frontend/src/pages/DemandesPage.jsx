@@ -6,6 +6,11 @@ import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import { afficherMessage } from '../i18n/message';
 import { useReferentiels } from '../i18n/referentiels';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Badge } from '../components/ui/badge';
 
 const STYLES_DEMANDE = {
   'Brouillon': 'badge-gris',
@@ -313,285 +318,434 @@ export default function DemandesPage() {
   };
 
   return (
-    <div className="page">
-      <header className="page-entete">
+    <div className="mx-auto w-full max-w-[1240px]">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h2>{t('demandes.titre')}</h2>
-          <p>{t('demandes.sousTitre')}</p>
+          <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+            {t('demandes.titre')}
+          </h2>
+          <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+            {t('demandes.sousTitre')}
+          </p>
         </div>
-        <div className="actions">
+        <div className="flex items-end gap-3">
           {/* Bascule dans la page (aucune route ni lien de menu) :
               l'URL ?archive=1 documente la vue affichée. */}
-          <div className="vue-toggle">
-            <button type="button" className={!voirArchives ? 'actif' : ''} onClick={() => basculerVue(false)}>
+          <div className="flex items-center gap-2 border border-input rounded-md p-1">
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${!voirArchives ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+              onClick={() => basculerVue(false)}
+            >
               {t('demandes.vueActives')}
             </button>
-            <button type="button" className={voirArchives ? 'actif' : ''} onClick={() => basculerVue(true)}>
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${voirArchives ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+              onClick={() => basculerVue(true)}
+            >
               {t('demandes.vueArchives')}
             </button>
           </div>
           {peutSoumettre && !voirArchives && (
-            <button className="btn btn-primaire" onClick={() => (formVisible ? setFormVisible(false) : ouvrirNouvelle())}>
+            <Button
+              type="button"
+              onClick={() => (formVisible ? setFormVisible(false) : ouvrirNouvelle())}
+            >
               {formVisible ? t('demandes.fermer') : t('demandes.nouvelle')}
-            </button>
+            </Button>
           )}
         </div>
       </header>
 
-      {info && <div className="alerte alerte-succes">{afficherMessage(t, info)}</div>}
-      {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
-
-      {formVisible && (
-        <form className="carte formulaire" onSubmit={enregistrer}>
-          <h3>{idEdition ? t('demandes.formModifierTitre') : t('demandes.formNouvelleTitre')}</h3>
-          <div className="form-grille">
-            <div className="champ champ-plein">
-              <label>{t('demandes.champTitre')} *</label>
-              <input value={form.titre} onChange={set('titre')} required placeholder={t('demandes.placeholderTitre')} />
-            </div>
-            <div className="champ">
-              <label htmlFor="dem-entite">{t('demandes.champEntite')} *</label>
-              <select id="dem-entite" value={form.idEntite} onChange={set('idEntite')} required>
-                <option value="">—</option>
-                {entites.map((en) => <option key={en.idEntite} value={en.idEntite}>{en.nom}</option>)}
-              </select>
-            </div>
-            <div className="champ">
-              <label htmlFor="dem-priorite">{t('demandes.champPriorite')} *</label>
-              <select id="dem-priorite" value={form.idPriorite} onChange={set('idPriorite')} required>
-                <option value="">—</option>
-                {priorites.map((p) => <option key={p.idPriorite} value={p.idPriorite}>{ref.priorite(p.libelle)}</option>)}
-              </select>
-            </div>
-            <div className="champ champ-plein">
-              <label>{t('demandes.champDescription')}</label>
-              <textarea rows={3} value={form.descriptionBesoin} onChange={set('descriptionBesoin')} placeholder={t('demandes.placeholderDescription')} />
-            </div>
-            <div className="champ champ-plein">
-              <label>{t('demandes.champJustification')}</label>
-              <textarea rows={2} value={form.justificationMetier} onChange={set('justificationMetier')} placeholder={t('demandes.placeholderJustification')} />
-            </div>
-          </div>
-          <div className="form-actions">
-            <button type="button" className="btn btn-secondaire" onClick={() => setFormVisible(false)}>{t('demandes.annuler')}</button>
-            <button type="submit" className="btn btn-primaire" disabled={soumission}>
-              {soumission ? t('demandes.enregistrement') : idEdition ? t('demandes.enregistrerModifications') : t('demandes.creer')}
-            </button>
-          </div>
-        </form>
+      {info && (
+        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
+          {afficherMessage(t, info)}
+        </div>
+      )}
+      {erreur && (
+        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
+          {afficherMessage(t, erreur)}
+        </div>
       )}
 
-      <form className="carte filtre-bar" onSubmit={appliquerRecherche}>
-        <div className="filtre-ligne">
-          <input
-            type="search"
-            placeholder={t('demandes.recherchePlaceholder')}
-            aria-label={t('demandes.recherchePlaceholder')}
-            value={recherche}
-            onChange={(e) => setRecherche(e.target.value)}
-          />
-          <button type="submit" className="btn btn-primaire" disabled={chargement}>
-            {t('demandes.appliquer')}
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondaire"
-            onClick={effacerRecherche}
-            disabled={!recherche && !rechercheAppliquee}
-          >
-            {t('demandes.reinitialiser')}
-          </button>
-        </div>
-      </form>
+      {formVisible && (
+        <Card className="mb-6 p-[18px] shadow-sm" onSubmit={enregistrer}>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">
+              {idEdition ? t('demandes.formModifierTitre') : t('demandes.formNouvelleTitre')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2 space-y-2">
+                <Label htmlFor="demTitre">{t('demandes.champTitre')} *</Label>
+                <Input
+                  id="demTitre"
+                  value={form.titre}
+                  onChange={set('titre')}
+                  required
+                  placeholder={t('demandes.placeholderTitre')}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="demEntite">{t('demandes.champEntite')} *</Label>
+                <select
+                  id="demEntite"
+                  value={form.idEntite}
+                  onChange={set('idEntite')}
+                  required
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">—</option>
+                  {entites.map((en) => <option key={en.idEntite} value={en.idEntite}>{en.nom}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="demPriorite">{t('demandes.champPriorite')} *</Label>
+                <select
+                  id="demPriorite"
+                  value={form.idPriorite}
+                  onChange={set('idPriorite')}
+                  required
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">—</option>
+                  {priorites.map((p) => <option key={p.idPriorite} value={p.idPriorite}>{ref.priorite(p.libelle)}</option>)}
+                </select>
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <Label htmlFor="demDescription">{t('demandes.champDescription')}</Label>
+                <textarea
+                  id="demDescription"
+                  rows={3}
+                  className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={form.descriptionBesoin}
+                  onChange={set('descriptionBesoin')}
+                  placeholder={t('demandes.placeholderDescription')}
+                />
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <Label htmlFor="demJustification">{t('demandes.champJustification')}</Label>
+                <textarea
+                  id="demJustification"
+                  rows={2}
+                  className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={form.justificationMetier}
+                  onChange={set('justificationMetier')}
+                  placeholder={t('demandes.placeholderJustification')}
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-4">
+              <Button type="button" variant="secondary" onClick={() => setFormVisible(false)}>
+                {t('demandes.annuler')}
+              </Button>
+              <Button type="submit" disabled={soumission} className="ml-2">
+                {soumission ? t('demandes.enregistrement') : idEdition ? t('demandes.enregistrerModifications') : t('demandes.creer')}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="mb-6 p-[18px] shadow-sm">
+        <form className="flex flex-wrap items-center gap-3" onSubmit={appliquerRecherche}>
+          <div className="flex-1 min-w-[200px] space-y-2">
+            <Label htmlFor="demRecherche">
+              {t('demandes.recherchePlaceholder')}
+            </Label>
+            <Input
+              id="demRecherche"
+              type="search"
+              placeholder={t('demandes.recherchePlaceholder')}
+              aria-label={t('demandes.recherchePlaceholder')}
+              value={recherche}
+              onChange={(e) => setRecherche(e.target.value)}
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <Button type="submit" disabled={chargement}>
+              {t('demandes.appliquer')}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={effacerRecherche}
+              disabled={!recherche && !rechercheAppliquee}
+            >
+              {t('demandes.reinitialiser')}
+            </Button>
+          </div>
+        </form>
+      </Card>
 
       {/* Barre de suppression en lot : présente dès l'arrivée sur la page
           (bouton inactif sans sélection) pour que l'action soit trouvable —
           les lignes transformées en initiative affichent un cadenas et le
           bandeau ci-dessous explique pourquoi rien n'est sélectionnable. */}
       {peutEvaluer && (
-        <div className="carte vue-bar">
-          <span className="texte-muet">
-            {t('demandes.selectionnees', { n: selection.length })}
-            {verrouillees > 0 && (
-              <span className="texte-muet">
-                {' — '}
-                {t('demandes.verrouillees', { n: verrouillees })}
-              </span>
-            )}
-          </span>
-          <div className="actions">
-            <button
-              type="button"
-              className="btn btn-danger"
-              onClick={supprimerSelection}
-              disabled={selection.length === 0}
-            >
-              {t('demandes.supprimerSelection', { n: selection.length })}
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondaire"
-              onClick={() => setSelection([])}
-              disabled={selection.length === 0}
-            >
-              {t('demandes.annulerSelection')}
-            </button>
+        <Card className="mb-6 p-[18px] shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-muted-foreground">
+              {t('demandes.selectionnees', { n: selection.length })}
+              {verrouillees > 0 && (
+                <>
+                  {' — '}
+                  {t('demandes.verrouillees', { n: verrouillees })}
+                </>
+              )}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setSelection([])}
+                disabled={selection.length === 0}
+              >
+                {t('demandes.annulerSelection')}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={supprimerSelection}
+                disabled={selection.length === 0}
+              >
+                {t('demandes.supprimerSelection', { n: selection.length })}
+              </Button>
+            </div>
           </div>
-        </div>
+        </Card>
       )}
       {peutEvaluer && verrouillees > 0 && demandesAffichees.length === 0 && (
-        <div className="alerte alerte-info">
+        <div className="mb-4 rounded-md border border-info/50 bg-info/50 p-3 text-sm text-info">
           {t('demandes.toutesVerrouillees', { n: verrouillees })}
         </div>
       )}
 
-      <div className="carte">
-        <div className="table-enveloppe">
-          {chargement ? (
-            <div className="center-page">{t('demandes.chargement')}</div>
-          ) : demandes.length === 0 ? (
-            <p className="texte-muet">{t(voirArchives ? 'demandes.aucuneArchive' : 'demandes.aucune')}</p>
-          ) : (
-            <table className="table">
-              <thead>
-                <tr>
+      <Card className="mb-6 p-[18px] shadow-sm">
+        {chargement ? (
+          <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+            {t('demandes.chargement')}
+          </div>
+        ) : demandes.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">
+            {t(voirArchives ? 'demandes.aucuneArchive' : 'demandes.aucune')}
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {peutEvaluer && (
+                  <TableHead className="w-12">
+                    <input
+                      type="checkbox"
+                      checked={toutesCochees}
+                      onChange={toutSelectionner}
+                      disabled={demandesAffichees.length === 0}
+                      aria-label={t('demandes.selectionnerTout')}
+                      className="mt-0.5 rounded border-input text-primary focus:ring-ring"
+                    />
+                  </TableHead>
+                )}
+                <TableHead>{t('demandes.colTitre')}</TableHead>
+                <TableHead>{t('demandes.colDemandeur')}</TableHead>
+                <TableHead>{t('demandes.colEntite')}</TableHead>
+                <TableHead>{t('demandes.colPriorite')}</TableHead>
+                <TableHead>{t('demandes.colSoumission')}</TableHead>
+                <TableHead>{t('demandes.colStatut')}</TableHead>
+                <TableHead className="text-right">{t('demandes.colActions')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {demandes.map((d) => (
+                <TableRow key={d.idDemande}>
                   {peutEvaluer && (
-                    <th>
-                      <input
-                        type="checkbox"
-                        checked={toutesCochees}
-                        onChange={toutSelectionner}
-                        disabled={demandesAffichees.length === 0}
-                        aria-label={t('demandes.selectionnerTout')}
-                      />
-                    </th>
-                  )}
-                  <th>{t('demandes.colTitre')}</th>
-                  <th>{t('demandes.colDemandeur')}</th>
-                  <th>{t('demandes.colEntite')}</th>
-                  <th>{t('demandes.colPriorite')}</th>
-                  <th>{t('demandes.colSoumission')}</th>
-                  <th>{t('demandes.colStatut')}</th>
-                  <th>{t('demandes.colActions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {demandes.map((d) => (
-                  <tr key={d.idDemande}>
-                      {peutEvaluer && (
-                        <td>
-                          {supprimable(d) ? (
-                            <input
-                              type="checkbox"
-                              checked={selection.includes(d.idDemande)}
-                              onChange={() => basculer(d.idDemande)}
-                              aria-label={t('demandes.caseSelection', { titre: d.titre })}
-                            />
-                          ) : (
-                            <span
-                              className="badge badge-gris"
-                              title={t('demandes.caseNonSupprimable')}
-                            >
-                              <IconCadenas size={13} /> {t('demandes.verrouillee')}
-                            </span>
-                          )}
-                        </td>
+                    <TableCell className="w-12">
+                      {supprimable(d) ? (
+                        <input
+                          type="checkbox"
+                          checked={selection.includes(d.idDemande)}
+                          onChange={() => basculer(d.idDemande)}
+                          aria-label={t('demandes.caseSelection', { titre: d.titre })}
+                          className="mt-0.5 rounded border-input text-primary focus:ring-ring"
+                        />
+                      ) : (
+                        <Badge variant="secondary" title={t('demandes.caseNonSupprimable')}>
+                          <IconCadenas size={13} /> {t('demandes.verrouillee')}
+                        </Badge>
                       )}
-                      <td>
-                        <strong>{d.titre}</strong>
-                        {d.justificationMetier && <div className="texte-muet"><small>{d.justificationMetier}</small></div>}
-                        {d.motifRefus && (
-                          <div className="texte-muet"><small>{t('demandes.motifRefus', { motif: d.motifRefus })}</small></div>
-                        )}
-                        {d.initiativeLiee && (
-                          <div>
-                            <Link to={`/initiatives/${d.initiativeLiee.idInitiative}`} className="badge badge-vert">
-                              {t('demandes.transformee', { code: d.initiativeLiee.code })}
-                            </Link>
-                          </div>
-                        )}
-                      </td>
-                      <td>{d.demandeur?.nomComplet ?? '—'}</td>
-                      <td>{d.entite?.nom ?? '—'}</td>
-                      <td>{ref.priorite(d.priorite?.libelle) ?? '—'}</td>
-                      <td>{d.dateSoumission ?? '—'}</td>
-                      <td><span className={`badge ${STYLES_DEMANDE[d.statut?.libelle] ?? 'badge-gris'}`}>{libelleStatut(d.statut?.libelle)}</span></td>
-                      <td>
-                        <div className="actions">
-                          {!d.archive && d.statut?.libelle === 'Brouillon' && peutSoumettre && (
-                            <>
-                              <button className="btn btn-petit btn-secondaire" onClick={() => ouvrirEdition(d)}>{t('demandes.modifier')}</button>
-                              <button className="btn btn-petit btn-primaire" onClick={() => action(d.idDemande, 'soumettre', { cle: 'demandes.infoSoumise' })}>
-                                {t('demandes.soumettre')}
-                              </button>
-                            </>
+                    </TableCell>
+                  )}
+                  <TableCell>
+                    <strong>{d.titre}</strong>
+                    {d.justificationMetier && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        <small>{d.justificationMetier}</small>
+                      </div>
+                    )}
+                    {d.motifRefus && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        <small>{t('demandes.motifRefus', { motif: d.motifRefus })}</small>
+                      </div>
+                    )}
+                    {d.initiativeLiee && (
+                      <div className="mt-1">
+                        <Link
+                          to={`/initiatives/${d.initiativeLiee.idInitiative}`}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          {t('demandes.transformee', { code: d.initiativeLiee.code })}
+                        </Link>
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>{d.demandeur?.nomComplet ?? '—'}</TableCell>
+                  <TableCell>{d.entite?.nom ?? '—'}</TableCell>
+                  <TableCell>{ref.priorite(d.priorite?.libelle) ?? '—'}</TableCell>
+                  <TableCell>{d.dateSoumission ?? '—'}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className={`border-transparent ${
+                      STYLES_DEMANDE[d.statut?.libelle] === 'badge-vert' ? 'bg-success/15 text-success' :
+                      STYLES_DEMANDE[d.statut?.libelle] === 'badge-rouge' ? 'bg-destructive/15 text-destructive' :
+                      STYLES_DEMANDE[d.statut?.libelle] === 'badge-ambre' ? 'bg-amber/15 text-amber-800' :
+                      STYLES_DEMANDE[d.statut?.libelle] === 'badge-bleu' ? 'bg-blue/15 text-blue-800' :
+                      'bg-muted/50 text-muted-foreground'
+                    }`}
+                    >
+                      {libelleStatut(d.statut?.libelle)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center gap-1">
+                      {!d.archive && d.statut?.libelle === 'Brouillon' && peutSoumettre && (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => ouvrirEdition(d)}
+                          >
+                            {t('demandes.modifier')}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => action(d.idDemande, 'soumettre', { cle: 'demandes.infoSoumise' })}
+                          >
+                            {t('demandes.soumettre')}
+                          </Button>
+                        </>
+                      )}
+                      {!d.archive && d.statut?.libelle === 'Soumise' && peutEvaluer && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => action(d.idDemande, 'evaluer', { cle: 'demandes.infoEnEvaluation' })}
+                        >
+                          {t('demandes.evaluer')}
+                        </Button>
+                      )}
+                      {!d.archive && d.statut?.libelle === 'En évaluation' && peutEvaluer && (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => action(d.idDemande, 'accepter', { cle: 'demandes.infoAcceptee' })}
+                          >
+                            {t('demandes.accepter')}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => { setRefusPour(d.idDemande); setMotifRefus(''); }}
+                          >
+                            {t('demandes.refuser')}
+                          </Button>
+                          {refusPour === d.idDemande && (
+                            <div className="flex items-end gap-2 ml-2">
+                              <Input
+                                value={motifRefus}
+                                onChange={(e) => setMotifRefus(e.target.value)}
+                                placeholder={t('demandes.placeholderMotifRefus')}
+                                className="w-32 text-xs"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => confirmerRefus(d.idDemande)}
+                              >
+                                {t('demandes.confirmer')}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setRefusPour(null)}
+                              >
+                                {t('demandes.annuler')}
+                              </Button>
+                            </div>
                           )}
-                          {!d.archive && d.statut?.libelle === 'Soumise' && peutEvaluer && (
-                            <button className="btn btn-petit btn-primaire" onClick={() => action(d.idDemande, 'evaluer', { cle: 'demandes.infoEnEvaluation' })}>
-                              {t('demandes.evaluer')}
-                            </button>
-                          )}
-                          {!d.archive && d.statut?.libelle === 'En évaluation' && peutEvaluer && (
-                            <>
-                              <button className="btn btn-petit btn-primaire" onClick={() => action(d.idDemande, 'accepter', { cle: 'demandes.infoAcceptee' })}>
-                                {t('demandes.accepter')}
-                              </button>
-                              <button className="btn btn-petit btn-danger" onClick={() => { setRefusPour(d.idDemande); setMotifRefus(''); }}>
-                                {t('demandes.refuser')}
-                              </button>
-                              {refusPour === d.idDemande && (
-                                <div className="formulaire-inline">
-                                  <input
-                                    value={motifRefus}
-                                    onChange={(e) => setMotifRefus(e.target.value)}
-                                    placeholder={t('demandes.placeholderMotifRefus')}
-                                  />
-                                  <button className="btn btn-petit btn-danger" onClick={() => confirmerRefus(d.idDemande)}>{t('demandes.confirmer')}</button>
-                                  <button className="btn btn-petit btn-secondaire" onClick={() => setRefusPour(null)}>{t('demandes.annuler')}</button>
-                                </div>
-                              )}
-                            </>
-                          )}
-                          {!d.archive && d.statut?.libelle === 'Acceptée' && peutEvaluer && !d.initiativeLiee && (
-                            <button className="btn btn-petit btn-primaire" onClick={() => transformer(d)}>
-                              {t('demandes.transformer')}
-                            </button>
-                          )}
-                          {d.statut?.libelle === 'Acceptée' && d.initiativeLiee && (
-                            <Link to={`/initiatives/${d.initiativeLiee.idInitiative}`} className="btn btn-petit btn-secondaire">{t('demandes.voirInitiative')}</Link>
-                          )}
-                          {/* Archivage : ouvert aux deux acteurs de la page
-                              (aucun droit nouveau) — « Archiver » sur les
-                              demandes terminées, « Restaurer » depuis la
-                              vue Archives. */}
-                          {!d.archive && (d.statut?.libelle === 'Acceptée' || d.statut?.libelle === 'Refusée') && (
-                            <button className="btn btn-petit btn-secondaire" onClick={() => archiver(d)}>
-                              {t('demandes.archiver')}
-                            </button>
-                          )}
-                          {d.archive && (
-                            <button className="btn btn-petit btn-primaire" onClick={() => restaurer(d)}>
-                              {t('demandes.restaurer')}
-                            </button>
-                          )}
-                          {/* Suppression : visible sur TOUTES les lignes —
-                              une demande transformée répond 400 côté
-                              serveur, son message est alors affiché tel
-                              quel sous l'alerte. */}
-                          {peutEvaluer && (
-                            <button className="btn btn-petit btn-danger" onClick={() => supprimer(d)}>
-                              {t('demandes.supprimer')}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
+                        </>
+                      )}
+                      {!d.archive && d.statut?.libelle === 'Acceptée' && peutEvaluer && !d.initiativeLiee && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => transformer(d)}
+                        >
+                          {t('demandes.transformer')}
+                        </Button>
+                      )}
+                      {d.statut?.libelle === 'Acceptée' && d.initiativeLiee && (
+                        <Link
+                          to={`/initiatives/${d.initiativeLiee.idInitiative}`}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          {t('demandes.voirInitiative')}
+                        </Link>
+                      )}
+                      {!d.archive && (d.statut?.libelle === 'Acceptée' || d.statut?.libelle === 'Refusée') && (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => archiver(d)}
+                        >
+                          {t('demandes.archiver')}
+                        </Button>
+                      )}
+                      {d.archive && (
+                        <Button
+                          type="button"
+                          variant="primary"
+                          size="sm"
+                          onClick={() => restaurer(d)}
+                        >
+                          {t('demandes.restaurer')}
+                        </Button>
+                      )}
+                      {peutEvaluer && (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => supprimer(d)}
+                        >
+                          {t('demandes.supprimer')}
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Card>
     </div>
   );
 }

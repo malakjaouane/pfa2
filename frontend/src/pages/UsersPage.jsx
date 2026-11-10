@@ -4,6 +4,20 @@ import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import { afficherMessage } from '../i18n/message';
 import { useReferentiels } from '../i18n/referentiels';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Badge } from '../components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '../components/ui/table';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 
 const vide = { nom: '', prenom: '', email: '', motDePasse: '', telephone: '', actif: true, idRole: '', idEntite: '' };
 
@@ -22,7 +36,7 @@ export default function UsersPage() {
   const [entites, setEntites] = useState([]);
   const [form, setForm] = useState(vide);
   const [editionId, setEditionId] = useState(null);
-  const [modal, setModal] = useState(false);
+  const [modalOuvert, setModalOuvert] = useState(false);
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
   const [critere, setCritere] = useState({ recherche: '', role: '', entite: '' });
@@ -75,7 +89,7 @@ export default function UsersPage() {
   const ouvrirCreation = () => {
     setEditionId(null);
     setForm(vide);
-    setModal(true);
+    setModalOuvert(true);
   };
 
   const ouvrirEdition = (u) => {
@@ -90,7 +104,7 @@ export default function UsersPage() {
       idRole: u.role?.idRole ?? '',
       idEntite: u.entite?.idEntite ?? ''
     });
-    setModal(true);
+    setModalOuvert(true);
   };
 
   const gererSoumission = async (e) => {
@@ -108,7 +122,7 @@ export default function UsersPage() {
       } else {
         await api.post('/users', corps);
       }
-      setModal(false);
+      setModalOuvert(false);
       setInfo(editionId
         ? { cle: 'users.utilisateurModifie' }
         : { cle: 'users.utilisateurCree' });
@@ -142,145 +156,275 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="page">
-      <header className="page-entete">
+    <div className="mx-auto w-full max-w-[1240px]">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h2>{t('users.titre')}</h2>
-          <p>{t('users.sousTitre')}</p>
+          <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+            {t('users.titre')}
+          </h2>
+          <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+            {t('users.sousTitre')}
+          </p>
         </div>
-        <button className="btn btn-primaire" onClick={ouvrirCreation}>{t('users.nouvelUtilisateur')}</button>
+        <Button type="button" onClick={ouvrirCreation}>
+          {t('users.nouvelUtilisateur')}
+        </Button>
       </header>
 
-      {info && <div className="alerte alerte-succes">{afficherMessage(t, info)}</div>}
-      {erreur && <div className="alerte alerte-erreur">{afficherMessage(t, erreur)}</div>}
-
-      {/* Recherche + filtres (rôle, entité) sur l'ensemble des utilisateurs. */}
-      <div className="carte filtre-bar" role="search">
-        <div className="filtre-ligne">
-          <input
-            type="search"
-            placeholder={t('users.recherchePlaceholder')}
-            aria-label={t('users.recherchePlaceholder')}
-            value={critere.recherche}
-            onChange={champCritere('recherche')}
-          />
-          <select aria-label={t('users.ariaFiltreRole')} value={critere.role} onChange={champCritere('role')}>
-            <option value="">{t('users.tousRoles')}</option>
-            {roles.map((r) => (
-              <option key={r.idRole} value={r.idRole}>{ref.role(r.code, r.libelle)}</option>
-            ))}
-          </select>
-          <select aria-label={t('users.ariaFiltreEntite')} value={critere.entite} onChange={champCritere('entite')}>
-            <option value="">{t('users.tousEntites')}</option>
-            {entites.map((e) => (
-              <option key={e.idEntite} value={e.idEntite}>{e.nom}</option>
-            ))}
-          </select>
-          <button type="button" className="btn btn-secondaire" onClick={reinitialiser}>{t('users.reinitialiser')}</button>
-        </div>
-      </div>
-
-      <div className="carte">
-        {utilisateursFiltres.length === 0 ? (
-          <p className="texte-muet">{t('users.aucunResultat')}</p>
-        ) : (
-        <div className="table-enveloppe">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>{t('users.colNom')}</th>
-                <th>{t('users.colEmail')}</th>
-                <th>{t('users.colTelephone')}</th>
-                <th>{t('users.colRole')}</th>
-                <th>{t('users.colEntite')}</th>
-                <th>{t('users.colActif')}</th>
-                <th>{t('users.colActions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {utilisateursFiltres.map((u) => (
-                <tr key={u.idUser}>
-                  <td>{u.prenom} {u.nom}</td>
-                  <td>{u.email}</td>
-                  <td>{u.telephone ?? t('users.aucun')}</td>
-                  <td><span className="badge badge-bleu">{ref.role(u.role?.code, u.role?.libelle)}</span></td>
-                  <td>{u.entite?.nom ?? t('users.aucun')}</td>
-                  <td>{u.actif ? <span className="badge badge-vert">{t('users.oui')}</span> : <span className="badge badge-rouge">{t('users.non')}</span>}</td>
-                  <td>
-                    <button className="btn btn-petit btn-secondaire" onClick={() => ouvrirEdition(u)}>{t('users.modifier')}</button>
-                    {peutSupprimer && user?.idUser !== u.idUser && (
-                      <>
-                        {' '}
-                        <button className="btn btn-petit btn-danger" onClick={() => supprimer(u)}>{t('users.supprimer')}</button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        )}
-      </div>
-
-      {modal && (
-        <div className="modal-fond" onClick={() => setModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{editionId ? t('users.modifierTitre') : t('users.creerTitre')}</h3>
-            {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
-            <form className="formulaire" onSubmit={gererSoumission}>
-              <div className="form-grille">
-                <div className="champ">
-                  <label>{t('users.champPrenom')}</label>
-                  <input value={form.prenom} onChange={set('prenom')} required />
-                </div>
-                <div className="champ">
-                  <label>{t('users.champNom')}</label>
-                  <input value={form.nom} onChange={set('nom')} required />
-                </div>
-                <div className="champ">
-                  <label>{t('users.champEmail')}</label>
-                  <input type="email" value={form.email} onChange={set('email')} required />
-                </div>
-                <div className="champ">
-                  <label>{t('users.champMotDePasse')} {editionId ? t('users.optionnel') : '*'}</label>
-                  <input type="password" value={form.motDePasse} onChange={set('motDePasse')}
-                    required={!editionId} disabled={false} placeholder={editionId ? t('users.motDePassePlaceholder') : ''} />
-                </div>
-                <div className="champ">
-                  <label>{t('users.champTelephone')}</label>
-                  <input value={form.telephone} onChange={set('telephone')} />
-                </div>
-                <div className="champ">
-                  <label htmlFor="user-role">{t('users.champRole')}</label>
-                  <select id="user-role" value={form.idRole} onChange={set('idRole')} required>
-                    <option value="">{t('users.aucun')}</option>
-                    {roles.map((r) => <option key={r.idRole} value={r.idRole}>{ref.role(r.code, r.libelle)}</option>)}
-                  </select>
-                </div>
-                <div className="champ">
-                  <label htmlFor="user-entite">{t('users.champEntite')}</label>
-                  <select id="user-entite" value={form.idEntite} onChange={set('idEntite')}>
-                    <option value="">{t('users.aucun')}</option>
-                    {entites.map((e) => <option key={e.idEntite} value={e.idEntite}>{e.nom}</option>)}
-                  </select>
-                </div>
-                <div className="champ">
-                  <label htmlFor="user-actif">{t('users.champCompteActif')}</label>
-                  <select id="user-actif" value={form.actif ? 'true' : 'false'} onChange={(e) => setForm((f) => ({ ...f, actif: e.target.value === 'true' }))}>
-                    <option value="true">{t('users.oui')}</option>
-                    <option value="false">{t('users.non')}</option>
-                  </select>
-                </div>
-              </div>
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondaire" onClick={() => setModal(false)}>{t('users.annuler')}</button>
-                <button type="submit" className="btn btn-primaire">{t('users.enregistrer')}</button>
-              </div>
-            </form>
-          </div>
+      {info && (
+        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
+          {afficherMessage(t, info)}
         </div>
       )}
+      {erreur && (
+        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
+          {afficherMessage(t, erreur)}
+        </div>
+      )}
+
+      {/* Recherche + filtres (rôle, entité) sur l'ensemble des utilisateurs. */}
+      <Card className="mb-6 p-[18px] shadow-sm" role="search">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold text-muted-foreground">
+            {t('users.recherchePlaceholder')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex-1 min-w-[160px] space-y-2">
+              <Label htmlFor="filtreRecherche" className="text-xs font-medium text-muted-foreground">
+                {t('users.recherchePlaceholder')}
+              </Label>
+              <Input
+                id="filtreRecherche"
+                type="search"
+                placeholder={t('users.recherchePlaceholder')}
+                aria-label={t('users.recherchePlaceholder')}
+                value={critere.recherche}
+                onChange={champCritere('recherche')}
+              />
+            </div>
+            <div className="flex-1 min-w-[160px] space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t('users.ariaFiltreRole')}
+              </Label>
+              <select
+                aria-label={t('users.ariaFiltreRole')}
+                value={critere.role}
+                onChange={champCritere('role')}
+                className="min-w-[160px] rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{t('users.tousRoles')}</option>
+                {roles.map((r) => (
+                  <option key={r.idRole} value={r.idRole}>{ref.role(r.code, r.libelle)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1 min-w-[160px] space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t('users.ariaFiltreEntite')}
+              </Label>
+              <select
+                aria-label={t('users.ariaFiltreEntite')}
+                value={critere.entite}
+                onChange={champCritere('entite')}
+                className="min-w-[160px] rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{t('users.tousEntites')}</option>
+                {entites.map((e) => (
+                  <option key={e.idEntite} value={e.idEntite}>{e.nom}</option>
+                ))}
+              </select>
+            </div>
+            <Button type="button" variant="secondary" onClick={reinitialiser}>
+              {t('users.reinitialiser')}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6 p-[18px] shadow-sm">
+        {utilisateursFiltres.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t('users.aucunResultat')}</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('users.colNom')}</TableHead>
+                <TableHead>{t('users.colEmail')}</TableHead>
+                <TableHead>{t('users.colTelephone')}</TableHead>
+                <TableHead>{t('users.colRole')}</TableHead>
+                <TableHead>{t('users.colEntite')}</TableHead>
+                <TableHead>{t('users.colActif')}</TableHead>
+                <TableHead className="text-right">{t('users.colActions')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {utilisateursFiltres.map((u) => (
+                <TableRow key={u.idUser}>
+                  <TableCell>{u.prenom} {u.nom}</TableCell>
+                  <TableCell>{u.email}</TableCell>
+                  <TableCell>{u.telephone ?? t('users.aucun')}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{ref.role(u.role?.code, u.role?.libelle)}</Badge>
+                  </TableCell>
+                  <TableCell>{u.entite?.nom ?? t('users.aucun')}</TableCell>
+                  <TableCell>
+                    {u.actif
+                      ? <Badge variant="secondary" className="border-transparent bg-success/15 text-success">{t('users.oui')}</Badge>
+                      : <Badge variant="secondary" className="border-transparent bg-destructive/15 text-destructive">{t('users.non')}</Badge>}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => ouvrirEdition(u)}
+                    >
+                      {t('users.modifier')}
+                    </Button>
+                    {peutSupprimer && user?.idUser !== u.idUser && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => supprimer(u)}
+                        className="ml-1"
+                      >
+                        {t('users.supprimer')}
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Card>
+
+      <Sheet open={modalOuvert} onOpenChange={setModalOuvert}>
+        <SheetTrigger asChild>
+          <button type="button" />
+        </SheetTrigger>
+        <SheetContent className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>
+              {editionId ? t('users.modifierTitre') : t('users.creerTitre')}
+            </SheetTitle>
+            <SheetDescription>
+              {editionId ? t('users.modifierDescription') : t('users.creerDescription')}
+            </SheetDescription>
+          </SheetHeader>
+          {erreur && (
+            <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
+              {erreur}
+            </div>
+          )}
+          <form className="space-y-4" onSubmit={gererSoumission}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="userPrenom">{t('users.champPrenom')}</Label>
+                <Input
+                  id="userPrenom"
+                  value={form.prenom}
+                  onChange={set('prenom')}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="userNom">{t('users.champNom')}</Label>
+                <Input
+                  id="userNom"
+                  value={form.nom}
+                  onChange={set('nom')}
+                  required
+                />
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <Label htmlFor="userEmail">{t('users.champEmail')}</Label>
+                <Input
+                  id="userEmail"
+                  type="email"
+                  value={form.email}
+                  onChange={set('email')}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="userMotDePasse">
+                  {t('users.champMotDePasse')} {editionId ? t('users.optionnel') : ' '}
+                  <span className="text-destructive">{!editionId ? '*' : ''}</span>
+                </Label>
+                <Input
+                  id="userMotDePasse"
+                  type="password"
+                  value={form.motDePasse}
+                  onChange={set('motDePasse')}
+                  required={!editionId}
+                  placeholder={editionId ? t('users.motDePassePlaceholder') : ''}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="userTelephone">{t('users.champTelephone')}</Label>
+                <Input
+                  id="userTelephone"
+                  value={form.telephone}
+                  onChange={set('telephone')}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="userRole">{t('users.champRole')}</Label>
+                <select
+                  id="userRole"
+                  value={form.idRole}
+                  onChange={set('idRole')}
+                  required
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">{t('users.aucun')}</option>
+                  {roles.map((r) => (
+                    <option key={r.idRole} value={r.idRole}>{ref.role(r.code, r.libelle)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="userEntite">{t('users.champEntite')}</Label>
+                <select
+                  id="userEntite"
+                  value={form.idEntite}
+                  onChange={set('idEntite')}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">{t('users.aucun')}</option>
+                  {entites.map((e) => (
+                    <option key={e.idEntite} value={e.idEntite}>{e.nom}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="userActif">{t('users.champCompteActif')}</Label>
+                <select
+                  id="userActif"
+                  value={form.actif ? 'true' : 'false'}
+                  onChange={(e) => setForm((f) => ({ ...f, actif: e.target.value === 'true' }))}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="true">{t('users.oui')}</option>
+                  <option value="false">{t('users.non')}</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-4">
+              <Button type="button" variant="secondary" onClick={() => setModalOuvert(false)}>
+                {t('users.annuler')}
+              </Button>
+              <Button type="submit" className="ml-2">
+                {t('users.enregistrer')}
+              </Button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
