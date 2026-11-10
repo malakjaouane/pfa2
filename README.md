@@ -517,64 +517,52 @@ Les sources `diagrammes-mermaid.md` et `plantuml/*.puml` complètent ce jeu
 
 ## Charte graphique
 
-Toute l'interface — **application et vitrine** — applique la **charte
-ServiceNow** (« brand evolution »), via les variables CSS de
-`frontend/src/styles.css` :
+Toute l'interface — application et vitrine — applique le **design system
+« Zellige contemporain »** décrit dans [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) :
+un socle sobre dans l'esprit Linear / Notion / Stripe, avec une identité
+marocaine contemporaine. Les tokens vivent dans `frontend/src/index.css`
+(mode clair et mode sombre) et sont exposés en classes utilitaires par le
+thème Tailwind (`frontend/tailwind.config.js`) :
 
-| Rôle | Usage | Code |
-|---|---|---|
-| Navy | barre supérieure, hero, bandeaux | `#032D42` |
-| Vert wasabi | boutons primaires, accents, item actif | `#62D84E` |
-| Vert foncé | textes accentués sur fond clair | `#298319` |
-| Cyan | statut « En cours », graphiques, halos | `#24C2CE` |
-| Teal | liens (texte) | `#00718F` |
-| Violet | accent secondaire | `#5274FF` |
-| Fond | arrière-plan des pages | `#F5F6F7` |
-| Texte | titres et contenu | `#1D1D1D` |
+| Rôle | Usage | Token | Valeur (clair) |
+|---|---|---|---|
+| Bleu Majorelle | actions primaires, liens, focus | `--primary` | `#0067A5` |
+| Ocre safran | accents chauds, badges, icônes *(surfaces, jamais du texte)* | `--accent` | `#E8820D` |
+| Turquoise | surlignage, mentions | `--highlight` | `#0D97AF` |
+| Fond sable | arrière-plan des pages | `--background` | `#FBFAF8` |
+| Texte anthracite | titres et contenu | `--foreground` | `#17191E` |
 
 Concrètement :
 
-- **Barre supérieure navy** (comme le « Next Experience » de ServiceNow), avec
-  recherche et profil en surimpression claire.
-- **Barre latérale claire** : item actif en pastille **vert clair** (`#E0F7DC`)
-  à texte navy, souligné d'un **liseré vert**.
-- **Boutons primaires verts à texte navy** — la signature de ServiceNow.
-- Les **statuts métier** restent distincts et lisibles : *À planifier* gris,
-  *En cours* bleu cyan (`#D6EEF3` / `#0E7180`), *En pause* orange, *Terminée*
-  vert, *Annulée* rouge.
+- **Modes clair et sombre** (bascule `ThemeToggle`), contrastes AA (≥ 4,5:1).
+  Échelle de rayons `xs 4 · sm 6 · md 8 · lg 12 · xl 16` ; ombres discrètes —
+  le filet passe avant l'ombre.
+- **Typographie** : **Inter** pour l'UI et les chiffres (`tabular-nums` pour
+  les KPI), **Cairo** pour l'arabe (RTL) — polices auto-hébergées dans
+  `frontend/public/fonts/`, aucun appel réseau externe.
+- **Motif zellige** : `frontend/src/components/MotifZellige.jsx`, élément
+  d'identité utilisé avec parcimonie (connexion, hero de la vitrine, fonds vides).
+- **Iconographie** : `lucide-react` ; le jeu maison `Icons.jsx` est supprimé
+  page par page.
+- **Mouvement** : easing `expo-out` unique, durées 120/180/240 ms, respect de
+  `prefers-reduced-motion` (`useReducedMotion`).
 
-Typographie : **Poppins** pour les titres (équivalent libre de la police *Gilroy*
-de ServiceNow) et **Inter** pour le corps. Les icônes proviennent d'un jeu **SVG
-maison** (`frontend/src/components/Icons.jsx`) — plus aucun emoji.
+> L'ancienne charte (navy / cyan / vert, héritée d'un design system externe)
+> a été supprimée au profit des tokens ci-dessus ; son détail historique est
+> consultable dans les versions antérieures du dépôt.
 
-La palette initialement imposée (`#A0D2EB`, `#E5EAF5`, `#D0BDF4`, `#8458B3`,
-`#A28089`) reste documentée dans l'historique ; elle a été remplacée à la demande
-du commanditaire, d'abord par une identité type Jira, puis par la charte
-ServiceNow appliquée à l'ensemble du produit.
+### Vitrine publique
 
-### Vitrine publique — inspiration ServiceNow
-
-La page **publique** (avant connexion) est la source de cette direction
-artistique. Elle reprend la **structure et les codes visuels** du site
-ServiceNow : nav collante, hero navy à halos, cartes produit, bandeau d'appel à
-l'action et pied de page à plusieurs colonnes. Palette extraite des variables
-officielles du design system ServiceNow :
-
-| Rôle | Usage | Code |
-|---|---|---|
-| Navy | fond du hero et des bandeaux | `#032D42` |
-| Vert wasabi | boutons primaires, accents | `#62D84E` |
-| Cyan | dégradés, halo du hero | `#24C2CE` |
-| Violet | accent secondaire | `#5274FF` |
-| Texte | titres et contenu | `#1D1D1D` |
-
-Les boutons sont des **pilules vertes** à texte foncé — la signature de ServiceNow.
+La vitrine publique (avant connexion) partage ce design system : identité
+« Zellige contemporain », zéro ressource externe — polices et images locales,
+la CSP bloque les CDN. Sa refonte est détaillée dans le plan de phase.
 
 ## Page d'accueil publique
 
 Une page vitrine (`frontend/src/pages/LandingPage.jsx`, route `/`) est présentée
-avant la connexion, dans la direction artistique ServiceNow décrite ci-dessus.
-Elle est volontairement riche, à l'image d'un site produit SaaS :
+avant la connexion, en attente de sa refonte sur le design system
+« Zellige contemporain » décrit ci-dessus. Elle est volontairement riche, à
+l'image d'un site produit SaaS :
 
 - **Bandeau d'annonce** navy puis **barre de navigation** blanche et collante
   (logo vert, liens d'ancrage, bouton vert « Se connecter »).
@@ -606,7 +594,7 @@ directement au `/dashboard`.
 
 La page `/dashboard` (`frontend/src/pages/DashboardPage.jsx`) a été conçue comme
 un tableau de bord de portefeuille inspiré des solutions SaaS (Planview,
-ServiceNow SPM, Jira Align, Microsoft Planner). Toutes les valeurs proviennent de
+Jira Align, Microsoft Planner). Toutes les valeurs proviennent de
 l'API réelle — aucun chiffre n'est simulé :
 
 - **En-tête** : message d'accueil nominatif, phrase de présentation et bouton

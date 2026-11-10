@@ -6,7 +6,7 @@ import lombok.*;
 import java.time.LocalDate;
 
 /**
- * Demande d'initiative digitale (inspiration ServiceNow SPM), distincte
+ * Demande d'initiative digitale (workflow métier dédié), distincte
  * des initiatives du portefeuille. Lorsqu'une demande « Acceptée » est
  * transformée en initiative, la liaison est enregistrée dans
  * {@code id_initiative_liee} (unique : une demande ne génère qu'une

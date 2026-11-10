@@ -18,7 +18,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Workflow des demandes d'initiatives (inspiration ServiceNow SPM) :
+ * Workflow des demandes d'initiatives :
  *   Brouillon -> Soumise -> En évaluation -> Acceptée / Refusée.
  * Une demande « Acceptée » peut être transformée en initiative du
  * portefeuille ; la liaison (initiative_liee) est unique, ce qui
@@ -216,7 +216,7 @@ public class DemandeService {
     }
 
     // ------------------------------------------------------------------
-    // Transformation en initiative (ServiceNow : « Acceptée -> portefeuille »)
+    // Transformation en initiative (statut « Acceptée » -> portefeuille)
     // ------------------------------------------------------------------
 
     /**
