@@ -25,6 +25,7 @@ import assistant from './assistant';
 import priorisation from './priorisation';
 import notifications from './notifications';
 import importation from './importation';
+import activite from './activite';
 
 /**
  * Chaque fichier de ce dossier exporte un « fragment » :
@@ -56,7 +57,8 @@ const FRAGMENTS = [
   assistant,
   priorisation,
   notifications,
-  importation
+  importation,
+  activite
 ];
 
 const dictionnaires = {};

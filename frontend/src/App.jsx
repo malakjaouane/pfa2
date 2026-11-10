@@ -17,13 +17,11 @@ import UsersPage from './pages/UsersPage';
 import RolesPage from './pages/RolesPage';
 import RoadmapPage from './pages/RoadmapPage';
 import DemandesPage from './pages/DemandesPage';
-import HistoriquePage from './pages/HistoriquePage';
-import ConnexionsPage from './pages/ConnexionsPage';
+import ActiviteSecuritePage from './pages/ActiviteSecuritePage';
 import ObjectifsPage from './pages/ObjectifsPage';
 import MonEspacePage from './pages/MonEspacePage';
 import RisquesPage from './pages/RisquesPage';
 import DepensesPage from './pages/DepensesPage';
-import AuditPage from './pages/AuditPage';
 import MotDePassePage from './pages/MotDePassePage';
 import AssistantPage from './pages/AssistantPage';
 
@@ -100,17 +98,27 @@ export default function App() {
             path="/audit"
             element={
               <RequireAuth permissions={['UTILISATEUR_GERER']}>
-                <AuditPage />
+                <ActiviteSecuritePage ongletInitial="audit" />
               </RequireAuth>
             }
           />
           <Route path="/initiatives/:id/modifier" element={<InitiativeFormPage />} />
           <Route path="/initiatives/:id" element={<InitiativeDetailPage />} />
+          {/* Page fusionnée « Activité et sécurité » (4 registres en onglets) ;
+              les anciennes routes restent valides et ouvrent l'onglet dédié. */}
+          <Route
+            path="/activite"
+            element={
+              <RequireAuth>
+                <ActiviteSecuritePage />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/historique"
             element={
               <RequireAuth permissions={['INITIATIVE_CONSULTER']}>
-                <HistoriquePage />
+                <ActiviteSecuritePage ongletInitial="historique" />
               </RequireAuth>
             }
           />
@@ -135,7 +143,7 @@ export default function App() {
             path="/historique-connexions"
             element={
               <RequireAuth permissions={['UTILISATEUR_GERER']}>
-                <ConnexionsPage />
+                <ActiviteSecuritePage ongletInitial="connexions" />
               </RequireAuth>
             }
           />
