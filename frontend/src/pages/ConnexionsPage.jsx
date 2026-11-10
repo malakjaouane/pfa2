@@ -2,6 +2,19 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api, { messageErreur } from '../api';
 import { useI18n } from '../i18n/I18nContext';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { EmptyState } from '../components/ui/empty-state';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '../components/ui/table';
+import { IconSearch } from '../components/Icons';
 
 /** Taille de page fixe : un tableau de lecture se feuillette, il ne s'épuise pas. */
 const TAILLE_PAGE = 25;
@@ -25,6 +38,10 @@ const formaterDate = (valeur, langue) =>
   new Date(valeur).toLocaleString(langue, {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
   });
+
+/** Champs de filtre alignés sur une ligne (recherche, sélecteur, dates). */
+const CHAMP_FILTRE =
+  'min-w-[130px] flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
 /**
  * Page « Historique des connexions » : journal des tentatives de
@@ -162,58 +179,101 @@ export default function ConnexionsPage() {
   const champ = (nom) => (e) => setFiltres((f) => ({ ...f, [nom]: e.target.value }));
 
   return (
-    <div className="page">
-      <header className="page-entete">
+    <div className="mx-auto w-full max-w-[1240px]">
+      <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2>{t('connexions.titre')}</h2>
-          <p>{t('connexions.sousTitre')}</p>
+          <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+            {t('connexions.titre')}
+          </h2>
+          <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+            {t('connexions.sousTitre')}
+          </p>
         </div>
         {total > 0 && (
-          <button type="button" className="btn btn-danger" onClick={purgerTout}>
+          <Button type="button" variant="destructive" onClick={purgerTout}>
             {t('connexions.purger')}
-          </button>
+          </Button>
         )}
       </header>
 
-      {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
-      {info && <div className="alerte alerte-succes">{info}</div>}
+      {erreur && (
+        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
+          {erreur}
+        </div>
+      )}
+      {info && (
+        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
+          {info}
+        </div>
+      )}
 
-      <form className="carte filtre-bar" onSubmit={appliquerFiltres}>
-        <div className="filtre-ligne">
+      <form
+        className="mb-5 flex flex-col gap-3 rounded-xl border border-input bg-card p-[18px] shadow"
+        onSubmit={appliquerFiltres}
+      >
+        <div className="flex flex-wrap items-center gap-2">
           <input
             type="search"
+            className={CHAMP_FILTRE}
             placeholder={t('connexions.recherchePlaceholder')}
             aria-label={t('connexions.recherchePlaceholder')}
             value={filtres.recherche}
             onChange={champRecherche}
           />
-          <select aria-label={t('connexions.ariaResultat')} value={filtres.succes} onChange={champ('succes')}>
+          <select
+            className={CHAMP_FILTRE}
+            aria-label={t('connexions.ariaResultat')}
+            value={filtres.succes}
+            onChange={champ('succes')}
+          >
             <option value="">{t('connexions.tousResultats')}</option>
             <option value="true">{t('connexions.succesOption')}</option>
             <option value="false">{t('connexions.echecOption')}</option>
           </select>
         </div>
-        <div className="filtre-ligne">
-          <span className="filtre-periode-libelle">{t('connexions.periodeTitre')}</span>
-          <input type="date" aria-label={t('connexions.periodeDu')} title={t('connexions.periodeDu')}
-            value={filtres.du} onChange={champ('du')} />
-          <span className="filtre-sep" aria-hidden="true">→</span>
-          <input type="date" aria-label={t('connexions.periodeAu')} title={t('connexions.periodeAu')}
-            value={filtres.au} onChange={champ('au')} />
-          <small className="texte-muet filtre-aide">{t('connexions.periodeAide')}</small>
-          <button type="submit" className="btn btn-primaire" disabled={chargement}>{t('connexions.appliquer')}</button>
-          <button type="button" className="btn btn-secondaire" onClick={reinitialiser}>{t('connexions.reinitialiser')}</button>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="whitespace-nowrap text-[13px] font-semibold">
+            {t('connexions.periodeTitre')}
+          </span>
+          <input
+            type="date"
+            className={CHAMP_FILTRE}
+            aria-label={t('connexions.periodeDu')}
+            title={t('connexions.periodeDu')}
+            value={filtres.du}
+            onChange={champ('du')}
+          />
+          <span className="text-muted-foreground" aria-hidden="true">→</span>
+          <input
+            type="date"
+            className={CHAMP_FILTRE}
+            aria-label={t('connexions.periodeAu')}
+            title={t('connexions.periodeAu')}
+            value={filtres.au}
+            onChange={champ('au')}
+          />
+          <small className="text-xs text-muted-foreground">
+            {t('connexions.periodeAide')}
+          </small>
+          <Button type="submit" disabled={chargement}>{t('connexions.appliquer')}</Button>
+          <Button type="button" variant="secondary" onClick={reinitialiser}>
+            {t('connexions.reinitialiser')}
+          </Button>
         </div>
       </form>
 
-      <div className="carte">
-        <div className="vue-bar">
-          <span className="texte-muet">
+      <Card className="mb-5 p-[18px]">
+        <div className="mb-3.5 flex items-center justify-between gap-3">
+          <span className="text-sm text-muted-foreground">
             {t('connexions.compteur', { de: depart, a: arrivee, total })}
             {filtresActifs && (
               <>
                 {' · '}
-                <button type="button" className="lien-bouton" onClick={reinitialiser}>
+                <button
+                  type="button"
+                  className="text-primary underline underline-offset-2 hover:text-primary/80"
+                  onClick={reinitialiser}
+                >
                   {t('connexions.reinitialiser')}
                 </button>
               </>
@@ -222,78 +282,101 @@ export default function ConnexionsPage() {
         </div>
 
         {chargement ? (
-          <div className="center-page">{t('connexions.chargement')}</div>
-        ) : lignes.length === 0 ? (
-          <p className="texte-muet">{t('connexions.aucunResultat')}</p>
-        ) : (
-          <div className="table-enveloppe">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t('connexions.colDate')}</th>
-                  <th>{t('connexions.colUtilisateur')}</th>
-                  <th>{t('connexions.colEmail')}</th>
-                  <th>{t('connexions.colIp')}</th>
-                  <th>{t('connexions.colResultat')}</th>
-                  <th>{t('connexions.colMotif')}</th>
-                  <th>{t('connexions.colActions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lignes.map((ev) => (
-                  <tr key={ev.idConnexion}>
-                    <td>{formaterDate(ev.dateConnexion, langue)}</td>
-                    <td title={ev.utilisateur?.email ?? ''}>
-                      {ev.utilisateur?.nomComplet ?? (
-                        <span className="texte-muet">{t('connexions.compteSupprime')}</span>
-                      )}
-                    </td>
-                    <td>{ev.email}</td>
-                    <td>{ev.adresseIp}</td>
-                    <td>
-                      <span className={`badge ${ev.succes ? 'badge-vert' : 'badge-rouge'}`}>
-                        {ev.succes ? t('connexions.resultatSucces') : t('connexions.resultatEchec')}
-                      </span>
-                    </td>
-                    <td>{ev.motif ?? <span className="texte-muet">—</span>}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn btn-petit btn-danger"
-                        onClick={() => demanderSuppression(ev)}
-                      >
-                        {t('connexions.supprimer')}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+            {t('connexions.chargement')}
           </div>
+        ) : lignes.length === 0 ? (
+          <EmptyState
+            icon={<IconSearch size={28} />}
+            titre={t('connexions.aucunResultat')}
+          />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('connexions.colDate')}</TableHead>
+                <TableHead>{t('connexions.colUtilisateur')}</TableHead>
+                <TableHead>{t('connexions.colEmail')}</TableHead>
+                <TableHead>{t('connexions.colIp')}</TableHead>
+                <TableHead>{t('connexions.colResultat')}</TableHead>
+                <TableHead>{t('connexions.colMotif')}</TableHead>
+                <TableHead>{t('connexions.colActions')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {lignes.map((ev) => (
+                <TableRow key={ev.idConnexion}>
+                  <TableCell>{formaterDate(ev.dateConnexion, langue)}</TableCell>
+                  <TableCell title={ev.utilisateur?.email ?? ''}>
+                    {ev.utilisateur?.nomComplet ?? (
+                      <span className="text-muted-foreground">
+                        {t('connexions.compteSupprime')}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>{ev.email}</TableCell>
+                  <TableCell>{ev.adresseIp}</TableCell>
+                  <TableCell>
+                    <Badge
+                      className={
+                        ev.succes
+                          ? 'border-transparent bg-success/15 text-success hover:bg-success/15'
+                          : 'border-transparent bg-destructive/15 text-destructive hover:bg-destructive/15'
+                      }
+                    >
+                      {ev.succes
+                        ? t('connexions.resultatSucces')
+                        : t('connexions.resultatEchec')}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {ev.motif ?? <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => demanderSuppression(ev)}
+                    >
+                      {t('connexions.supprimer')}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
 
         {total > TAILLE_PAGE && (
-          <nav className="pagination" aria-label={t('connexions.titre')}>
-            <button
+          <nav
+            className="flex items-center justify-center gap-3 pt-3.5"
+            aria-label={t('connexions.titre')}
+          >
+            <Button
               type="button"
-              className="btn btn-petit btn-secondaire"
+              variant="secondary"
+              size="sm"
               onClick={() => allerPage(filtres.page - 1)}
               disabled={filtres.page === 0 || chargement}
             >
               {t('connexions.pagePrecedente')}
-            </button>
-            <span className="texte-muet">{t('connexions.pageInfo', { courante: filtres.page + 1, total: pagesTotales })}</span>
-            <button
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              {t('connexions.pageInfo', { courante: filtres.page + 1, total: pagesTotales })}
+            </span>
+            <Button
               type="button"
-              className="btn btn-petit btn-secondaire"
+              variant="secondary"
+              size="sm"
               onClick={() => allerPage(filtres.page + 1)}
               disabled={filtres.page + 1 >= pagesTotales || chargement}
             >
               {t('connexions.pageSuivante')}
-            </button>
+            </Button>
           </nav>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
