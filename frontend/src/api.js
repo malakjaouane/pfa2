@@ -79,6 +79,10 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const config = error.config;
     const isLoginCall = config?.url?.includes('/auth/login');
+    // L'amorçage CSRF ne doit jamais déclencher de refresh : la requête de
+    // refresh passerait par assurerCsrf() qui attend la promesse CSRF en
+    // cours → deadlock (aucune mutation ne repartait plus).
+    const isCsrfCall = config?.url?.includes('/auth/csrf');
 
     // 403 CSRF : le cookie XSRF-TOKEN est absent ou invalide -> on le
     // rafraîchit et on rejoue la requête une fois.
@@ -94,7 +98,7 @@ api.interceptors.response.use(
     }
 
     // 401 : tentative de renouvellement via le cookie de refresh tournant.
-    if (status === 401 && !isLoginCall && !config._retryRefresh) {
+    if (status === 401 && !isLoginCall && !isCsrfCall && !config._retryRefresh) {
       config._retryRefresh = true;
       try {
         await api.post('/auth/refresh');
@@ -171,6 +175,28 @@ export async function telechargerFichier(url, nomDefaut) {
     URL.revokeObjectURL(urlBlob);
   }
   return nom;
+}
+
+/**
+ * Exécute une mutation avec mise à jour optimiste (Phase 3).
+ *
+ * Le callback `appliquer` est exécuté immédiatement pour mettre à jour
+ * l'UI avant la réponse du serveur. Si l'appel API échoue, `annuler` est
+ * exécuté pour revenir à l'état précédent, puis l'erreur est rejetée.
+ *
+ * @param {() => Promise<any>} appel - L'appel API à effectuer.
+ * @param {() => void} appliquer - Mise à jour optimiste de l'UI.
+ * @param {() => void} annuler - Retour arrière en cas d'échec.
+ * @returns {Promise<any>} Le résultat de l'appel API.
+ */
+export async function withOptimistic(appel, appliquer, annuler) {
+  appliquer();
+  try {
+    return await appel();
+  } catch (err) {
+    annuler();
+    throw err;
+  }
 }
 
 export default api;

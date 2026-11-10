@@ -5,6 +5,8 @@ import { useI18n } from '../i18n/I18nContext';
 import { useReferentiels } from '../i18n/referentiels';
 import LanguageSwitcher from './LanguageSwitcher';
 import NotificationsBell from './NotificationsBell';
+import CommandPalette from './CommandPalette';
+import { Toaster } from './ui/use-toast';
 import { ThemeToggle } from './ui/theme-toggle';
 import { cn } from '@/lib/utils';
 import {
@@ -26,6 +28,7 @@ import {
   IconClose,
   IconSettings,
   IconAssistant,
+  IconShield,
 } from './Icons';
 
 const LINKS = [
@@ -319,6 +322,10 @@ export default function Layout() {
         </main>
       </div>
 
+      <CommandPalette />
+
+      <Toaster />
+
       {/* Barre de navigation mobile en bas */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background">
         <div className="flex items-center justify-around px-2 py-2">
@@ -326,7 +333,7 @@ export default function Layout() {
             const active = estActive(lien.to);
             const hasRight = lien.Icone === IconUsers
               ? hasPermission('UTILISATEUR_GERER')
-              : lien.Icone === IconShieldCheck
+              : lien.Icone === IconShield
               ? user?.permissions?.some((p) => ['ROLE_GERER', 'PERMISSION_GERER'].includes(p))
               : lien.Icone === IconAssistant
               ? hasPermission('IA_UTILISER')

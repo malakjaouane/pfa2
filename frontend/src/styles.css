@@ -73,7 +73,10 @@
 
 :root {
   /* ---- Charte IT6 Consulting : bordeaux principal ---- */
-  --accent: #8C2136;
+  /* Renommées (Phase 3) : --accent et --radius existent aussi dans index.css
+     (design shadcn) importé après ; sans renommage, les règles legacy
+     ci-dessous recevraient les valeurs HSL/shadcn et perdraient leur couleur. */
+  --accent-legacy: #8C2136;
   --accent-hover: #751A2D;
   --accent-fonce: #4E101E;
   --accent-clair: #B4485C;
@@ -113,21 +116,21 @@
   --orange: #B65C02;
 
   /* ---- Rayons / ombres ---- */
-  --radius: 3px;
+  --radius-legacy: 3px;
   --radius-card: 8px;
   --ombre: 0 1px 1px rgba(9, 30, 66, 0.25), 0 0 1px 0 rgba(9, 30, 66, 0.31);
   --ombre-haute: 0 8px 16px -4px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
 
   /* ---- Alias hérités (compatibilité) ---- */
   --primaire-900: var(--accent-fonce);
-  --primaire-700: var(--accent);
+  --primaire-700: var(--accent-legacy);
   --ice-cold: var(--accent-clair);
   --freeze-purple: var(--n20);
   --medium-purple: var(--accent-pale);
-  --purple-pain: var(--accent);
+  --purple-pain: var(--accent-legacy);
   --heavy-purple: var(--purple);
   --bleu-primaire: var(--n800);
-  --bleu-clair: var(--accent);
+  --bleu-clair: var(--accent-legacy);
   --cyan: var(--teal);
   --fond: var(--n20);
   --carte: var(--n0);
@@ -161,7 +164,7 @@ body {
 }
 
 a {
-  color: var(--accent);
+  color: var(--accent-legacy);
   text-decoration: none;
   font-weight: 500;
 }
@@ -238,7 +241,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 
 .nav-link {
   color: var(--n500);
-  border-radius: var(--radius);
+  border-radius: var(--radius-legacy);
   padding: 9px 12px;
   display: flex;
   align-items: center;
@@ -256,7 +259,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 
 .nav-link.active {
   background: var(--accent-pale);
-  color: var(--accent);
+  color: var(--accent-legacy);
   font-weight: 600;
 }
 
@@ -296,7 +299,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-legacy);
   color: #fff;
   font-weight: 700;
   display: flex;
@@ -400,7 +403,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   color: var(--n500);
 }
 
-.kpi-bleu .kpi-icone { background: var(--accent-pale); color: var(--accent); }
+.kpi-bleu .kpi-icone { background: var(--accent-pale); color: var(--accent-legacy); }
 .kpi-cyan .kpi-icone { background: var(--teal-bg); color: var(--teal-text); }
 .kpi-vert .kpi-icone { background: var(--green-bg); color: var(--green); }
 .kpi-ambre .kpi-icone { background: var(--yellow-bg); color: var(--orange); }
@@ -498,7 +501,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   align-items: center;
   gap: 4px;
   padding: 2px 7px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-legacy);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -553,7 +556,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 }
 
 .progress-vert { background: var(--green); }
-.progress-bleu { background: var(--accent); }
+.progress-bleu { background: var(--accent-legacy); }
 /* Le jaune est clair : le libellé doit être foncé pour rester lisible
    (contraste 8.7:1 contre 1.9:1 en blanc — exigence WCAG AA). */
 .progress-ambre { background: var(--yellow); color: var(--n900); }
@@ -568,7 +571,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   justify-content: center;
   gap: 6px;
   padding: 7px 14px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-legacy);
   border: 1px solid transparent;
   cursor: pointer;
   font-size: 13px;
@@ -584,7 +587,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-primaire {
-  background: var(--accent);
+  background: var(--accent-legacy);
   color: #fff;
 }
 
@@ -684,7 +687,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 .filtre-ligne input,
 .filtre-ligne select {
   border: 1px solid var(--bordure);
-  border-radius: var(--radius);
+  border-radius: var(--radius-legacy);
   padding: 8px 11px;
   font-size: 13px;
   background: var(--n10);
@@ -843,7 +846,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 .formulaire-inline input,
 .formulaire-inline select {
   border: 1px solid var(--bordure);
-  border-radius: var(--radius);
+  border-radius: var(--radius-legacy);
   padding: 7px 10px;
   font-size: 13px;
   font-family: inherit;
@@ -864,7 +867,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 
 .alerte {
   padding: 12px 14px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-legacy);
   margin-bottom: 14px;
   font-size: 13px;
   border: 1px solid transparent;
@@ -910,7 +913,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   justify-content: center;
   background:
     radial-gradient(1200px 600px at 80% -10%, rgba(233, 168, 180, 0.30), transparent 60%),
-    linear-gradient(150deg, var(--accent-fonce), var(--accent) 70%, #A32D45);
+    linear-gradient(150deg, var(--accent-fonce), var(--accent-legacy) 70%, #A32D45);
   padding: 24px;
 }
 
@@ -1056,7 +1059,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   background: none;
   border: none;
   font-size: 12.5px;
-  color: var(--accent);
+  color: var(--accent-legacy);
   cursor: pointer;
   text-decoration: underline;
 }
@@ -1152,7 +1155,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 .vue-toggle {
   display: inline-flex;
   border: 1px solid var(--bordure);
-  border-radius: var(--radius);
+  border-radius: var(--radius-legacy);
   overflow: hidden;
   background: var(--n20);
 }
@@ -1172,7 +1175,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 
 .vue-toggle button.actif {
   background: #fff;
-  color: var(--accent);
+  color: var(--accent-legacy);
   font-weight: 600;
   box-shadow: var(--ombre);
 }
@@ -1299,7 +1302,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 /* Colonne survolée par une carte : c'est la seule indication, en sus du
    surlignage du curseur, de l'endroit où la carte sera déposée. */
 .kanban-col.colonne-survol {
-  border-color: var(--accent);
+  border-color: var(--accent-legacy);
   border-style: dashed;
   background: var(--accent-pale);
 }
@@ -1337,7 +1340,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
 }
 
 /* La création est le seul événement sans prédécesseur : on le souligne. */
-.historique-item:first-child::before { background: var(--accent); }
+.historique-item:first-child::before { background: var(--accent-legacy); }
 
 .historique-date {
   grid-column: 1;
@@ -1415,7 +1418,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   border: 0;
   padding: 0;
   font: inherit;
-  color: var(--accent);
+  color: var(--accent-legacy);
   cursor: pointer;
   text-decoration: underline;
 }
@@ -1431,7 +1434,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   padding: 4px 9px;
   background: var(--accent-pale);
   color: var(--accent-fonce);
-  border-radius: var(--radius);
+  border-radius: var(--radius-legacy);
   font-size: 12px;
   font-weight: 600;
 }
@@ -1579,7 +1582,7 @@ mark {
   top: 50%;
   transform: translateY(-50%);
   height: 22px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-legacy);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3397,7 +3400,7 @@ mark {
 }
 .hero-chip:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); }
 .hero-chip-ambre { background: #FFF4E0; color: #8A5A00; }
-.hero-chip-rouge { background: #FBE9ED; color: var(--accent); }
+.hero-chip-rouge { background: #FBE9ED; color: var(--accent-legacy); }
 .hero-chip-fleche { opacity: 0.6; }
 [dir='rtl'] .hero-chip-fleche { transform: scaleX(-1); }
 .dashboard-hero-actions {
@@ -3560,7 +3563,7 @@ mark {
 }
 
 .langue-item:hover { background: var(--n20); }
-.langue-item.actif { background: var(--accent-pale); color: var(--accent); font-weight: 600; }
+.langue-item.actif { background: var(--accent-pale); color: var(--accent-legacy); font-weight: 600; }
 
 .langue-item-code {
   display: inline-flex;
@@ -3575,7 +3578,7 @@ mark {
   letter-spacing: 0.4px;
 }
 
-.langue-item.actif .langue-item-code { background: var(--accent); color: #fff; }
+.langue-item.actif .langue-item-code { background: var(--accent-legacy); color: #fff; }
 
 /* Variante vitrine (page d'accueil / connexion sur fond clair) */
 .langue-vitrine .langue-bouton {
@@ -3627,7 +3630,7 @@ mark {
 
 .topbar-recherche:focus-within {
   background: #fff;
-  border-color: var(--accent);
+  border-color: var(--accent-legacy);
   box-shadow: 0 0 0 2px var(--accent-pale);
 }
 
@@ -3755,7 +3758,7 @@ mark {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--accent);
+  color: var(--accent-legacy);
   margin-bottom: 6px;
 }
 
@@ -3889,7 +3892,7 @@ mark {
 }
 
 .champ-recherche:focus-within {
-  border-color: var(--accent);
+  border-color: var(--accent-legacy);
   box-shadow: 0 0 0 2px var(--accent-pale);
 }
 
@@ -3970,7 +3973,7 @@ mark {
 }
 
 .surveillance-titre a { font-weight: 600; color: var(--n800); font-size: 14px; }
-.surveillance-titre a:hover { color: var(--accent); text-decoration: none; }
+.surveillance-titre a:hover { color: var(--accent-legacy); text-decoration: none; }
 
 .surveillance-meta {
   display: flex;
@@ -4461,14 +4464,14 @@ a:hover { color: #00566D; }
 }
 
 .ia-message.utilisateur .ia-bulle {
-  background: var(--accent);
+  background: var(--accent-legacy);
   color: #fff;
 }
 
 .ia-message.assistant .ia-bulle svg {
   flex: none;
   margin-top: 3px;
-  color: var(--accent);
+  color: var(--accent-legacy);
 }
 
 /* Indicateur � l'assistant r�dige� � (trois points). */
@@ -4521,7 +4524,7 @@ a:hover { color: #00566D; }
 
 .ia-suggestion:hover:not(:disabled) {
   background: var(--accent-pale);
-  border-color: var(--accent);
+  border-color: var(--accent-legacy);
 }
 
 .ia-suggestion:disabled {
@@ -4567,7 +4570,7 @@ a:hover { color: #00566D; }
 
 /* R�sum� IA sur la fiche initiative. */
 .carte-resume-ia {
-  border-inline-start: 3px solid var(--accent);
+  border-inline-start: 3px solid var(--accent-legacy);
 }
 
 .carte-resume-ia h3 {
@@ -4576,7 +4579,7 @@ a:hover { color: #00566D; }
   gap: 8px;
   margin: 0 0 10px;
   font-size: 1rem;
-  color: var(--accent);
+  color: var(--accent-legacy);
 }
 
 .carte-resume-ia p {

@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import api, { messageErreur } from '../api';
 import { useI18n } from '../i18n/I18nContext';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 
 /**
  * Assistant d'installation en 3 étapes (Phase 2B5) :
@@ -12,6 +16,9 @@ import { useI18n } from '../i18n/I18nContext';
  *
  * A la fin, le drapeau localStorage onboardingDone est leve et
  * l'utilisateur est redirige vers le tableau de bord.
+ *
+ * Migree en Tailwind + shadcn/ui (Phase 3). Les cles i18n sont conservees
+ * telles quelles pour les tests vitest (t: (k) => k).
  */
 export default function OnboardingPage() {
   const { t } = useI18n();
@@ -115,21 +122,27 @@ export default function OnboardingPage() {
 
   const allerDashboard = () => navigate('/dashboard', { replace: true });
 
+  const titre = t('onboarding.titre');
+  const sousTitre = t('onboarding.sousTitre');
+
   if (termine) {
     return (
-      <div className="page">
-        <header className="page-entete">
-          <div>
-            <h2>{t('onboarding.termine')}</h2>
-            <p>{t('onboarding.bravo')}</p>
-          </div>
-        </header>
-        <div className="carte formulaire">
-          <p>{t('onboarding.etape3Desc')}</p>
-          <button className="btn btn-primaire" onClick={allerDashboard}>
-            {t('onboarding.allerDashboard')}
-          </button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md shadow-xl">
+          <CardHeader className="text-center">
+            <CardTitle>{t('onboarding.termine')}</CardTitle>
+            <CardDescription>{t('onboarding.bravo')}</CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p>{t('onboarding.etape3Desc')}</p>
+            <Button
+              className="mt-4"
+              onClick={allerDashboard}
+            >
+              {t('onboarding.allerDashboard')}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -141,106 +154,159 @@ export default function OnboardingPage() {
   ][etape - 1];
 
   return (
-    <div className="page">
-      <header className="page-entete">
+    <div className="min-h-screen bg-background p-4">
+      <header className="mb-6">
         <div>
-          <h2>{t('onboarding.titre')}</h2>
-          <p>{t('onboarding.sousTitre')}</p>
+          <h1 className="text-2xl font-semibold">{titre}</h1>
+          <p className="text-muted-foreground">{sousTitre}</p>
         </div>
       </header>
 
-      {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
+      {erreur && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/50 p-3 text-destructive text-sm mb-4">
+          {erreur}
+        </div>
+      )}
 
-      <div className="onboarding-progres">
+      <div className="flex items-center justify-between mb-6">
         {[1, 2, 3].map((n) => (
-          <div key={n} className={`etape ${n === etape ? 'active' : ''} ${n < etape ? 'faite' : ''}`}>
-            <span className="etape-numero">{n}</span>
-            <span className="etape-libelle">{etapeCourante.numero === n ? etapeCourante.titre : ''}</span>
+          <div
+            key={n}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              n === etape
+                ? 'bg-primary text-primary-foreground'
+                : n < etape
+                  ? 'bg-muted text-muted-foreground'
+                  : 'bg-background text-muted-foreground'
+            }`}
+          >
+            <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+              n === etape
+                ? 'bg-primary-foreground text-primary'
+                : n < etape
+                  ? 'bg-primary text-primary-foreground'
+                  : 'border border-input'
+            }`}>{n}</span>
+            <span>{etapeCourante.numero === n ? etapeCourante.titre : ''}</span>
           </div>
         ))}
       </div>
 
-      <div className="carte formulaire">
-        <p className="etape-desc">{etapeCourante.texte}</p>
+      <Card>
+        <CardHeader>
+          <CardTitle>{etapeCourante.titre}</CardTitle>
+          <CardDescription>{etapeCourante.texte}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Etape 1 : organisation (deja creee a l'inscription) */}
+          {etape === 1 && (
+            <>
+              <p>{t('onboarding.etape1Desc')}</p>
+              <p className="text-sm text-muted-foreground"><em>{user?.email}</em></p>
+            </>
+          )}
 
-        {/* Etape 1 : organisation (deja creee a l'inscription) */}
-        {etape === 1 && (
-          <>
-            <p>{t('onboarding.etape1Desc')}</p>
-            <p><em>{user?.email}</em></p>
-          </>
-        )}
+          {/* Etape 2 : creer la premiere initiative */}
+          {etape === 2 && (
+            <form onSubmit={creerInitiative} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="code">{t('onboarding.initiative')}</Label>
+                  <Input
+                    id="code"
+                    value={init.code}
+                    onChange={set('init', 'code')}
+                    placeholder="DIG-CLI-001"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nom">{t('initiativeForm.nom')}</Label>
+                  <Input
+                    id="nom"
+                    value={init.nom}
+                    onChange={set('init', 'nom')}
+                    placeholder="Ex. Digitalisation client"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">{t('initiativeForm.description')}</Label>
+                <textarea
+                  id="description"
+                  value={init.description}
+                  onChange={set('init', 'description')}
+                  rows={3}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+              <div className="flex items-center justify-between space-y-0 md:space-y-0 md:flex-row">
+                <Button type="button" variant="outline" disabled={chargement} onClick={precedent}>
+                  {t('initiativeForm.annuler')}
+                </Button>
+                <Button type="submit" className="ml-4" disabled={chargement}>
+                  {chargement ? t('initiativeForm.enregistrement') : t('onboarding.creerInit')}
+                </Button>
+              </div>
+            </form>
+          )}
 
-        {/* Etape 2 : creer la premiere initiative */}
-        {etape === 2 && (
-          <form onSubmit={creerInitiative}>
-            <div className="form-grille">
-              <div className="champ">
-                <label>{t('onboarding.initiative')}</label>
-                <input value={init.code} onChange={set('init', 'code')} placeholder="DIG-CLI-001" required />
+          {/* Etape 3 : inviter un collegue */}
+          {etape === 3 && (
+            <form onSubmit={inviter} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="inviteEmail">{t('onboarding.invite')}</Label>
+                  <Input
+                    id="inviteEmail"
+                    type="email"
+                    value={invite.email}
+                    onChange={set('invite', 'email')}
+                    placeholder="colleague@example.com"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="inviteRole">{t('onboarding.role')}</Label>
+                  <select
+                    id="inviteRole"
+                    value={invite.idRole}
+                    onChange={set('invite', 'idRole')}
+                    required
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">—</option>
+                    {roles.map((r) => (
+                      <option key={r.idRole} value={r.idRole}>{r.libelle || r.code}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="champ champ-plein">
-                <label>{t('initiativeForm.nom')}</label>
-                <input value={init.nom} onChange={set('init', 'nom')} placeholder="Ex. Digitalisation client" required />
+              <div className="flex items-center justify-between space-y-0 md:space-y-0 md:flex-row">
+                <Button type="button" variant="outline" onClick={precedent}>
+                  {t('initiativeForm.annuler')}
+                </Button>
+                <Button type="submit" className="ml-4" disabled={chargement}>
+                  {chargement ? t('onboarding.enCours') : t('onboarding.suivant')}
+                </Button>
               </div>
-              <div className="champ champ-plein">
-                <label>{t('initiativeForm.description')}</label>
-                <textarea value={init.description} onChange={set('init', 'description')} rows={3} />
-              </div>
-            </div>
-            <div className="form-actions">
-              <button type="button" className="btn btn-secondaire" disabled={chargement} onClick={precedent}>
-                {t('initiativeForm.annuler')}
-              </button>
-              <button type="submit" className="btn btn-primaire" disabled={chargement}>
-                {chargement ? t('initiativeForm.enregistrement') : t('onboarding.creerInit')}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Etape 3 : inviter un collegue */}
-        {etape === 3 && (
-          <form onSubmit={inviter}>
-            <div className="form-grille">
-              <div className="champ">
-                <label>{t('onboarding.invite')}</label>
-                <input type="email" value={invite.email} onChange={set('invite', 'email')} placeholder="colleague@example.com" required />
-              </div>
-              <div className="champ">
-                <label>{t('onboarding.role')}</label>
-                <select value={invite.idRole} onChange={set('invite', 'idRole')} required>
-                  <option value="">—</option>
-                  {roles.map((r) => (
-                    <option key={r.idRole} value={r.idRole}>{r.libelle || r.code}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="form-actions">
-              <button type="button" className="btn btn-secondaire" disabled={chargement} onClick={precedent}>
-                {t('initiativeForm.annuler')}
-              </button>
-              <button type="submit" className="btn btn-primaire" disabled={chargement}>
-                {chargement ? t('inscription.enCours') : t('onboarding.inviter')}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-
-      <div className="form-actions" style={{ marginTop: 16 }}>
-        {etape > 1 && (
-          <button type="button" className="btn btn-secondaire" onClick={precedent}>
-            {t('initiativeForm.annuler')}
-          </button>
-        )}
-        {etape < 3 && (
-          <button type="button" className="btn btn-primaire" onClick={suivant}>
-            {t('onboarding.suivant')}
-          </button>
-        )}
-      </div>
+            </form>
+          )}
+        </CardContent>
+        <CardFooter className="flex items-center justify-between space-y-0 md:space-y-0 md:flex-row">
+          {etape > 1 && (
+            <Button type="button" variant="outline" onClick={precedent}>
+              {t('initiativeForm.annuler')}
+            </Button>
+          )}
+          {etape < 3 && (
+            <Button type="button" onClick={suivant}>
+              {t('onboarding.suivant')}
+            </Button>
+          )}
+        </CardFooter>
+      </Card>
     </div>
   );
 }

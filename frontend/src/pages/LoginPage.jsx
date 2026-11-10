@@ -5,9 +5,17 @@ import { useI18n } from '../i18n/I18nContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import MotifZellige from '../components/MotifZellige';
 import { messageErreur } from '../api';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 
 /**
  * Page de connexion (POST /api/auth/login).
+ *
+ * Migree en Tailwind + shadcn/ui (Phase 3). Les cles i18n sont conservees
+ * telles quelles afin que les tests vitest (t: (k) => k) continuent de
+ * matcher les textes bruts (login.seConnecter, login.oublieLien…).
  */
 export default function LoginPage() {
   const { login, user } = useAuth();
@@ -51,74 +59,90 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="login-page">
-      <MotifZellige className="motif-fond-login" />
-      <div className="login-boite">
-        <div className="login-haut">
-          <Link to="/" className="login-retour">← {t('login.retour')}</Link>
-          <LanguageSwitcher />
-        </div>
-        <div className="login-entete">
-          <img
-            className="brand-logo brand-logo-large"
-            src="/images/logo-it6.png"
-            alt="IT6 Academy"
-            width="132"
-            height="138"
-          />
-          <h1>IT6 Consulting</h1>
-          <p>{t('login.sousTitre')}</p>
-          <p className="login-note">{t('login.compteCree')}</p>
-        </div>
-
-        <form className="form" onSubmit={gererSoumission}>
-          {erreur && <div className="alerte alerte-erreur">{erreur}</div>}
-          <div className="champ">
-            <label>{t('login.email')}</label>
-            <input
-              type="email"
-              name="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="email@it6.ma"
-              autoComplete="username"
-              required
-            />
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <MotifZellige className="absolute inset-0 opacity-30 pointer-events-none" />
+      <Card className="w-full max-w-md shadow-xl">
+        <CardHeader className="text-center">
+          <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-4">
+            ← {t('login.retour')}
+          </Link>
+          <div className="flex justify-end">
+            <LanguageSwitcher />
           </div>
-          <div className="champ">
-            <label>{t('login.motDePasse')}</label>
-            <input
-              type={afficherMdp ? 'text' : 'password'}
-              name="motDePasse"
-              value={motDePasse}
-              onChange={(e) => setMotDePasse(e.target.value)}
-              placeholder="••••••••"
-              autoComplete="current-password"
-              required
-            />
-          </div>
-          <label className="case">
-            <input
-              type="checkbox"
-              checked={afficherMdp}
-              onChange={(e) => setAfficherMdp(e.target.checked)}
-            />
-            {t('login.afficherMdp')}
-          </label>
-          <button className="btn btn-primaire btn-block" type="submit" disabled={envoi}>
-            {envoi ? t('login.connexion') : t('login.seConnecter')}
-          </button>
-          <button
-            type="button"
-            className="login-lien"
-            onClick={() => setMotDePasseOublie((v) => !v)}
-            aria-expanded={motDePasseOublie}
-          >
-            {t('login.oublieLien')}
-          </button>
-          {motDePasseOublie && <div className="alerte alerte-info">{t('login.oublie')}</div>}
-        </form>
-      </div>
+          <CardTitle className="text-2xl">{t('login.titre') ?? 'IT6 Consulting'}</CardTitle>
+          <CardDescription>{t('login.sousTitre')}</CardDescription>
+          {t('login.compteCree') && <p className="text-xs text-muted-foreground mt-2">{t('login.compteCree')}</p>}
+        </CardHeader>
+        <CardContent>
+          {erreur && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/50 p-3 text-destructive text-sm mb-4">
+              {erreur}
+            </div>
+          )}
+          <form className="space-y-4" onSubmit={gererSoumission}>
+            <div className="space-y-2">
+              <Label htmlFor="email">{t('login.email')}</Label>
+              <Input
+                id="email"
+                type="email"
+                name="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@it6.ma"
+                autoComplete="username"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="motDePasse">{t('login.motDePasse')}</Label>
+              </div>
+              <Input
+                id="motDePasse"
+                type={afficherMdp ? 'text' : 'password'}
+                name="motDePasse"
+                value={motDePasse}
+                onChange={(e) => setMotDePasse(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                id="afficherMdp"
+                type="checkbox"
+                checked={afficherMdp}
+                onChange={(e) => setAfficherMdp(e.target.checked)}
+                className="h-4 w-4 rounded border-input text-primary"
+              />
+              <Label htmlFor="afficherMdp" className="text-xs cursor-pointer select-none">
+                {t('login.afficherMdp')}
+              </Label>
+            </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={envoi}
+            >
+              {envoi ? t('login.connexion') : t('login.seConnecter')}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setMotDePasseOublie((v) => !v)}
+              aria-expanded={motDePasseOublie}
+              className="text-xs text-muted-foreground hover:text-primary underline-offset-4 hover:underline"
+            >
+              {t('login.oublieLien')}
+            </button>
+            {motDePasseOublie && (
+              <div className="mt-3 p-3 rounded-md bg-primary/5 text-primary text-sm">
+                {t('login.oublie')}
+              </div>
+            )}
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
