@@ -35,7 +35,7 @@ export default function ImportInitiativesPage() {
     const formData = new FormData();
     formData.append('fichier', fichier);
     try {
-      const res = await api.post('/api/initiatives/import', formData, {
+      const res = await api.post('/initiatives/import', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setResultat(res.data);

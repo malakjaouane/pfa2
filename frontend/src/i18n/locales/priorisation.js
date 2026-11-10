@@ -45,7 +45,7 @@ export const ar = {
   'priorisation.triPriorisation': 'فرز حسب النتيجة',
   'priorisation.voirMatrice': 'عرض مصفوفة الأولوية',
   'priorisation.aucuneInitiative': 'لا توجد مبادرة مع هذا الزوج من القيمة / الجهد.',
-  'priorisation.legendaScore': 'النتيجة = القيمة × 25 ÷ الجهد (من 1 إلى 25). كلما ارتفع الناتج، زادت أولوية المبادرة.',
+  'priorisation.legendeScore': 'النتيجة = القيمة × 25 ÷ الجهد (من 1 إلى 25). كلما ارتفع الناتج، زادت أولوية المبادرة.',
   'priorisation.initiatives': '{n} مبادرة',
   'priorisation.initiatives_plural': '{n} مبادرات'
 };
@@ -61,7 +61,7 @@ export const es = {
   'priorisation.triPriorisation': 'Por puntuación de prioridad',
   'priorisation.voirMatrice': 'Ver matriz de priorización',
   'priorisation.aucuneInitiative': 'No hay ninguna iniciativa con este par de valor / esfuerzo.',
-  'priorisation.legendaScore': 'Puntuación = Valor × 25 ÷ Esfuerzo (1 a 25). Cuanto mayor sea la puntuación, más prioritaria es la iniciativa.',
+  'priorisation.legendeScore': 'Puntuación = Valor × 25 ÷ Esfuerzo (1 a 25). Cuanto mayor sea la puntuación, más prioritaria es la iniciativa.',
   'priorisation.initiatives': '{n} iniciativa',
   'priorisation.initiatives_plural': '{n} iniciativas'
 };

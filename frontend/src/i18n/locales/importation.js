@@ -1,0 +1,15 @@
+export default {
+  titre: 'Import d’initiatives',
+  sousTitre: 'Importez plusieurs initiatives depuis un fichier CSV ou Excel',
+  importerFichier: 'Importer un fichier',
+  enCours: 'Importation en cours…',
+  importer: 'Importer',
+  formats: 'Formats acceptés : .csv, .xlsx, .xls',
+  resultat: 'Résultat de l’importation',
+  total: 'Total',
+  importees: 'Importées',
+  ignorees: 'Ignorées',
+  erreurs: 'Erreurs',
+  succes: 'Importation terminée avec succès',
+  erreur: 'Erreur lors de l’importation',
+};

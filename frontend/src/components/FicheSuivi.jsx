@@ -333,7 +333,7 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
           <h3 className="text-base font-semibold text-foreground">{t('suivi.risques.titre')}</h3>
           {risques.length > 0 && (
             <Badge
-              variant={risques.some((r) => r.niveau === 'ROUGE') ? 'destructive' : 'success'}
+              variant={risques.some((r) => r.niveau === 'ROUGE') ? 'destructive' : 'secondary'}
               className={risques.some((r) => r.niveau === 'ROUGE') ? 'bg-destructive/15 text-destructive' : 'bg-success/15 text-success'}
             >
               {risques.length}

@@ -8,7 +8,8 @@ import NotificationsBell from './NotificationsBell';
 import CommandPalette from './CommandPalette';
 import { Toaster } from './ui/use-toast';
 import { ThemeToggle } from './ui/theme-toggle';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/utils';
+import { Separator } from './ui/separator';
 import {
   IconDashboard,
   IconUser,

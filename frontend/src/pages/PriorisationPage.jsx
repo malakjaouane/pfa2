@@ -109,7 +109,7 @@ export default function PriorisationPage() {
       </header>
 
       <p className="mb-6 text-sm text-muted-foreground max-w-[1240px]">
-        {t('priorisation.legendaScore')}
+        {t('priorisation.legendeScore')}
       </p>
 
       <div className="grid grid-cols-6 gap-1">

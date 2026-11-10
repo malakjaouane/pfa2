@@ -84,7 +84,7 @@ export default function AssistantPage() {
     try {
       await api.post('/ia/creer-initiative/confirmer', initiativeDepuisTexte);
       toast({ title: t('assistant.creerDepuisTexteSuccès'), variant: 'success' });
-      setInitiativeDesdeTexte(null);
+      setInitiativeDepuisTexte(null);
       setTexteCreation('');
     } catch (err) {
       toast({ title: messageErreur(err), variant: 'destructive' });
@@ -249,7 +249,7 @@ export default function AssistantPage() {
                     id="creerDescription"
                     rows={3}
                     value={initiativeDepuisTexte.description || ''}
-                    onChange={(e) => setInitiativeDesdeTexte({ ...initiativeDesdeTexte, description: e.target.value })}
+                    onChange={(e) => setInitiativeDepuisTexte({ ...initiativeDesdeTexte, description: e.target.value })}
                     className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
@@ -259,7 +259,7 @@ export default function AssistantPage() {
                     id="creerDateDebut"
                     type="date"
                     value={initiativeDesdeTexte.dateDebut || ''}
-                    onChange={(e) => setInitiativeDesdeTexte({ ...initiativeDesdeTexte, dateDebut: e.target.value })}
+                    onChange={(e) => setInitiativeDepuisTexte({ ...initiativeDesdeTexte, dateDebut: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -268,7 +268,7 @@ export default function AssistantPage() {
                     id="creerDateFin"
                     type="date"
                     value={initiativeDesdeTexte.dateFinPrevue || ''}
-                    onChange={(e) => setInitiativeDesdeTexte({ ...initiativeDesdeTexte, dateFinPrevue: e.target.value })}
+                    onChange={(e) => setInitiativeDepuisTexte({ ...initiativeDesdeTexte, dateFinPrevue: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -278,7 +278,7 @@ export default function AssistantPage() {
                     type="number"
                     step="0.01"
                     value={initiativeDesdeTexte?.budget || ''}
-                    onChange={(e) => setInitiativeDesdeTexte({ ...initiativeDesdeTexte, budget: e.target.value ? Number(e.target.value) : undefined })}
+                    onChange={(e) => setInitiativeDepuisTexte({ ...initiativeDesdeTexte, budget: e.target.value ? Number(e.target.value) : undefined })}
                   />
                 </div>
               </div>
@@ -286,7 +286,7 @@ export default function AssistantPage() {
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => setInitiativeDesdeTexte(null)}
+                  onClick={() => setInitiativeDepuisTexte(null)}
                 >
                   {t('assistant.creerDesdeTexteAnnuler')}
                 </Button>
