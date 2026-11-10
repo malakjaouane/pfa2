@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { forwardRef } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 
 const Label = forwardRef(({ className, ...props }, ref) => (
   <label
@@ -15,3 +15,5 @@ const Label = forwardRef(({ className, ...props }, ref) => (
 Label.displayName = 'Label';
 
 export { Label };
+
+

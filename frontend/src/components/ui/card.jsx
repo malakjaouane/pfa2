@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 import { forwardRef } from 'react';
 
 const Card = forwardRef(({ className, ...props }, ref) => (
@@ -62,3 +62,5 @@ const CardFooter = forwardRef(({ className, ...props }, ref) => (
 CardFooter.displayName = 'CardFooter';
 
 export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter };
+
+

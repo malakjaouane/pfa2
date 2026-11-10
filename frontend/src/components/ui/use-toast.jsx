@@ -1,31 +1,28 @@
 import { createContext, useCallback, useContext, useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 
-export type ToastVariant = 'default' | 'destructive' | 'success' | 'info';
-
-export interface ToastProps {
-  id: string;
-  title?: string;
-  description?: string;
-  variant?: ToastVariant;
-  action?: React.ReactNode;
-  duration?: number;
-}
-
-const variants: Record<ToastVariant, string> = {
-  default: 'bg-background text-foreground border border-input',
-  destructive: 'border-destructive/50 text-destructive dark:bg-destructive dark:text-destructive-foreground',
-  success: 'bg-green-50 text-green-900 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800/50',
-  info: 'bg-blue-50 text-blue-900 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/50',
+export const ToastVariant = {
+  DEFAULT: 'default',
+  DESTRUCTIVE: 'destructive',
+  SUCCESS: 'success',
+  INFO: 'info'
 };
 
-const ToastContext = createContext<{
-  toasts: ToastProps[];
-  toast: (props: Omit<ToastProps, 'id'>) => string;
-  dismiss: (id: string) => void;
-} | null>(null);
+export const ToastProps = {};
+
+const variants = {
+  default: 'bg-background text-foreground border border-input',
+  destructive:
+    'border-destructive/50 text-destructive dark:bg-destructive dark:text-destructive-foreground',
+  success:
+    'bg-green-50 text-green-900 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800/50',
+  info:
+    'bg-blue-50 text-blue-900 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/50'
+};
+
+const ToastContext = createContext(null);
 
 export function useToast() {
   const context = useContext(ToastContext);
@@ -41,26 +38,13 @@ function genId() {
 
 const TOAST_LIMIT = 5;
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = useState<ToastProps[]>([]);
+export function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
 
   const toast = useCallback(
-    ({
-      title,
-      description,
-      variant = 'default',
-      action,
-      duration = 4000,
-    }: Omit<ToastProps, 'id'>) => {
+    ({ title, description, variant = 'default', action, duration = 4000 }) => {
       const newId = genId();
-      const newToast: ToastProps = {
-        id: newId,
-        title,
-        description,
-        variant,
-        action,
-        duration,
-      };
+      const newToast = { id: newId, title, description, variant, action, duration };
       setToasts((ts) => [newToast, ...ts].slice(0, TOAST_LIMIT));
       if (duration > 0) {
         setTimeout(() => {
@@ -72,7 +56,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  const dismiss = useCallback((id: string) => {
+  const dismiss = useCallback((id) => {
     setToasts((ts) => ts.filter((t) => t.id !== id));
   }, []);
 
@@ -83,7 +67,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function Toast({ id, title, description, variant = 'default', action }: ToastProps) {
+export function Toast({ id, title, description, variant = 'default', action }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -98,12 +82,20 @@ export function Toast({ id, title, description, variant = 'default', action }: T
         <div className="flex items-start gap-3">
           {variant === 'success' && (
             <svg className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                clipRule="evenodd"
+              />
             </svg>
           )}
           {variant === 'destructive' && (
             <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 01-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 01-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                clipRule="evenodd"
+              />
             </svg>
           )}
           <div className="text-sm font-medium">{title}</div>
@@ -125,7 +117,7 @@ export function Toast({ id, title, description, variant = 'default', action }: T
   );
 }
 
-export function Toaster({ className }: { className?: string }) {
+export function Toaster({ className }) {
   const { toasts } = useContext(ToastContext);
   return (
     <div

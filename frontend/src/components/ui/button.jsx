@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { forwardRef } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 
 const Button = forwardRef(({ className, variant, size, ...props }, ref) => {
   const variants = {
@@ -37,3 +37,5 @@ const Button = forwardRef(({ className, variant, size, ...props }, ref) => {
 Button.displayName = 'Button';
 
 export { Button };
+
+
