@@ -188,10 +188,22 @@ public class InitiativeController {
     /**
      * Vérifie que l'utilisateur connecté peut modifier l'initiative
      * (responsable ou membre contributeur/responsable). Sinon 403.
+     *
+     * <p>L'administrateur est exempté : la permission
+     * {@code INITIATIVE_MODIFIER} (exigée par {@code SecurityConfig}) vaut
+     * pour toutes les initiatives de son organisation — le contrôle
+     * d'appartenance est un raffinement « moindre privilège » qui ne
+     * restreint que les autres rôles (un responsable ne modifie que ses
+     * initiatives ou celles dont il est membre).</p>
      */
     private void verifierEcriture(Long idInitiative) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getName() == null) {
+            return;
+        }
+        boolean administrateur = auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (administrateur) {
             return;
         }
         Optional<Utilisateur> opt = utilisateurRepository.findByEmail(auth.getName());
