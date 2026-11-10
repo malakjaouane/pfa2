@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
@@ -20,21 +21,23 @@ import { cn } from '../lib/utils';
  */
 export default function CommandPalette() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [highlighted, setHighlighted] = useState(0);
   const inputRef = useRef(null);
 
+  // Les libellés sont encore figés en français : l'i18n complète de la
+  // palette fait partie du lot « Ctrl+K enrichi ».
   const items = [
     { label: 'Tableau de bord', href: '/dashboard', icon: 'LayoutDashboard' },
     { label: 'Mes initiatives', href: '/initiatives', icon: 'List' },
-    { label: 'Nouvelle initiative', href: '/initiatives/creer', icon: 'Plus' },
+    { label: 'Nouvelle initiative', href: '/initiatives/nouvelle', icon: 'Plus' },
     { label: 'Mon espace', href: '/mon-espace', icon: 'User' },
     { label: 'Demandes', href: '/demandes', icon: 'Mail' },
     { label: 'Risques', href: '/risques', icon: 'AlertTriangle' },
-    { label: 'Historique', href: '/historique', icon: 'Clock' },
-    { label: 'Notifications', href: '/notifications', icon: 'Bell' },
-    { label: 'Déconnexion', href: '/logout', icon: 'LogOut' }
+    { label: 'Activité et sécurité', href: '/activite', icon: 'Clock' },
+    { label: 'Déconnexion', action: 'logout', icon: 'LogOut' }
   ];
 
   const filtered = items.filter((item) =>
@@ -53,6 +56,17 @@ export default function CommandPalette() {
     setQuery('');
     setHighlighted(0);
   }, []);
+
+  /** Exécute l'item sélectionné : navigation ou action (déconnexion). */
+  const executer = useCallback((item) => {
+    if (item.action === 'logout') {
+      logout();
+      navigate('/login');
+    } else {
+      navigate(item.href);
+    }
+    close();
+  }, [logout, navigate, close]);
 
   useEffect(() => {
     window.addEventListener('keydown', openPalette);
@@ -78,14 +92,13 @@ export default function CommandPalette() {
       }
       if (e.key === 'Enter' && filtered[highlighted]) {
         e.preventDefault();
-        navigate(filtered[highlighted].href);
-        close();
+        executer(filtered[highlighted]);
         return;
       }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [open, filtered, highlighted, navigate, close]);
+  }, [open, filtered, highlighted, executer, close]);
 
   useEffect(() => {
     if (open && inputRef.current) {
@@ -100,10 +113,10 @@ export default function CommandPalette() {
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-palette flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onPointerDown={close}
     >
-      <div className="relative z-[101] w-full max-w-md mx-4">
+      <div className="relative w-full max-w-md mx-4">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between bg-card p-4 rounded-xl border border-input shadow-2xl">
             <h2 className="text-sm font-semibold">Commandes rapides</h2>
@@ -134,10 +147,7 @@ export default function CommandPalette() {
               filtered.map((item, index) => (
                 <button
                   key={item.label}
-                  onClick={() => {
-                    navigate(item.href);
-                    close();
-                  }}
+                  onClick={() => executer(item)}
                   className={cn(
                     'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
                     highlighted === index
