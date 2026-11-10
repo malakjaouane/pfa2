@@ -39,8 +39,7 @@ import static org.springframework.http.HttpStatus.*;
  *   <li>Retards : initiatives en retard avec date de fin prevue.</li>
  *   <li>Risques critiques : score >= 15 (bande rouge).</li>
  *   <li>Budget : total budgete vs total depense REEL (registre des
- *       depenses), avec ecart. Le "consomme" calcule au prorata de
- *       l'avancement est clairement marque comme estimation.</li>
+ *       depenses), avec ecart.</li>
  * </ul>
  *
  * Toutes les donnees sont filtrees par organisation courante (contexte
@@ -124,7 +123,6 @@ public class ExportComitePiloteService {
             stream.showText("Organisation : " + OrganisationContext.getId());
             stream.endText();
 
-            // Initiatives par statut
             stream.newLineAtOffset(0, -40);
             stream.setFont(PDType1Font.HELVETICA_BOLD, 12);
             stream.showText("Initiatives par statut :");
@@ -140,7 +138,6 @@ public class ExportComitePiloteService {
             }
             stream.endText();
 
-            // Retards
             stream.newLineAtOffset(0, -40);
             stream.setFont(PDType1Font.HELVETICA_BOLD, 12);
             stream.showText("Initiatives en retard :");
@@ -160,7 +157,6 @@ public class ExportComitePiloteService {
             }
             stream.endText();
 
-            // Risques critiques
             stream.newLineAtOffset(0, -40);
             stream.setFont(PDType1Font.HELVETICA_BOLD, 12);
             stream.showText("Risques critiques (score >= 15) :");
@@ -177,7 +173,6 @@ public class ExportComitePiloteService {
             }
             stream.endText();
 
-            // Budget
             stream.newLineAtOffset(0, -40);
             stream.setFont(PDType1Font.HELVETICA_BOLD, 12);
             stream.showText("Budget :");
@@ -196,7 +191,7 @@ public class ExportComitePiloteService {
             stream.newLineAtOffset(0, -20);
             stream.showText("  Ecart : " + String.format("%.2f", budgetTotal - depensesTotales) + " MAD");
             stream.newLineAtOffset(0, -20);
-            stream.showText("  (Le montant \"consomme\" calcule au prorata de l'avancement est");
+            stream.showText("  (Le montant consomme calcule au prorata de l'avancement est");
             stream.newLineAtOffset(0, -15);
             stream.showText("   une estimation. Les depenses reelles proviennent du registre.)");
             stream.endText();
@@ -256,7 +251,7 @@ public class ExportComitePiloteService {
             sb.append("  Budget total : ").append(String.format("%.2f", budgetTotal)).append(" MAD\n");
             sb.append("  Depenses reelles : ").append(String.format("%.2f", depensesTotales)).append(" MAD\n");
             sb.append("  Ecart : ").append(String.format("%.2f", budgetTotal - depensesTotales)).append(" MAD\n");
-            sb.append("  (Le montant \"consomme\" calcule au prorata de l'avancement est\n");
+            sb.append("  (Le montant consomme calcule au prorata de l'avancement est\n");
             sb.append("   une estimation. Les depenses reelles proviennent du registre.)");
 
             XSLFTextShape body = slide.createTextBox();
