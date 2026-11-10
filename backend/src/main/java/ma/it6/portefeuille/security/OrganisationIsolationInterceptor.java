@@ -3,7 +3,8 @@ package ma.it6.portefeuille.security;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.hibernate.Session;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
@@ -24,11 +25,27 @@ import jakarta.persistence.EntityManager;
  *
  * <p>Le filtre est desactive et le contexte nettoye a la fin de la requete,
  * pour éviter toute fuite entre deux requetes traitee par le meme fil.
+ *
+ * <p>Declare {@code @Component} pour que Spring injecte l'{
+ * @code EntityManager} : une instanciation avec {@code new} (comme dans
+ * {@code WebConfig#addInterceptors} avant ce correctif) laissait le champ
+ * {@code entityManager} a {@code null} et provocait une
+ * {@code NullPointerException} sur toute requete metier authentifiee.
+ *
+ * <p>L'injection se fait via {@link ObjectProvider} (resolution paresseuse) :
+ * les slices de test {@code @WebMvcTest} ne chargent pas la configuration JPA,
+ * donc aucun bean {@code EntityManager} n'y existe — le provider retourne
+ * {@code null} et l'isolation est simplement inactive dans ce contexte de test,
+ * au lieu de faire echouer le chargement de tout le contexte Spring.
  */
+@Component
 public class OrganisationIsolationInterceptor implements HandlerInterceptor {
 
-    @Autowired
-    private EntityManager entityManager;
+    private final ObjectProvider<EntityManager> entityManager;
+
+    public OrganisationIsolationInterceptor(ObjectProvider<EntityManager> entityManager) {
+        this.entityManager = entityManager;
+    }
 
     private static final String FILTRE = "filtreParOrganisation";
     private static final String PARAMETRE = "idOrganisation";
@@ -44,7 +61,13 @@ public class OrganisationIsolationInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        Session session = entityManager.unwrap(Session.class);
+        EntityManager em = entityManager.getIfAvailable();
+        if (em == null) {
+            // Contexte sans JPA (slice @WebMvcTest) : pas de filtre a activer.
+            request.setAttribute("pfa.filtreOrganisation.active", false);
+            return true;
+        }
+        Session session = em.unwrap(Session.class);
         session.enableFilter(FILTRE).setParameter(PARAMETRE, idOrganisation);
         request.setAttribute("pfa.filtreOrganisation.active", true);
         request.setAttribute("pfa.filtreOrganisation.session", session);

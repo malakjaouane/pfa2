@@ -116,6 +116,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/auth/login").permitAll()
+                        // Amorçage du cookie XSRF-TOKEN : ce GET doit être
+                        // possible SANS authentification, sinon le SPA ne
+                        // peut jamais obtenir son premier jeton (et
+                        // l'intercepteur axios entrait en deadlock sur le
+                        // 401 : refresh en attente de l'amorçage CSRF).
+                        // Le jeton n'est pas un secret d'identification.
+                        .requestMatchers("/api/auth/csrf").permitAll()
                         // Parcours client (2B) : inscription, verification,
                         // mot de passe oublie et reinitialisation sont
                         // accessibles sans authentification prealable.
