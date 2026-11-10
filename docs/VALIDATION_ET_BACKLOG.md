@@ -60,8 +60,9 @@
 | 2 | **Comptes démo / `Admin@123`** | `Admin@123` retiré de `application.yml` ; valeur de démo uniquement dans `application-dev.yml` et `.env` local. Le admin créé hors dev doit changer son mdp au premier login. | Les comptes démo utilisent encore `Admin@123`/`Resp@123`/`Visi@123` pour la démonstration. À confirmer si acceptable en l'état. |
 | 3 | **CDC v1** | Hors périmètre (pas d'équipe multi-membres, pas de pièces jointes, pas de dépendances, pas de droits par initiative au-delà de `membre_initiatique`, pas de SSO, pas de cookie HttpOnly séparé — déjà fait, pas d'export Excel/PDF). | À confirmer si certains items CDC doivent être réintégrés. |
 | 4 | **Menu 11/12** | Incohérence signalée entre le nombre de menu items (11 vs 12 selon le rôle). | À vérifier/corriger côté front. |
-| 5 | **Droits par initiative** | Contrôle de l'écriture (modifier/supprimer/changer statut) implémenté via `membre_initiative`. La lecture reste filtrée par organisation (isolation 2A). | À confirmer si un contrôle de lecture par membre est nécessaire. |
+| 5 | **Droits par initiative** | Contrôle de l'écriture (modifier/supprimer/changer statut) implémenté via `membre_initiative`. La lecture reste filtrée par organisation (isolation 2A). Bypass admin ajouté dans `InitiativeController.verifierEcriture` pour que l'admin puisse modifier toute initiative de son org. | À confirmer si un contrôle de lecture par membre est nécessaire. |
 | 6 | **Plans** | Limites vérifiées uniquement à la création d'initiative. Pas d'interface de changement de plan (pas de paiement). | À confirmer si une UI de changement de plan est nécessaire. |
+| 7 | **Journal d'audit (`AuditFilter`)** | Les écritures réussies ne sont pas journalisées : `OrganisationContext.clear()` est appelé dans `afterCompletion` avant que `AuditFilter` ne lise le contexte. Seules les écritures rejetées (403) sont tracées. | À corriger : déplacer la lecture du contexte avant le `clear()`, ou capturer l'organisation avant la fin de la requête. Non bloquant (section 19 de la suite API passe). |
 
 ---
 
