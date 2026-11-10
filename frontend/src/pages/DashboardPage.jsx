@@ -19,6 +19,7 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
+import { useToast } from '../components/ui/use-toast';
 import {
   IconProject,
   IconLayers,
@@ -384,7 +385,7 @@ export default function DashboardPage() {
   const [referentiels, setReferentiels] = useState({ statuts: [], entites: [], responsables: [] });
   const [filtres, setFiltres] = useState(() => lireDepuisUrl(searchParams));
   const [chargement, setChargement] = useState(true);
-  const [erreur, setErreur] = useState('');
+  const { toast } = useToast();
   const [rechercheRecente, setRechercheRecente] = useState('');
 
   const peutConsulterInitiatives = hasPermission('INITIATIVE_CONSULTER');
@@ -417,7 +418,7 @@ export default function DashboardPage() {
         setKpis(d.data);
         if (i) setInitiatives(i.data);
       })
-      .catch((err) => actif && setErreur(messageErreur(err)))
+      .catch((err) => actif && toast({ title: messageErreur(err), variant: 'destructive' }))
       .finally(() => actif && setChargement(false));
 
     return () => { actif = false; };
@@ -451,16 +452,6 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-background">
         <div className="flex items-center justify-center h-64">
           <div className="animate-pulse rounded-full h-8 w-8 bg-primary" />
-        </div>
-      </div>
-    );
-  }
-
-  if (erreur) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-destructive">
-          {erreur}
         </div>
       </div>
     );

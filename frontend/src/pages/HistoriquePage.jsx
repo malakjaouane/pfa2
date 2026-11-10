@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
+import { useToast } from '../components/ui/use-toast';
 import {
   Table,
   TableBody,
@@ -115,13 +116,13 @@ export default function HistoriquePage() {
   const [auteurs, setAuteurs] = useState([]);
   const [initiativeFiltree, setInitiativeFiltree] = useState(null);
   const [chargement, setChargement] = useState(true);
-  const [erreur, setErreur] = useState('');
+  const { toast } = useToast();
 
   // Auteurs réellement présents dans le journal (une fois).
   useEffect(() => {
     api.get('/historique/auteurs')
       .then((res) => setAuteurs(res.data))
-      .catch((err) => setErreur(messageErreur(err)));
+      .catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }));
   }, []);
 
   // Toute modification de l'URL (appliquer, tri, pagination, bascule
@@ -144,7 +145,6 @@ export default function HistoriquePage() {
 
   const charger = async (f) => {
     setChargement(true);
-    setErreur('');
     try {
       const params = new URLSearchParams();
       if (f.recherche.trim()) params.set('recherche', f.recherche.trim());
@@ -162,7 +162,7 @@ export default function HistoriquePage() {
       const compte = parseInt(res.headers['x-total-count'] ?? '', 10);
       setTotal(Number.isNaN(compte) ? res.data.length : compte);
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     } finally {
       setChargement(false);
     }
@@ -217,7 +217,6 @@ export default function HistoriquePage() {
    * le serveur qui assemble et encode le fichier (BOM, « ; »).
    */
   const exporterCsv = async () => {
-    setErreur('');
     try {
       const params = new URLSearchParams();
       if (filtres.recherche.trim()) params.set('recherche', filtres.recherche.trim());
@@ -229,7 +228,7 @@ export default function HistoriquePage() {
       if (filtres.archives) params.set('archives', 'true');
       await telechargerFichier(`/historique/export?${params.toString()}`, 'historique-modifications.csv');
     } catch (err) {
-      setErreur(await messageErreurBlob(err));
+      toast({ title: await messageErreurBlob(err), variant: 'destructive' });
     }
   };
 
@@ -311,12 +310,6 @@ export default function HistoriquePage() {
           </Button>
         </div>
       </header>
-
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {erreur}
-        </div>
-      )}
 
       <Card className="mb-6 p-[18px] shadow-sm">
         <CardHeader className="pb-2">

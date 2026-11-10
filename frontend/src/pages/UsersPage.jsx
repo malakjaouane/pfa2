@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
+import { useToast } from '../components/ui/use-toast';
 import {
   Table,
   TableBody,
@@ -37,12 +38,11 @@ export default function UsersPage() {
   const [form, setForm] = useState(vide);
   const [editionId, setEditionId] = useState(null);
   const [modalOuvert, setModalOuvert] = useState(false);
-  const [erreur, setErreur] = useState('');
-  const [info, setInfo] = useState('');
+  const { toast } = useToast();
   const [critere, setCritere] = useState({ recherche: '', role: '', entite: '' });
 
   const charger = () => {
-    api.get('/users').then((res) => setUtilisateurs(res.data)).catch((err) => setErreur(messageErreur(err)));
+    api.get('/users').then((res) => setUtilisateurs(res.data)).catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }));
   };
 
   useEffect(() => {
@@ -109,7 +109,6 @@ export default function UsersPage() {
 
   const gererSoumission = async (e) => {
     e.preventDefault();
-    setErreur('');
     const corps = {
       ...form,
       actif: Boolean(form.actif),
@@ -123,12 +122,10 @@ export default function UsersPage() {
         await api.post('/users', corps);
       }
       setModalOuvert(false);
-      setInfo(editionId
-        ? { cle: 'users.utilisateurModifie' }
-        : { cle: 'users.utilisateurCree' });
+      toast({ title: t(editionId ? 'users.utilisateurModifie' : 'users.utilisateurCree'), variant: 'success' });
       charger();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
@@ -145,13 +142,11 @@ export default function UsersPage() {
     if (!window.confirm(t('users.supprimerConfirmer', { nom }))) return;
     api.delete(`/users/${u.idUser}`)
       .then(() => {
-        setErreur('');
-        setInfo({ cle: 'users.utilisateurSupprime' });
+        toast({ title: t('users.utilisateurSupprime'), variant: 'success' });
         charger();
       })
       .catch((err) => {
-        setInfo('');
-        setErreur(messageErreur(err));
+        toast({ title: messageErreur(err), variant: 'destructive' });
       });
   };
 
@@ -170,17 +165,6 @@ export default function UsersPage() {
           {t('users.nouvelUtilisateur')}
         </Button>
       </header>
-
-      {info && (
-        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
-          {afficherMessage(t, info)}
-        </div>
-      )}
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {afficherMessage(t, erreur)}
-        </div>
-      )}
 
       {/* Recherche + filtres (rôle, entité) sur l'ensemble des utilisateurs. */}
       <Card className="mb-6 p-[18px] shadow-sm" role="search">
@@ -315,11 +299,6 @@ export default function UsersPage() {
               {editionId ? t('users.modifierDescription') : t('users.creerDescription')}
             </SheetDescription>
           </SheetHeader>
-          {erreur && (
-            <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-              {erreur}
-            </div>
-          )}
           <form className="space-y-4" onSubmit={gererSoumission}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">

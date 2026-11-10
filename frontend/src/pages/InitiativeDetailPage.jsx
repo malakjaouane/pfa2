@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
+import { useToast } from '../components/ui/use-toast';
 
 const etapeVide = { nom: '', description: '', ordre: '', dateDebut: '', dateFinPrevue: '', avancement: 0, idStatutEtape: '' };
 const jalonVide = { nom: '', description: '', datePrevue: '', dateRealisation: '', idStatutJalon: '' };
@@ -48,8 +49,7 @@ export default function InitiativeDetailPage() {
   const [historiqueType, setHistoriqueType] = useState('');
   const [statutsEtape, setStatutsEtape] = useState([]);
   const [statutsJalon, setStatutsJalon] = useState([]);
-  const [erreur, setErreur] = useState('');
-  const [info, setInfo] = useState('');
+  const { toast } = useToast();
 
   // Éditeurs inline
   const [nouvelleEtape, setNouvelleEtape] = useState(etapeVide);
@@ -62,13 +62,12 @@ export default function InitiativeDetailPage() {
   const [resumeEnCours, setResumeEnCours] = useState(false);
 
   const genererResume = async () => {
-    setErreur('');
     setResumeEnCours(true);
     try {
       const { data } = await api.post(`/ia/resume/${id}`, { langue });
       setResumeIa(data.reponse);
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     } finally {
       setResumeEnCours(false);
     }
@@ -98,7 +97,7 @@ export default function InitiativeDetailPage() {
     api
       .get(`/initiatives/${id}`)
       .then((res) => setInitiative(res.data))
-      .catch((err) => setErreur(messageErreur(err)));
+      .catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }));
     // Les étapes et jalons se lisent avec INITIATIVE_CONSULTER : le visiteur
     // doit voir le suivi. Seules les écritures exigent ETAPE_GERER /
     // JALON_GERER.
@@ -121,15 +120,6 @@ export default function InitiativeDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  if (erreur) {
-    return (
-      <div className="mx-auto w-full max-w-[1240px] py-12">
-        <div className="rounded-md border border-destructive/50 bg-destructive/50 p-4 text-sm text-destructive">
-          {erreur}
-        </div>
-      </div>
-    );
-  }
   if (!initiative) {
     return (
       <div className="mx-auto w-full max-w-[1240px] py-12 flex items-center justify-center">
@@ -145,10 +135,10 @@ export default function InitiativeDetailPage() {
     if (!window.confirm(t('initiativeDetail.confirmArchiver', { nom: initiative.nom }))) return;
     try {
       await api.patch(`/initiatives/${initiative.idInitiative}/archive`);
-      setInfo({ cle: 'initiativeDetail.archivee' });
+      toast({ title: t('initiativeDetail.archivee'), variant: 'success' });
       charger();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
@@ -177,7 +167,7 @@ export default function InitiativeDetailPage() {
   const soumettreEtape = (e) => {
     e.preventDefault();
     const cible = editionEtape ?? nouvelleEtape;
-    enregistrerEtape(cible).catch((err) => setErreur(messageErreur(err)));
+    enregistrerEtape(cible).catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }));
   };
 
   // ---------------- Jalons ----------------
@@ -203,7 +193,7 @@ export default function InitiativeDetailPage() {
   const soumettreJalon = (e) => {
     e.preventDefault();
     const cible = editionJalon ?? nouveauJalon;
-    enregistrerJalon(cible).catch((err) => setErreur(messageErreur(err)));
+    enregistrerJalon(cible).catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }));
   };
 
   // ---------------- Suppression / réordonnancement ----------------
@@ -214,7 +204,7 @@ export default function InitiativeDetailPage() {
       await api.delete(`/etapes/${etape.idEtape}`);
       charger();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
@@ -224,7 +214,7 @@ export default function InitiativeDetailPage() {
       await api.delete(`/jalons/${jalon.idJalon}`);
       charger();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
@@ -238,7 +228,7 @@ export default function InitiativeDetailPage() {
       await api.put(`/initiatives/${id}/etapes/ordre`, ids);
       charger();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
@@ -281,16 +271,6 @@ export default function InitiativeDetailPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1240px]">
-      {info && (
-        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
-          {afficherMessage(t, info)}
-        </div>
-      )}
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {erreur}
-        </div>
-      )}
 
       <header className="mb-6 flex items-start justify-between gap-3">
         <div>

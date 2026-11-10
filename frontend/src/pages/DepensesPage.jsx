@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow
 } from '../components/ui/table';
+import { useToast } from '../components/ui/use-toast';
 
 /** Taille de page fixe : un registre se feuillette, il ne s'épuise pas. */
 const TAILLE_PAGE = 25;
@@ -58,13 +59,13 @@ export default function DepensesPage() {
   const [initiatives, setInitiatives] = useState([]);
   const [categories, setCategories] = useState([]);
   const [chargement, setChargement] = useState(true);
-  const [erreur, setErreur] = useState('');
+  const { toast } = useToast();
 
   // Listes déroulantes (filtres) : initiatives + catégories déjà saisies.
   useEffect(() => {
     api.get('/initiatives?size=200')
       .then((res) => setInitiatives(res.data ?? []))
-      .catch((err) => setErreur(messageErreur(err)));
+      .catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }))
     api.get('/depenses?size=200')
       .then((res) => {
         const uniques = [...new Set((res.data ?? []).map((d) => d.categorie).filter(Boolean))];
@@ -95,7 +96,6 @@ export default function DepensesPage() {
 
   const charger = async (f) => {
     setChargement(true);
-    setErreur('');
     try {
       const params = construireParams(f, { page: f.page });
       params.set('size', String(TAILLE_PAGE));
@@ -106,7 +106,7 @@ export default function DepensesPage() {
       const montant = res.headers['x-total-montant'];
       setTotalMontant(montant === undefined ? null : montant);
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
       setLignes([]);
       setTotalMontant(null);
     } finally {
@@ -130,14 +130,13 @@ export default function DepensesPage() {
   };
 
   const exporterCsv = async () => {
-    setErreur('');
     try {
       await telechargerFichier(
         `/depenses/export?${construireParams(filtres).toString()}`,
         'depenses.csv'
       );
     } catch (err) {
-      setErreur(await messageErreurBlob(err));
+      toast({ title: await messageErreurBlob(err), variant: 'destructive' });
     }
   };
 
@@ -171,12 +170,6 @@ export default function DepensesPage() {
           {t('depenses.exportCsv')}
         </Button>
       </header>
-
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {erreur}
-        </div>
-      )}
 
       <Card className="mb-6 p-[18px] shadow-sm">
         <CardHeader className="pb-2">

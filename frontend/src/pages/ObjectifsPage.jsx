@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
+import { useToast } from '../components/ui/use-toast';
 
 const formVide = { code: '', libelle: '', description: '' };
 
@@ -21,6 +22,7 @@ const formVide = { code: '', libelle: '', description: '' };
 export default function ObjectifsPage() {
   const { hasPermission } = useAuth();
   const { t } = useI18n();
+  const { toast } = useToast();
   const peutGerer = hasPermission('INITIATIVE_MODIFIER');
 
   const [objectifs, setObjectifs] = useState([]);
@@ -30,8 +32,6 @@ export default function ObjectifsPage() {
   const [edition, setEdition] = useState(null); // idObjectif
   const [chargement, setChargement] = useState(true);
   const [soumission, setSoumission] = useState(false);
-  const [erreur, setErreur] = useState('');
-  const [info, setInfo] = useState('');
   // Objectifs cochés dans la barre de suppression en lot.
   const [selection, setSelection] = useState([]);
 
@@ -52,7 +52,7 @@ export default function ObjectifsPage() {
         // jamais des cartes qui ne sont plus affichées.
         setSelection([]);
       })
-      .catch((err) => setErreur(messageErreur(err)))
+      .catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }))
       .finally(() => setChargement(false));
   };
 
@@ -120,14 +120,10 @@ export default function ObjectifsPage() {
     setSelection([]);
     setEdition(null);
     if (echecs.length === 0) {
-      setErreur('');
-      setInfo({ cle: 'objectifs.info.supprimees', params: { n: supprimes } });
+      toast({ title: afficherMessage(t, { cle: 'objectifs.info.supprimees', params: { n: supprimes } }), variant: 'success' });
     } else {
-      if (supprimes > 0) setInfo({ cle: 'objectifs.info.supprimees', params: { n: supprimes } });
-      setErreur({
-        cle: 'objectifs.erreurPartielle',
-        params: { n: supprimes, echecs: echecs.length, detail: echecs[0] }
-      });
+      if (supprimes > 0) toast({ title: afficherMessage(t, { cle: 'objectifs.info.supprimees', params: { n: supprimes } }), variant: 'success' });
+      toast({ title: afficherMessage(t, { cle: 'objectifs.erreurPartielle', params: { n: supprimes, echecs: echecs.length, detail: echecs[0] } }), variant: 'destructive' });
     }
     charger();
   };
@@ -135,21 +131,20 @@ export default function ObjectifsPage() {
   const enregistrer = async (e) => {
     e.preventDefault();
     setSoumission(true);
-    setErreur('');
     try {
       if (edition) {
         await api.put(`/objectifs/${edition}`, form);
-        setInfo({ cle: 'objectifs.info.misAJour' });
+        toast({ title: t('objectifs.info.misAJour'), variant: 'success' });
       } else {
         await api.post('/objectifs', form);
-        setInfo({ cle: 'objectifs.info.cree' });
+        toast({ title: t('objectifs.info.cree'), variant: 'success' });
       }
       setForm(formVide);
       setNouveau(false);
       setEdition(null);
       charger();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     } finally {
       setSoumission(false);
     }
@@ -175,17 +170,6 @@ export default function ObjectifsPage() {
           </Button>
         )}
       </header>
-
-      {info && (
-        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
-          {afficherMessage(t, info)}
-        </div>
-      )}
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {afficherMessage(t, erreur)}
-        </div>
-      )}
 
       {nouveau && peutGerer && (
         <Card className="mb-6 p-[18px] shadow-sm">

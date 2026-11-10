@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow
 } from '../components/ui/table';
+import { useToast } from '../components/ui/use-toast';
 
 /** Taille de page fixe : un registre se feuillette, il ne s'épuise pas. */
 const TAILLE_PAGE = 25;
@@ -58,13 +59,13 @@ function badgeStatut(code) {
  */
 export default function AuditPage() {
   const { t, langue } = useI18n();
+  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [filtres, setFiltres] = useState(() => lireDepuisUrl(searchParams));
   const [lignes, setLignes] = useState([]);
   const [total, setTotal] = useState(0);
   const [chargement, setChargement] = useState(true);
-  const [erreur, setErreur] = useState('');
 
   // Toute modification de l'URL recharge le journal.
   useEffect(() => {
@@ -88,7 +89,6 @@ export default function AuditPage() {
 
   const charger = async (f) => {
     setChargement(true);
-    setErreur('');
     try {
       const params = construireParams(f, { page: f.page });
       params.set('size', String(TAILLE_PAGE));
@@ -97,7 +97,7 @@ export default function AuditPage() {
       const compte = parseInt(res.headers['x-total-count'] ?? '', 10);
       setTotal(Number.isNaN(compte) ? (res.data?.length ?? 0) : compte);
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
       setLignes([]);
     } finally {
       setChargement(false);
@@ -120,14 +120,13 @@ export default function AuditPage() {
   };
 
   const exporterCsv = async () => {
-    setErreur('');
     try {
       await telechargerFichier(
         `/journal-audit/export?${construireParams(filtres).toString()}`,
         'journal-audit.csv'
       );
     } catch (err) {
-      setErreur(await messageErreurBlob(err));
+      toast({ title: await messageErreurBlob(err), variant: 'destructive' });
     }
   };
 
@@ -161,12 +160,6 @@ export default function AuditPage() {
           {t('audit.exportCsv')}
         </Button>
       </header>
-
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {erreur}
-        </div>
-      )}
 
       <Card className="mb-6 p-[18px] shadow-sm">
         <CardHeader className="pb-2">

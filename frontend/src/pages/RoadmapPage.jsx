@@ -4,6 +4,7 @@ import api, { messageErreur } from '../api';
 import StatutBadge from '../components/StatutBadge';
 import { useI18n } from '../i18n/I18nContext';
 import { useReferentiels } from '../i18n/referentiels';
+import { useToast } from '../components/ui/use-toast';
 
 const COULEURS = {
   'À planifier': '#D0BDF4',
@@ -48,7 +49,7 @@ export default function RoadmapPage() {
   const [statuts, setStatuts] = useState([]);
   const [entites, setEntites] = useState([]);
   const [filtres, setFiltres] = useState({ statut: '', entite: '', objectif: '' });
-  const [erreur, setErreur] = useState('');
+  const { toast } = useToast();
   const [chargement, setChargement] = useState(true);
 
   useEffect(() => {
@@ -64,7 +65,7 @@ export default function RoadmapPage() {
         setStatuts(st.data);
         setEntites(en.data);
       })
-      .catch((err) => setErreur(messageErreur(err)))
+      .catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }))
       .finally(() => setChargement(false));
   }, []);
 
@@ -115,15 +116,6 @@ export default function RoadmapPage() {
     return (
       <div className="mx-auto w-full max-w-[1240px] py-12 flex items-center justify-center">
         <span className="text-sm text-muted-foreground">{t('roadmap.chargement')}</span>
-      </div>
-    );
-  }
-  if (erreur) {
-    return (
-      <div className="mx-auto w-full max-w-[1240px] py-12">
-        <div className="rounded-md border border-destructive/50 bg-destructive/50 p-4 text-sm text-destructive">
-          {erreur}
-        </div>
       </div>
     );
   }

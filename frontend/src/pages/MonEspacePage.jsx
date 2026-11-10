@@ -8,6 +8,7 @@ import SanteBadge from '../components/SanteBadge';
 import StatutBadge from '../components/StatutBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { useToast } from '../components/ui/use-toast';
 
 /** Montants en dirhams, sans décimale d'affichage (l'export garde l'exact). */
 const formaterMontant = (valeur, langue) =>
@@ -36,12 +37,11 @@ export default function MonEspacePage() {
   const { t, langue } = useI18n();
   const [donnees, setDonnees] = useState(null);
   const [chargement, setChargement] = useState(true);
-  const [erreur, setErreur] = useState('');
 
   useEffect(() => {
     api.get('/mon-espace')
       .then((res) => setDonnees(res.data))
-      .catch((err) => setErreur(messageErreur(err)))
+      .catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }))
       .finally(() => setChargement(false));
   }, []);
 
@@ -72,12 +72,6 @@ export default function MonEspacePage() {
           </p>
         </div>
       </header>
-
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {erreur}
-        </div>
-      )}
 
       {d && (
         <>

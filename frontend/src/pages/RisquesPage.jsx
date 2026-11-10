@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { useToast } from '../components/ui/use-toast';
 import {
   Table,
   TableBody,
@@ -55,7 +56,7 @@ export default function RisquesPage() {
   const [total, setTotal] = useState(0);
   const [initiatives, setInitiatives] = useState([]);
   const [chargement, setChargement] = useState(true);
-  const [erreur, setErreur] = useState('');
+  const { toast } = useToast();
 
   const peutGerer = Boolean(user?.permissions?.includes('RISQUE_GERER'));
 
@@ -63,7 +64,7 @@ export default function RisquesPage() {
   useEffect(() => {
     api.get('/initiatives?size=200')
       .then((res) => setInitiatives(res.data ?? []))
-      .catch((err) => setErreur(messageErreur(err)));
+      .catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }));
   }, []);
 
   // Toute modification de l'URL (appliquer, suppression, pagination, lien
@@ -87,7 +88,6 @@ export default function RisquesPage() {
 
   const charger = async (f) => {
     setChargement(true);
-    setErreur('');
     try {
       const params = construireParams(f, { page: f.page });
       params.set('size', String(TAILLE_PAGE));
@@ -96,7 +96,7 @@ export default function RisquesPage() {
       const compte = parseInt(res.headers['x-total-count'] ?? '', 10);
       setTotal(Number.isNaN(compte) ? (res.data?.length ?? 0) : compte);
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
       setLignes([]);
     } finally {
       setChargement(false);
@@ -119,25 +119,23 @@ export default function RisquesPage() {
   };
 
   const exporterCsv = async () => {
-    setErreur('');
     try {
       await telechargerFichier(
         `/risques/export?${construireParams(filtres).toString()}`,
         'risques.csv'
       );
     } catch (err) {
-      setErreur(await messageErreurBlob(err));
+      toast({ title: await messageErreurBlob(err), variant: 'destructive' });
     }
   };
 
   const supprimer = async (risque) => {
     if (!window.confirm(t('risques.confirmSupprimer', { titre: risque.titre }))) return;
-    setErreur('');
     try {
       await api.delete(`/risques/${risque.idRisque}`);
       charger(filtres);
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
@@ -169,12 +167,6 @@ export default function RisquesPage() {
           {t('risques.exportCsv')}
         </Button>
       </header>
-
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {erreur}
-        </div>
-      )}
 
       <Card className="mb-6 p-[18px] shadow-sm">
         <CardHeader className="pb-2">

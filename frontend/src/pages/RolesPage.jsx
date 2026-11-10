@@ -6,6 +6,7 @@ import { useReferentiels } from '../i18n/referentiels';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { useToast } from '../components/ui/use-toast';
 
 /**
  * Gestion des rôles et de leurs permissions (administration).
@@ -13,11 +14,10 @@ import { Badge } from '../components/ui/badge';
 export default function RolesPage() {
   const { t } = useI18n();
   const ref = useReferentiels();
+  const { toast } = useToast();
   const [roles, setRoles] = useState([]); // détail avec permissions
   const [permissions, setPermissions] = useState([]);
   const [selection, setSelection] = useState({}); // idRole -> Set<idPermission>
-  const [erreur, setErreur] = useState('');
-  const [info, setInfo] = useState('');
 
   const charger = async () => {
     try {
@@ -31,9 +31,8 @@ export default function RolesPage() {
         sel[role.idRole] = new Set(role.permissions.map((perm) => perm.idPermission));
       });
       setSelection(sel);
-      setErreur('');
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
@@ -56,10 +55,13 @@ export default function RolesPage() {
   const enregistrer = async (role) => {
     try {
       await api.put(`/roles/${role.idRole}/permissions`, { idsPermissions: [...(selection[role.idRole] ?? [])] });
-      setInfo({ cle: 'roles.permissionsEnregistrees', params: { role: ref.role(role.code, role.libelle) } });
+      toast({
+        title: afficherMessage(t, { cle: 'roles.permissionsEnregistrees', params: { role: ref.role(role.code, role.libelle) } }),
+        variant: 'success'
+      });
       charger();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
@@ -75,17 +77,6 @@ export default function RolesPage() {
           </p>
         </div>
       </header>
-
-      {info && (
-        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
-          {afficherMessage(t, info)}
-        </div>
-      )}
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {afficherMessage(t, erreur)}
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {roles.map((role) => (

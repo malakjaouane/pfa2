@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { useToast } from '../components/ui/use-toast';
 
 const vide = (statutPlanifier) => ({
   code: '',
@@ -38,8 +39,8 @@ export default function InitiativeFormPage() {
   const [form, setForm] = useState(vide(null));
   const [referentiels, setReferentiels] = useState({ statuts: [], entites: [], responsables: [], priorites: [], objectifs: [] });
   const [chargement, setChargement] = useState(edition);
+  const { toast } = useToast();
   const [soumission, setSoumission] = useState(false);
-  const [erreur, setErreur] = useState('');
   // Dès qu'une initiative possède des étapes, son avancement est recalculé
   // côté serveur (moyenne des étapes) : la saisie manuelle serait ignorée.
   // On grise alors le champ et on l'explique, plutôt que de laisser croire
@@ -60,7 +61,7 @@ export default function InitiativeFormPage() {
         setReferentiels({ statuts, entites: e.data, responsables: r.data, priorites: p.data, objectifs: o.data });
         setForm((f) => (f.idStatut ? f : { ...f, idStatut: planifier?.idStatut ?? '' }));
       })
-      .catch((err) => setErreur(messageErreur(err)));
+      .catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }));
 
     if (edition) {
       api
@@ -82,7 +83,7 @@ export default function InitiativeFormPage() {
             idObjectif: i.objectif?.idObjectif ?? ''
           });
         })
-        .catch((err) => setErreur(messageErreur(err)))
+        .catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }))
         .finally(() => setChargement(false));
 
       api
@@ -96,12 +97,11 @@ export default function InitiativeFormPage() {
 
   const gererSoumission = async (e) => {
     e.preventDefault();
-    setErreur('');
     // Contrôle explicite côté interface : le message s'affiche dans la page,
     // sans dépendre de la bulle de validation native du navigateur.
     const avancementSaisi = form.avancement === '' ? 0 : Number(form.avancement);
     if (!Number.isFinite(avancementSaisi) || avancementSaisi < 0 || avancementSaisi > 100) {
-      setErreur({ cle: 'initiativeForm.erreurAvancement' });
+      toast({ title: t('initiativeForm.erreurAvancement'), variant: 'destructive' });
       return;
     }
     setSoumission(true);
@@ -126,7 +126,7 @@ export default function InitiativeFormPage() {
         navigate(`/initiatives/${res.data.idInitiative}`);
       }
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     } finally {
       setSoumission(false);
     }
@@ -152,12 +152,6 @@ export default function InitiativeFormPage() {
           </p>
         </div>
       </header>
-
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {afficherMessage(t, erreur)}
-        </div>
-      )}
 
       <Card className="mb-6 p-[18px] shadow-sm">
         <CardHeader>

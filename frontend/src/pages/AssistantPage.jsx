@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18nContext';
-import { afficherMessage } from '../i18n/message';
 import api, { messageErreur } from '../api';
 import { IconAlert, IconAssistant } from '../components/Icons';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
+import { useToast } from '../components/ui/use-toast';
 
 /**
  * Page « Assistant IA » — chat « Demande à ton portefeuille ».
@@ -19,11 +19,11 @@ import { Badge } from '../components/ui/badge';
  */
 export default function AssistantPage() {
   const { t, langue } = useI18n();
+  const { toast } = useToast();
   const [statut, setStatut] = useState(null);
   const [messages, setMessages] = useState([]);
   const [question, setQuestion] = useState('');
   const [envoi, setEnvoi] = useState(false);
-  const [erreur, setErreur] = useState('');
   const refFin = useRef(null);
 
   useEffect(() => {
@@ -41,7 +41,6 @@ export default function AssistantPage() {
   const poser = async (texte) => {
     const q = (texte ?? question).trim();
     if (!q || envoi) return;
-    setErreur('');
     setQuestion('');
     setMessages((m) => [...m, { role: 'utilisateur', texte: q }]);
     setEnvoi(true);
@@ -49,7 +48,7 @@ export default function AssistantPage() {
       const { data } = await api.post('/ia/assistant', { question: q, langue });
       setMessages((m) => [...m, { role: 'assistant', texte: data.reponse, modele: data.modele }]);
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     } finally {
       setEnvoi(false);
     }
@@ -84,12 +83,6 @@ export default function AssistantPage() {
           </div>
         </div>
       )}
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {afficherMessage(t, erreur)}
-        </div>
-      )}
-
       <Card className="mb-6 p-[18px] shadow-sm ia-conversation" role="log" aria-live="polite" aria-label={t('assistant.ariaConversation')}>
         <CardContent className="pt-0">
           {messages.length === 0 && !envoi && (
@@ -155,7 +148,7 @@ export default function AssistantPage() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => { setMessages([]); setErreur(''); }}
+              onClick={() => { setMessages([]); }}
             >
               {t('assistant.effacer')}
             </Button>

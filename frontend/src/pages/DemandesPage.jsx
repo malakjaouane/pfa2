@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
+import { useToast } from '../components/ui/use-toast';
 
 const STYLES_DEMANDE = {
   'Brouillon': 'badge-gris',
@@ -64,8 +65,7 @@ export default function DemandesPage() {
   const [motifRefus, setMotifRefus] = useState('');
   const [chargement, setChargement] = useState(true);
   const [soumission, setSoumission] = useState(false);
-  const [erreur, setErreur] = useState('');
-  const [info, setInfo] = useState('');
+  const { toast } = useToast();
   // Demandes cochées dans la barre de suppression en lot.
   const [selection, setSelection] = useState([]);
 
@@ -97,7 +97,7 @@ export default function DemandesPage() {
         // jamais des lignes qui ne sont plus affichées.
         setSelection([]);
       })
-      .catch((err) => setErreur(messageErreur(err)))
+      .catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }))
       .finally(() => setChargement(false));
   };
 
@@ -147,7 +147,6 @@ export default function DemandesPage() {
 
   const enregistrer = async (e) => {
     e.preventDefault();
-    setErreur('');
     setSoumission(true);
     const corps = {
       titre: form.titre,
@@ -159,17 +158,17 @@ export default function DemandesPage() {
     try {
       if (idEdition) {
         await api.put(`/demandes/${idEdition}`, corps);
-        setInfo({ cle: 'demandes.infoModifiee' });
+        toast({ title: t('demandes.infoModifiee'), variant: 'success' });
       } else {
         await api.post('/demandes', corps);
-        setInfo({ cle: 'demandes.infoCreee' });
+        toast({ title: t('demandes.infoCreee'), variant: 'success' });
       }
       setFormVisible(false);
       setForm(formVide);
       setIdEdition(null);
       charger();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     } finally {
       setSoumission(false);
     }
@@ -178,22 +177,22 @@ export default function DemandesPage() {
   const action = async (id, route, message) => {
     try {
       await api.post(`/demandes/${id}/${route}`);
-      setInfo(message);
+      toast({ title: afficherMessage(t, message), variant: 'success' });
       charger();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
   const confirmerRefus = async (id) => {
     try {
       await api.post(`/demandes/${id}/refuser`, { motifRefus: motifRefus || null });
-      setInfo({ cle: 'demandes.infoRefusee' });
+      toast({ title: t('demandes.infoRefusee'), variant: 'success' });
       setRefusPour(null);
       setMotifRefus('');
       charger();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
@@ -201,10 +200,16 @@ export default function DemandesPage() {
     if (!window.confirm(t('demandes.confirmTransformer', { titre: d.titre }))) return;
     try {
       const res = await api.post(`/demandes/${d.idDemande}/transformer`);
-      setInfo({ cle: 'demandes.infoTransformee', params: { code: res.data.initiativeLiee?.code ?? '' } });
+      toast({
+        title: afficherMessage(t, {
+          cle: 'demandes.infoTransformee',
+          params: { code: res.data.initiativeLiee?.code ?? '' }
+        }),
+        variant: 'success'
+      });
       charger();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
@@ -217,10 +222,10 @@ export default function DemandesPage() {
     if (!window.confirm(t('demandes.confirmSupprimer', { titre: d.titre }))) return;
     try {
       await api.delete(`/demandes/${d.idDemande}`);
-      setInfo({ cle: 'demandes.infoSupprimee' });
+      toast({ title: t('demandes.infoSupprimee'), variant: 'success' });
       charger();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
@@ -242,10 +247,10 @@ export default function DemandesPage() {
     if (!window.confirm(t('demandes.confirmArchiver', { titre: d.titre }))) return;
     try {
       await api.patch(`/demandes/${d.idDemande}/archive`);
-      setInfo({ cle: 'demandes.infoArchivee' });
+      toast({ title: t('demandes.infoArchivee'), variant: 'success' });
       charger();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
@@ -253,10 +258,10 @@ export default function DemandesPage() {
   const restaurer = async (d) => {
     try {
       await api.patch(`/demandes/${d.idDemande}/restaurer`);
-      setInfo({ cle: 'demandes.infoRestauree' });
+      toast({ title: t('demandes.infoRestauree'), variant: 'success' });
       charger();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
@@ -305,14 +310,10 @@ export default function DemandesPage() {
 
     setSelection([]);
     if (echecs.length === 0) {
-      setErreur('');
-      setInfo({ cle: 'demandes.infoSupprimees', params: { n: supprimees } });
+      toast({ title: afficherMessage(t, { cle: 'demandes.infoSupprimees', params: { n: supprimees } }), variant: 'success' });
     } else {
-      if (supprimees > 0) setInfo({ cle: 'demandes.infoSupprimees', params: { n: supprimees } });
-      setErreur({
-        cle: 'demandes.erreurPartielle',
-        params: { n: supprimees, echecs: echecs.length, detail: echecs[0] }
-      });
+      if (supprimees > 0) toast({ title: afficherMessage(t, { cle: 'demandes.infoSupprimees', params: { n: supprimees } }), variant: 'success' });
+      toast({ title: afficherMessage(t, { cle: 'demandes.erreurPartielle', params: { n: supprimees, echecs: echecs.length, detail: echecs[0] } }), variant: 'destructive' });
     }
     charger();
   };
@@ -357,17 +358,6 @@ export default function DemandesPage() {
           )}
         </div>
       </header>
-
-      {info && (
-        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
-          {afficherMessage(t, info)}
-        </div>
-      )}
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {afficherMessage(t, erreur)}
-        </div>
-      )}
 
       {formVisible && (
         <Card className="mb-6 p-[18px] shadow-sm" onSubmit={enregistrer}>

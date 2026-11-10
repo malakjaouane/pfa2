@@ -13,6 +13,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { useToast } from '../components/ui/use-toast';
 import {
   Table,
   TableBody,
@@ -61,8 +62,7 @@ export default function InitiativesPage() {
   const [referentiels, setReferentiels] = useState({ statuts: [], entites: [], responsables: [], priorites: [] });
   const [vue, setVue] = useState('table'); // 'table' | 'kanban'
   const [chargement, setChargement] = useState(false);
-  const [erreur, setErreur] = useState('');
-  const [info, setInfo] = useState('');
+  const { toast } = useToast();
 
   useEffect(() => {
     Promise.all([
@@ -73,7 +73,7 @@ export default function InitiativesPage() {
     ])
       .then(([s, e, r, p]) =>
         setReferentiels({ statuts: s.data, entites: e.data, responsables: r.data, priorites: p.data }))
-      .catch((err) => setErreur(messageErreur(err)));
+      .catch((err) => toast({ title: messageErreur(err), variant: 'destructive' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -102,13 +102,12 @@ export default function InitiativesPage() {
 
   const chargerListe = async (f = filtres) => {
     setChargement(true);
-    setErreur('');
     try {
       const query = construireParams(f).toString();
       const res = await api.get(`/initiatives${query ? `?${query}` : ''}`);
       setInitiatives(res.data);
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     } finally {
       setChargement(false);
     }
@@ -122,7 +121,7 @@ export default function InitiativesPage() {
    */
   const apresDeplacement = async () => {
     await chargerListe();
-    setInfo({ cle: 'initiatives.deplacementEffectue' });
+    toast({ title: t('initiatives.deplacementEffectue'), variant: 'success' });
   };
 
   const appliquerFiltres = (e) => {
@@ -142,10 +141,10 @@ export default function InitiativesPage() {
     }
     try {
       await api.patch(`/initiatives/${initiative.idInitiative}/archive`);
-      setInfo({ cle: 'initiatives.initiativeArchivee', params: { nom: initiative.nom } });
+      toast({ title: t('initiatives.initiativeArchivee', { nom: initiative.nom }), variant: 'success' });
       chargerListe();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 
@@ -164,10 +163,10 @@ export default function InitiativesPage() {
     }
     try {
       await api.delete(`/initiatives/${initiative.idInitiative}`);
-      setInfo({ cle: 'initiatives.initiativePurgee', params: { nom: initiative.nom } });
+      toast({ title: t('initiatives.initiativePurgee', { nom: initiative.nom }), variant: 'success' });
       chargerListe();
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     }
   };
 

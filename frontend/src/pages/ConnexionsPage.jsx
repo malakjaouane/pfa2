@@ -15,6 +15,7 @@ import {
   TableRow
 } from '../components/ui/table';
 import { IconSearch } from '../components/Icons';
+import { useToast } from '../components/ui/use-toast';
 
 /** Taille de page fixe : un tableau de lecture se feuillette, il ne s'épuise pas. */
 const TAILLE_PAGE = 25;
@@ -56,18 +57,16 @@ const CHAMP_FILTRE =
  */
 export default function ConnexionsPage() {
   const { t, langue } = useI18n();
+  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [filtres, setFiltres] = useState(() => lireDepuisUrl(searchParams));
   const [lignes, setLignes] = useState([]);
   const [total, setTotal] = useState(0);
   const [chargement, setChargement] = useState(true);
-  const [erreur, setErreur] = useState('');
-  const [info, setInfo] = useState('');
 
   const charger = async (f) => {
     setChargement(true);
-    setErreur('');
     try {
       const params = new URLSearchParams();
       if (f.recherche.trim()) params.set('recherche', f.recherche.trim());
@@ -81,7 +80,7 @@ export default function ConnexionsPage() {
       const compte = parseInt(res.headers['x-total-count'] ?? '', 10);
       setTotal(Number.isNaN(compte) ? res.data.length : compte);
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     } finally {
       setChargement(false);
     }
@@ -132,8 +131,7 @@ export default function ConnexionsPage() {
     if (!window.confirm(t('connexions.supprimerConfirmer', { ligne: libelle }))) return;
     api.delete(`/historique-connexions/${ev.idConnexion}`)
       .then(() => {
-        setErreur('');
-        setInfo(t('connexions.supprimeOk'));
+        toast({ title: t('connexions.supprimeOk'), variant: 'success' });
         if (lignes.length === 1 && filtres.page > 0) {
           allerPage(filtres.page - 1);
         } else {
@@ -141,8 +139,7 @@ export default function ConnexionsPage() {
         }
       })
       .catch((err) => {
-        setInfo('');
-        setErreur(messageErreur(err));
+        toast({ title: messageErreur(err), variant: 'destructive' });
       });
   };
 
@@ -154,8 +151,7 @@ export default function ConnexionsPage() {
     if (!window.confirm(t('connexions.purgerConfirmer'))) return;
     api.delete('/historique-connexions')
       .then(() => {
-        setErreur('');
-        setInfo(t('connexions.purgeOk'));
+        toast({ title: t('connexions.purgeOk'), variant: 'success' });
         if (filtres.page > 0) {
           allerPage(0);
         } else {
@@ -163,8 +159,7 @@ export default function ConnexionsPage() {
         }
       })
       .catch((err) => {
-        setInfo('');
-        setErreur(messageErreur(err));
+        toast({ title: messageErreur(err), variant: 'destructive' });
       });
   };
 
@@ -195,17 +190,6 @@ export default function ConnexionsPage() {
           </Button>
         )}
       </header>
-
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {erreur}
-        </div>
-      )}
-      {info && (
-        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
-          {info}
-        </div>
-      )}
 
       <form
         className="mb-5 flex flex-col gap-3 rounded-xl border border-input bg-card p-[18px] shadow"

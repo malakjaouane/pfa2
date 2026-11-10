@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { useToast } from '../components/ui/use-toast';
 
 /**
  * Écran « Changer mon mot de passe » (utilisateur déjà connecté).
@@ -24,24 +25,21 @@ import { Label } from '../components/ui/label';
 export default function MotDePassePage() {
   const { t } = useI18n();
   const { user, rafraichir } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [actuel, setActuel] = useState('');
   const [nouveau, setNouveau] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [afficher, setAfficher] = useState(false);
-  const [erreur, setErreur] = useState('');
-  const [succes, setSucces] = useState('');
   const [envoi, setEnvoi] = useState(false);
 
   const obligation = Boolean(user?.doitChangerMotDePasse);
 
   const soumettre = async (e) => {
     e.preventDefault();
-    setErreur('');
-    setSucces('');
 
     if (nouveau !== confirmation) {
-      setErreur({ cle: 'motDePasse.erreurConfirmation' });
+      toast({ title: t('motDePasse.erreurConfirmation'), variant: 'destructive' });
       return;
     }
 
@@ -51,7 +49,7 @@ export default function MotDePassePage() {
         motDePasseActuel: actuel,
         nouveauMotDePasse: nouveau
       });
-      setSucces(t('motDePasse.succes'));
+      toast({ title: t('motDePasse.succes'), variant: 'success' });
       setActuel('');
       setNouveau('');
       setConfirmation('');
@@ -62,7 +60,7 @@ export default function MotDePassePage() {
         navigate('/dashboard', { replace: true });
       }
     } catch (err) {
-      setErreur(messageErreur(err));
+      toast({ title: messageErreur(err), variant: 'destructive' });
     } finally {
       setEnvoi(false);
     }
@@ -84,16 +82,6 @@ export default function MotDePassePage() {
       {obligation && (
         <div className="mb-4 rounded-md border border-info/50 bg-info/50 p-3 text-sm text-info" role="alert">
           {t('motDePasse.obligatoire')}
-        </div>
-      )}
-      {succes && (
-        <div className="mb-4 rounded-md border border-success/50 bg-success/50 p-3 text-sm text-success">
-          {succes}
-        </div>
-      )}
-      {erreur && (
-        <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/50 p-3 text-sm text-destructive">
-          {afficherMessage(t, erreur)}
         </div>
       )}
 
