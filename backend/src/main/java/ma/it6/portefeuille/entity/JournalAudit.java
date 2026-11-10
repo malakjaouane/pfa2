@@ -3,9 +3,7 @@ package ma.it6.portefeuille.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.ParamDef;
 
 import java.time.LocalDateTime;
 
@@ -21,10 +19,6 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "journal_audit")
-@FilterDef(
-        name = "filtreParOrganisation",
-        parameters = @ParamDef(name = "idOrganisation", type = Long.class)
-)
 @Filter(
         name = "filtreParOrganisation",
         condition = "id_organisation = :idOrganisation"

@@ -3,8 +3,6 @@ package ma.it6.portefeuille.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
-
 /**
  * Plan d'abonnement (Phase 2D).
  *
@@ -42,6 +40,10 @@ public class Plan {
     @Column(name = "ia_incluse", nullable = false)
     private Boolean iaIncluse = false;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    /**
+     * {@code created_at} a été retiré : il n'est lu nulle part dans le code
+     * et n'existe dans aucune migration (V11 ne le crée pas). L'entité épouse
+     * ici le schéma réel pour que l'application puisse démarrer sur la base
+     * démo existante.
+     */
 }

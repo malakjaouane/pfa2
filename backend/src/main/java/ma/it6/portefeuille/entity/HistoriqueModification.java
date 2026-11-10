@@ -13,9 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.ParamDef;
 
 import java.time.LocalDateTime;
 
@@ -47,10 +45,6 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "historique_modification")
-@FilterDef(
-        name = "filtreParOrganisation",
-        parameters = @ParamDef(name = "idOrganisation", type = Long.class)
-)
 @Filter(
         name = "filtreParOrganisation",
         condition = "id_organisation = :idOrganisation"

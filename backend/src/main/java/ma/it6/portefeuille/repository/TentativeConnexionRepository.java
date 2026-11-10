@@ -2,6 +2,7 @@ package ma.it6.portefeuille.repository;
 
 import ma.it6.portefeuille.entity.TentativeConnexion;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -25,6 +26,7 @@ public interface TentativeConnexionRepository extends JpaRepository<TentativeCon
             @Param("debutFenetre") LocalDateTime debutFenetre);
 
     /** Supprime les tentatives trop anciennes (purge opportuniste). */
+    @Modifying
     @Query("""
         delete from TentativeConnexion t
         where t.dateTentative < :seuil
@@ -32,6 +34,7 @@ public interface TentativeConnexionRepository extends JpaRepository<TentativeCon
     long purgerAvant(@Param("seuil") LocalDateTime seuil);
 
     /** Efface toutes les tentatives d'un compte (connexion réussie). */
+    @Modifying
     @Query("""
         delete from TentativeConnexion t
         where t.typeCle = 'COMPTE'

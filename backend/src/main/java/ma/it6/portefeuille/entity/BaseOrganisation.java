@@ -10,8 +10,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.ParamDef;
 
 import ma.it6.portefeuille.security.OrganisationContext;
 
@@ -34,10 +32,6 @@ import ma.it6.portefeuille.security.OrganisationContext;
 @MappedSuperclass
 @Getter
 @Setter
-@FilterDef(
-        name = "filtreParOrganisation",
-        parameters = @ParamDef(name = "idOrganisation", type = Long.class)
-)
 @Filter(
         name = "filtreParOrganisation",
         condition = "id_organisation = :idOrganisation"
