@@ -50,7 +50,12 @@ export default function LoginPage() {
     setEnvoi(true);
     try {
       await login(emailSaisi, mdpSaisi);
-      navigate(location.state?.from?.pathname ?? '/dashboard', { replace: true });
+      // Compte neuf (drapeau d'installation non pose) : l'assistant
+      // d'installation est propose ; sinon on revient a la page demandee.
+      const destination = localStorage.getItem('onboardingDone') !== '1'
+        ? '/onboarding'
+        : (location.state?.from?.pathname ?? '/dashboard');
+      navigate(destination, { replace: true });
     } catch (err) {
       setErreur(messageErreur(err));
     } finally {

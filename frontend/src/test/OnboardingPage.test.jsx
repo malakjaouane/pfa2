@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import OnboardingPage from '../pages/OnboardingPage';
 
@@ -47,6 +47,7 @@ vi.mock('../api', () => ({
 describe('OnboardingPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
 
   it('affiche les 3 étapes de l’installation', () => {
@@ -58,5 +59,17 @@ describe('OnboardingPage', () => {
     expect(screen.getByText(/onboarding\.titre/i)).toBeInTheDocument();
     expect(screen.getAllByText(/onboarding\.etape1/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/onboarding\.suivant/i)).toBeInTheDocument();
+  });
+
+  it('le bouton « passer » pose le drapeau : plus de redirection forcée', () => {
+    render(
+      <MemoryRouter initialEntry="/onboarding">
+        <OnboardingPage />
+      </MemoryRouter>
+    );
+    // Sans le drapeau, l'AuthContext renverrait vers /onboarding a chaque
+    // chargement : le bouton doit lever ce drapeau.
+    fireEvent.click(screen.getByText(/onboarding\.passer/i));
+    expect(localStorage.getItem('onboardingDone')).toBe('1');
   });
 });

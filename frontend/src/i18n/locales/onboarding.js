@@ -19,7 +19,8 @@ export default {
     'onboarding.inviter': 'Envoyer l’invitation',
     'onboarding.termine': 'Installation terminée !',
     'onboarding.bravo': 'Votre portefeuille est prêt.',
-    'onboarding.allerDashboard': 'Aller au tableau de bord'
+    'onboarding.allerDashboard': 'Aller au tableau de bord',
+    'onboarding.passer': 'Passer et faire plus tard'
   },
 
   en: {
@@ -41,7 +42,8 @@ export default {
     'onboarding.inviter': 'Send invitation',
     'onboarding.termine': 'Setup complete!',
     'onboarding.bravo': 'Your portfolio is ready.',
-    'onboarding.allerDashboard': 'Go to dashboard'
+    'onboarding.allerDashboard': 'Go to dashboard',
+    'onboarding.passer': 'Skip setup for now'
   },
 
   ar: {
@@ -63,7 +65,8 @@ export default {
     'onboarding.inviter': 'إرسال الدعوة',
     'onboarding.termine': 'اكتمل الإعداد!',
     'onboarding.bravo': 'محفظتك جاهزة.',
-    'onboarding.allerDashboard': 'الانتقال إلى لوحة التحكم'
+    'onboarding.allerDashboard': 'الانتقال إلى لوحة التحكم',
+    'onboarding.passer': 'تخطّي الإعداد الآن'
   },
 
   es: {
@@ -85,6 +88,7 @@ export default {
     'onboarding.inviter': 'Enviar invitación',
     'onboarding.termine': '¡Configuración completada!',
     'onboarding.bravo': 'Tu cartera está lista.',
-    'onboarding.allerDashboard': 'Ir al tablero'
+    'onboarding.allerDashboard': 'Ir al tablero',
+    'onboarding.passer': 'Omitir la configuración'
   }
 };

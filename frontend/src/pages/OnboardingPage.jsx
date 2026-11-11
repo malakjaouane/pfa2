@@ -295,11 +295,25 @@ export default function OnboardingPage() {
           )}
         </CardContent>
         <CardFooter className="flex items-center justify-between space-y-0 md:space-y-0 md:flex-row">
-          {etape > 1 && (
-            <Button type="button" variant="outline" onClick={precedent}>
-              {t('initiativeForm.annuler')}
+          <div className="flex items-center gap-2">
+            {etape > 1 && (
+              <Button type="button" variant="outline" onClick={precedent}>
+                {t('initiativeForm.annuler')}
+              </Button>
+            )}
+            {/* Sortie possible : le drapeau est pose, l'assistant ne
+                reviendra plus deranger la navigation. */}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                localStorage.setItem('onboardingDone', '1');
+                navigate('/dashboard', { replace: true });
+              }}
+            >
+              {t('onboarding.passer')}
             </Button>
-          )}
+          </div>
           {etape < 3 && (
             <Button type="button" onClick={suivant}>
               {t('onboarding.suivant')}

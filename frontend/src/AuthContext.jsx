@@ -4,6 +4,23 @@ import api, { EVT_SESSION_EXPIREE } from './api';
 
 const AuthContext = createContext(null);
 
+/**
+ * Chemins publics : l'assistant d'installation ne doit jamais les détourner.
+ * La landing, la connexion, l'inscription et la rubrique « Découvrir »
+ * restent accessibles, même pour un compte déjà connecté.
+ */
+const CHEMINS_PUBLICS = ['/', '/login', '/inscription', '/decouvrir'];
+
+/**
+ * Indique si un chemin est public (donc jamais redirigé vers l'assistant).
+ * Exporté pour être vérifié par les tests.
+ */
+export function estCheminPublic(pathname) {
+  return CHEMINS_PUBLICS.some(
+    (chemin) => pathname === chemin || pathname.startsWith(`${chemin}/`)
+  );
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -19,8 +36,14 @@ export function AuthProvider({ children }) {
       .then((res) => {
         setUser(res.data);
         localStorage.setItem('pfa_user', JSON.stringify(res.data));
-        // Premier acces : envoie vers l'assistant d'installation (2B5)
-        if (localStorage.getItem('onboardingDone') !== '1' && window.location.pathname !== '/onboarding') {
+        // Premier acces : l'assistant d'installation est propose (2B5),
+        // sauf depuis une page publique (landing, connexion, inscription,
+        // decouvrir) qui ne doit jamais etre detournee.
+        if (
+          localStorage.getItem('onboardingDone') !== '1'
+          && window.location.pathname !== '/onboarding'
+          && !estCheminPublic(window.location.pathname)
+        ) {
           navigate('/onboarding', { replace: true });
         }
       })
