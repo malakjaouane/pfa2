@@ -25,9 +25,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 );
 
 // Service worker PWA (enregistré uniquement en production).
+// updateViaCache: 'none' : le script du service worker ne doit jamais
+// provenir du cache HTTP du navigateur, sinon une nouvelle version peut
+// mettre des heures à être détectée — et le navigateur repart alors sur
+// l'ancien bundle (page incohérente ou bloquée).
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch((err) => {
       console.warn('Enregistrement du service worker échoué :', err);
     });
   });

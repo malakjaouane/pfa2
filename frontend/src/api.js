@@ -83,6 +83,11 @@ api.interceptors.response.use(
     // refresh passerait par assurerCsrf() qui attend la promesse CSRF en
     // cours → deadlock (aucune mutation ne repartait plus).
     const isCsrfCall = config?.url?.includes('/auth/csrf');
+    // L'appel de refresh ne doit pas être rejoué sur un 401 : sans cette
+    // exclusion, chaque échec de refresh en relance un autre, qui échoue à
+    // son tour → boucle infinie de requêtes (le navigateur sature et le
+    // backend est martelé en permanence).
+    const isRefreshCall = config?.url?.includes('/auth/refresh');
 
     // 403 CSRF : le cookie XSRF-TOKEN est absent ou invalide -> on le
     // rafraîchit et on rejoue la requête une fois.
@@ -98,7 +103,7 @@ api.interceptors.response.use(
     }
 
     // 401 : tentative de renouvellement via le cookie de refresh tournant.
-    if (status === 401 && !isLoginCall && !isCsrfCall && !config._retryRefresh) {
+    if (status === 401 && !isLoginCall && !isCsrfCall && !isRefreshCall && !config._retryRefresh) {
       config._retryRefresh = true;
       try {
         await api.post('/auth/refresh');

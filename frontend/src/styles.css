@@ -1240,6 +1240,9 @@ mark {
   top: 0;
   z-index: 50;
   background: rgba(255, 255, 255, 0.94);
+  /* Préfixe -webkit- : Safari < 18 n'applique pas backdrop-filter seul
+     (halo de la barre de navigation non flouté). */
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--sn-gray-100);
 }
