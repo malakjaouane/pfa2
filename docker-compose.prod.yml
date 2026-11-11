@@ -77,6 +77,10 @@ services:
       COOKIE_SECURE: true
     ports:
       - "8080:8080"
+    volumes:
+      # Pièces jointes (stockage.repertoire = ./data/pieces-jointes) :
+      # persistées hors de la durée de vie du conteneur.
+      - pieces-jointes:/app/data
 
   # ---------------------------------------------------------------
   # Front React servi par nginx (proxy /api/ → backend)
@@ -112,5 +116,6 @@ services:
 
 volumes:
   mysql-donnees:
+  pieces-jointes:
   caddy-donnees:
   caddy-config:

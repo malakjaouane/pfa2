@@ -15,10 +15,13 @@ WORKDIR /build
 # D'abord le seul fichier de dépendances : la couche Docker reste en
 # cache tant que pom.xml ne change pas, ce qui accélère les rebuilds.
 COPY backend/pom.xml ./backend/pom.xml
-COPY database ./database
 WORKDIR /build/backend
 RUN mvn -B -q dependency:go-offline
 
+# database/ ne sert qu'à l'empaquetage (migrations embarquées dans le
+# jar) : copiée APRÈS go-offline, un ajout de migration n'invalide donc
+# plus la couche de dépendances (~5 min de téléchargement).
+COPY database ../database
 COPY backend/src ./src
 # -DskipTests : les tests tournent en CI (mvn test), pas dans l'image.
 RUN mvn -B -q package -DskipTests
@@ -28,7 +31,13 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 # Compte non-root : l'image n'a pas besoin des privilèges root.
-RUN useradd --system --no-create-home --shell /usr/sbin/nologin portefeuille
+# /app/data = répertoire de stockage des pièces jointes
+# (stockage.repertoire, défaut ./data/pieces-jointes) : il doit être
+# créée ici, appartenant à l'utilisateur non-root, sinon le démarrage
+# échoue en AccessDeniedException.
+RUN useradd --system --no-create-home --shell /usr/sbin/nologin portefeuille \
+    && mkdir -p /app/data \
+    && chown -R portefeuille:portefeuille /app/data
 USER portefeuille
 
 COPY --from=construction /build/backend/target/*.jar app.jar

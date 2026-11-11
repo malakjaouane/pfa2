@@ -85,6 +85,10 @@ services:
       MAIL_PORT: ${MAIL_PORT:-1025}
     ports:
       - "${SERVER_PORT:-8080}:8080"
+    volumes:
+      # Pièces jointes (stockage.repertoire = ./data/pieces-jointes) :
+      # persistées hors de la durée de vie du conteneur.
+      - pieces-jointes:/app/data
 
   # ---------------------------------------------------------------
   # Front React servi par nginx (proxy /api/ → backend, cf. nginx.conf)
@@ -117,3 +121,4 @@ services:
 
 volumes:
   mysql-donnees:
+  pieces-jointes:
