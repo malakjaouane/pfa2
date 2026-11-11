@@ -77,7 +77,7 @@ export default function OnboardingPage() {
       const statut = referentiels.statuts[0];
       const entite = referentiels.entites[0];
       const priorite = referentiels.priorites[0];
-      await api.post('/api/initiatives', {
+      await api.post('/initiatives', {
         code: init.code,
         nom: init.nom,
         description: init.description || null,
@@ -107,7 +107,7 @@ export default function OnboardingPage() {
     }
     setChargement(true);
     try {
-      await api.post('/api/auth/inviter', {
+      await api.post('/auth/inviter', {
         email: invite.email.trim().toLowerCase(),
         idRole: Number(invite.idRole)
       });

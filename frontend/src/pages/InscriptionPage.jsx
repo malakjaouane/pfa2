@@ -49,7 +49,7 @@ export default function InscriptionPage() {
 
     setEnvoi(true);
     try {
-      await api.post('/api/auth/signup', {
+      await api.post('/auth/signup', {
         email: form.email.trim().toLowerCase(),
         motDePasse: form.motDePasse,
         nom: form.nom.trim(),

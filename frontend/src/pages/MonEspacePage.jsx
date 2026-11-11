@@ -48,7 +48,7 @@ export default function MonEspacePage() {
   useEffect(() => {
     Promise.all([
       api.get('/mon-espace'),
-      api.get('/api/notifications/preferences')
+      api.get('/notifications/preferences')
     ])
       .then(([res1, res2]) => {
         setDonnees(res1.data);
@@ -61,7 +61,7 @@ export default function MonEspacePage() {
   const enregistrerPreferences = async () => {
     setPreferencesChargement(true);
     try {
-      await api.patch('/api/notifications/preferences', {
+      await api.patch('/notifications/preferences', {
         emailActif: preferences.emailActif,
         frequence: preferences.frequence,
         whatsappActif: preferences.whatsappActif,

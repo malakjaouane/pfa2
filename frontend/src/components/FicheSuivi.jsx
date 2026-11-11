@@ -227,7 +227,7 @@ export default function FicheSuivi({ idInitiative, archivee = false }) {
     try {
       const formData = new FormData();
       formData.append('fichier', nouvelleDepense.fichier);
-      await api.post('/api/initiatives/' + idInitiative + '/pieces-jointes', formData, {
+      await api.post('/initiatives/' + idInitiative + '/pieces-jointes', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setNouvelleDepense({ ...nouvelleDepense, fichier: null });
