@@ -64,6 +64,7 @@ services:
       IA_BASE_URL: ${IA_BASE_URL:-https://api.anthropic.com}
       IA_MODELE: ${IA_MODELE:-claude-haiku-4-5}
       IA_MAX_TOKENS: ${IA_MAX_TOKENS:-1024}
+      IA_TIMEOUT_MS: ${IA_TIMEOUT_MS:-60000}
       # SMTP production (obligatoire pour l'envoi d'e-mails réels)
       MAIL_HOST: ${MAIL_HOST:?MAIL_HOST manquant}
       MAIL_PORT: ${MAIL_PORT:?MAIL_PORT manquant}
