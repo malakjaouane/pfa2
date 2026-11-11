@@ -5,6 +5,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import ma.it6.portefeuille.entity.JournalAudit;
+import ma.it6.portefeuille.security.JwtAuthenticationFilter;
+import ma.it6.portefeuille.security.PrincipalUser;
 import ma.it6.portefeuille.repository.JournalAuditRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
 import ma.it6.portefeuille.security.OrganisationContext;
@@ -132,7 +134,26 @@ public class AuditFilter extends OncePerRequestFilter {
                     .adresseIp(adresseIp(request))
                     .corps(corps)
                     .build();
-            ligne.setIdOrganisation(OrganisationContext.getId());
+            // L'intercepteur d'isolation efface OrganisationContext en
+            // afterCompletion, AVANT cette phase (le filtre s'exécute après
+            // DispatcherServlet) : le ThreadLocal est déjà vide pour toute
+            // requête servie par un contrôleur — l'audit perdait alors
+            // systématiquement l'organisation (colonne NOT NULL → rejet).
+            // Le principal posé par JwtAuthenticationFilter sur l'attribut
+            // de requête, lui, vit jusqu'à la fin de la requête : c'est la
+            // source fiable.
+            PrincipalUser principal =
+                    (PrincipalUser) request.getAttribute(JwtAuthenticationFilter.ATT_PRINCIPAL);
+            if (principal == null || principal.getIdOrganisation() == null) {
+                // Requête sans organisation attribuable (ex. tentative de
+                // connexion anonyme) : id_organisation est NOT NULL et on
+                // n'invente pas d'organisme — l'action n'est pas journalisée
+                // ici (les tentatives de connexion ont leur propre trace).
+                journal.debug("Audit ignore, pas d'organisation : {} {}",
+                        methode, request.getRequestURI());
+                return;
+            }
+            ligne.setIdOrganisation(principal.getIdOrganisation());
             journalRepository.save(ligne);
         } catch (RuntimeException e) {
             // L'audit ne doit jamais faire échouer l'action métier.
