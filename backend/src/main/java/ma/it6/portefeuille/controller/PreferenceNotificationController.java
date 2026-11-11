@@ -4,6 +4,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -63,7 +64,9 @@ public class PreferenceNotificationController {
     @PatchMapping("/preferences")
     public ResponseEntity<PreferenceNotificationDTO> mettreAJourPreferences(
             @AuthenticationPrincipal String email,
-            PreferenceNotificationDTO dto) {
+            // @RequestBody obligatoire : sans lui, Spring lie un POJO depuis
+            // les query-params (vides) -> DTO tout à null -> 409 NOT NULL.
+            @RequestBody PreferenceNotificationDTO dto) {
         PreferenceNotificationDTO misAJour = notificationService.mettreAJourPreferences(
                 idUtilisateurConnecte(email), dto);
         return ResponseEntity.ok(misAJour);

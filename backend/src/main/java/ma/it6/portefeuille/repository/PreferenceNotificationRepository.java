@@ -10,4 +10,7 @@ public interface PreferenceNotificationRepository extends JpaRepository<Preferen
     // Chemin de propriété : PreferenceNotification.utilisateur -> Utilisateur.idUser
     // (convention du dépôt : findByInitiativeIdInitiative, cf. EtapeRepository).
     Optional<PreferenceNotification> findByUtilisateurIdUser(Long idUtilisateur);
+
+    // Digests (NotificationsScheduler) : abonnés à une fréquence avec email actif.
+    java.util.List<PreferenceNotification> findByFrequenceAndEmailActifTrue(String frequence);
 }

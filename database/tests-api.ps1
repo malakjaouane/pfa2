@@ -1563,6 +1563,43 @@ $priClot = Invoke-Api 'Put' "$Base/initiatives/$priId" $priClotCorps $adminToken
 $priArch = Invoke-Api 'Patch' "$Base/initiatives/$priId/archive" $null $adminToken
 Test-Check 'Priorisation : nettoyage (annulee puis archivee)' ($priClot.OK -and $priArch.OK -and $priArch.Body.archive -eq $true) "($($priClot.Status)/$($priArch.Status))"
 
+Write-Output '=== 26. Preferences de notification (opt-in, frequence, canaux) ==='
+
+# Anonyme -> 401 sur lecture comme sur ecriture.
+$prefsAnonL = Invoke-Api 'Get' "$Base/notifications/preferences" $null $null
+Test-Check 'Preferences : anonyme (lecture) -> 401' ($prefsAnonL.OK -eq $false -and $prefsAnonL.Status -eq 401) "($($prefsAnonL.Status))"
+
+$prefsAnonE = Invoke-Api 'Patch' "$Base/notifications/preferences" @{ frequence = 'quotidienne' } $null
+Test-Check 'Preferences : anonyme (ecriture) -> 401' ($prefsAnonE.OK -eq $false -and $prefsAnonE.Status -eq 401) "($($prefsAnonE.Status))"
+
+# Lecture : la ligne existe (creee au premier passage) avec une frequence valide.
+$prefsLues = Invoke-Api 'Get' "$Base/notifications/preferences" $null $adminToken
+Test-Check 'Preferences : lecture 200 avec frequence valide' ($prefsLues.OK -and $prefsLues.Status -eq 200 -and $prefsLues.Body.frequence -in @('aucune', 'quotidienne', 'hebdomadaire')) "($($prefsLues.Status)/$($prefsLues.Body.frequence))"
+
+# Ecriture : activation du resume quotidien par email, echo complet.
+$prefsMaj = Invoke-Api 'Patch' "$Base/notifications/preferences" @{
+    emailActif = $true; frequence = 'quotidienne'; whatsappActif = $false; telephone = $null
+} $adminToken
+Test-Check 'Preferences : PATCH quotidienne + email -> echo exact' ($prefsMaj.OK -and $prefsMaj.Body.emailActif -eq $true -and $prefsMaj.Body.frequence -eq 'quotidienne' -and $prefsMaj.Body.whatsappActif -eq $false) "($($prefsMaj.Body.frequence))"
+
+# Frequence hors liste -> 400 (validation cote service).
+$prefsFreq = Invoke-Api 'Patch' "$Base/notifications/preferences" @{
+    emailActif = $false; frequence = 'mensuelle'; whatsappActif = $false; telephone = $null
+} $adminToken
+Test-Check 'Preferences : frequence « mensuelle » -> 400' ($prefsFreq.OK -eq $false -and $prefsFreq.Status -eq 400) "($($prefsFreq.Status))"
+
+# Frequence absente du corps -> 400 (parametre obligatoire du domaine).
+$prefsSansFreq = Invoke-Api 'Patch' "$Base/notifications/preferences" @{
+    emailActif = $false; whatsappActif = $false
+} $adminToken
+Test-Check 'Preferences : frequence absente -> 400' ($prefsSansFreq.OK -eq $false -and $prefsSansFreq.Status -eq 400) "($($prefsSansFreq.Status))"
+
+# Retour aux defauts : la section reste idempotente d'un passage a l'autre.
+$prefsRemise = Invoke-Api 'Patch' "$Base/notifications/preferences" @{
+    emailActif = $false; frequence = 'aucune'; whatsappActif = $false; telephone = $null
+} $adminToken
+Test-Check 'Preferences : retour aux defauts (idempotence)' ($prefsRemise.OK -and $prefsRemise.Body.frequence -eq 'aucune' -and $prefsRemise.Body.emailActif -eq $false) "($($prefsRemise.Body.frequence))"
+
 Write-Output ''
 Write-Output '------------------------------------------------------------'
 Write-Output "RESULTATS : $script:Pass reussis, $script:Fail echoues"

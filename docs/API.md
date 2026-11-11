@@ -677,6 +677,33 @@ Les 7 types :
 | `demandeEnAttente` | `ORANGE` | demande « En évaluation » en attente d'arbitrage |
 | `budgetDepasse` | `ROUGE` | dépenses consommées supérieures au budget |
 
+### Préférences de notification (`GET|PATCH /notifications/preferences`)
+
+Réglages de l'utilisateur connecté (carte « Notifications » de Mon espace) :
+
+| Méthode | Route | Permission | Description |
+|---|---|---|---|
+| GET | `/notifications/preferences` | tout compte connecté | Lit **ou crée** les préférences |
+| PATCH | `/notifications/preferences` | tout compte connecté | Met à jour le corps complet |
+
+- **Corps PATCH** : `emailActif` (bool), `frequence` (`aucune` |
+  `quotidienne` | `hebdomadaire`), `whatsappActif` (bool),
+  `telephone` (string | null).
+- **Défauts à la création** : `emailActif=false`, `frequence="aucune"`,
+  `whatsappActif=false` — **opt-in** : aucun envoi sans action du compte.
+- `frequence` absente ou hors liste → `400` ; booléen `null` → `false`.
+- **Canaux** : `email` (JavaMailSender) et `whatsapp` — le bean WhatsApp
+  n'est créé que si `notification.whatsapp.actif=true` (**kill switch de
+  configuration**, désactivé par défaut : aucun appel réseau, la
+  préférence est alors simplement sans effet).
+- **Digest quotidien** : `NotificationsScheduler` (08h30) envoie un résumé
+  générique aux comptes `frequence="quotidienne"` + `emailActif=true`.
+  **Digest hebdomadaire** : le lundi 09h30, `AssistantIaAvanceService`
+  envoie le rapport IA aux comptes `frequence="hebdomadaire"`
+  (kill switch IA respecté — pas d'envoi si l'assistant est indisponible).
+  Chaque envoi abouti ou échoué est journalisé dans la table
+  `notification` (canal, statut `envoyee` / `echec`).
+
 ---
 
 ## 19. Mon espace

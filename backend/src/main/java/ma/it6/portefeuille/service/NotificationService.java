@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,9 @@ import static org.springframework.http.HttpStatus.*;
 @Service
 @Transactional(readOnly = true)
 public class NotificationService {
+
+    /** Fréquences de digest acceptées (aligné sur le CHECK en base). */
+    private static final Set<String> FREQUENCES = Set.of("aucune", "quotidienne", "hebdomadaire");
 
     private final PreferenceNotificationRepository preferenceRepository;
     private final NotificationRepository notificationRepository;
@@ -78,9 +82,16 @@ public class NotificationService {
 
     /**
      * Met à jour les préférences de notification de l’utilisateur donné.
+     * La fréquence est obligatoire et limitée aux valeurs du domaine ;
+     * un booléen absent du corps vaut « coupé » (les colonnes sont NOT NULL).
      */
     @Transactional
     public PreferenceNotificationDTO mettreAJourPreferences(Long idUtilisateur, PreferenceNotificationDTO dto) {
+        if (dto.getFrequence() == null || !FREQUENCES.contains(dto.getFrequence())) {
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "Fréquence de notification invalide : « " + dto.getFrequence()
+                            + " » (valeurs acceptées : aucune, quotidienne, hebdomadaire).");
+        }
         Utilisateur u = utilisateurRepository.findById(idUtilisateur)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Utilisateur introuvable"));
 
@@ -92,9 +103,9 @@ public class NotificationService {
                     .dateCreation(LocalDateTime.now())
                     .build();
         }
-        p.setEmailActif(dto.getEmailActif());
+        p.setEmailActif(Boolean.TRUE.equals(dto.getEmailActif()));
         p.setFrequence(dto.getFrequence());
-        p.setWhatsappActif(dto.getWhatsappActif());
+        p.setWhatsappActif(Boolean.TRUE.equals(dto.getWhatsappActif()));
         p.setTelephone(dto.getTelephone());
         p.setDateModification(LocalDateTime.now());
         p = preferenceRepository.save(p);
@@ -118,21 +129,45 @@ public class NotificationService {
 
         boolean envoyé = false;
 
-        if (p.getEmailActif() != null && p.getEmailActif() && p.getUtilisateur().getEmail() != null) {
+        // Un canal absent (WhatsApp désactivé par config) n'est pas tenté :
+        // aucune ligne de journal « echec » pour un envoi jamais effectué.
+        if (Boolean.TRUE.equals(p.getEmailActif()) && p.getUtilisateur().getEmail() != null) {
             CanalNotification canal = canaux.get("email");
-            boolean ok = canal != null && canal.envoyer(p.getUtilisateur().getEmail(), sujet, corps);
-            enregistréNotification(u, "email", sujet, corps, ok);
-            envoyé = envoyé || ok;
+            if (canal != null) {
+                boolean ok = canal.envoyer(p.getUtilisateur().getEmail(), sujet, corps);
+                enregistréNotification(u, "email", sujet, corps, ok);
+                envoyé = envoyé || ok;
+            }
         }
 
-        if (p.getWhatsappActif() != null && p.getWhatsappActif() && p.getTelephone() != null) {
+        if (Boolean.TRUE.equals(p.getWhatsappActif()) && p.getTelephone() != null) {
             CanalNotification canal = canaux.get("whatsapp");
-            boolean ok = canal != null && canal.envoyer(p.getTelephone(), sujet, corps);
-            enregistréNotification(u, "whatsapp", sujet, corps, ok);
-            envoyé = envoyé || ok;
+            if (canal != null) {
+                boolean ok = canal.envoyer(p.getTelephone(), sujet, corps);
+                enregistréNotification(u, "whatsapp", sujet, corps, ok);
+                envoyé = envoyé || ok;
+            }
         }
 
         return envoyé;
+    }
+
+    /**
+     * Envoie un résumé (digest) à tous les comptes abonnés à la fréquence
+     * donnée et ayant activé l’email. Les canaux de chaque compte restent
+     * respectés (WhatsApp inclus s’il est actif et disponible).
+     *
+     * @return le nombre de comptes contactés avec succès
+     */
+    @Transactional
+    public int envoyerResume(String frequence, String sujet, String corps) {
+        int comptesContactes = 0;
+        for (PreferenceNotification p : preferenceRepository.findByFrequenceAndEmailActifTrue(frequence)) {
+            if (envoyer(p.getUtilisateur().getIdUser(), sujet, corps)) {
+                comptesContactes++;
+            }
+        }
+        return comptesContactes;
     }
 
     private void enregistréNotification(Utilisateur u, String canal, String sujet, String corps, boolean envoyé) {
