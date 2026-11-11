@@ -103,7 +103,10 @@ class ImportInitiativeServiceTest {
         normale.setLibelle("Normale");
         when(prioriteRepository.findAll()).thenReturn(List.of(normale));
 
-        when(entiteRepository.findAll()).thenReturn(List.of());
+        Entite direction = new Entite();
+        direction.setIdEntite(2L);
+        direction.setNom("Direction Digitale");
+        when(entiteRepository.findAll()).thenReturn(List.of(direction));
         when(objectifRepository.findAll()).thenReturn(List.of());
     }
 
@@ -115,7 +118,7 @@ class ImportInitiativeServiceTest {
     void importer_csv_valide_mode_strict() {
         String csv = """
                 code;nom;description;dateDebut;dateFinPrevue;budget;responsable;statut;priorite;entite;objectif
-                PROJ-001;Mon premier projet;Description du projet;2026-01-01;2026-12-31;1500.00;admin@it6.ma;A planifier;Normale;;;
+                PROJ-001;Mon premier projet;Description du projet;2026-01-01;2026-12-31;1500.00;admin@it6.ma;A planifier;Normale;Direction Digitale;;
                 """;
         MockMultipartFile fichier = new MockMultipartFile(
                 "fichier", "test.csv", "text/csv",
@@ -139,9 +142,9 @@ class ImportInitiativeServiceTest {
     @Test
     void importer_code_duplique_mode_strict_rien_n_importe() {
         String csv = """
-                code;nom;statut;priorite;responsable
-                PROJ-001;Projet A;A planifier;Normale;admin@it6.ma
-                PROJ-001;Projet B;A planifier;Normale;admin@it6.ma
+                code;nom;statut;priorite;responsable;entite
+                PROJ-001;Projet A;A planifier;Normale;admin@it6.ma;Direction Digitale
+                PROJ-001;Projet B;A planifier;Normale;admin@it6.ma;Direction Digitale
                 """;
         MockMultipartFile fichier = new MockMultipartFile(
                 "fichier", "test.csv", "text/csv",
@@ -170,10 +173,10 @@ class ImportInitiativeServiceTest {
     @Test
     void importer_ligne_erreur_mode_ignorer() {
         String csv = """
-                code;nom;statut;priorite;responsable
-                PROJ-001;Projet A;A planifier;Normale;admin@it6.ma
-                ;Projet sans code;A planifier;Normale;admin@it6.ma
-                PROJ-002;Projet B;A planifier;Normale;admin@it6.ma
+                code;nom;statut;priorite;responsable;entite
+                PROJ-001;Projet A;A planifier;Normale;admin@it6.ma;Direction Digitale
+                ;Projet sans code;A planifier;Normale;admin@it6.ma;Direction Digitale
+                PROJ-002;Projet B;A planifier;Normale;admin@it6.ma;Direction Digitale
                 """;
         MockMultipartFile fichier = new MockMultipartFile(
                 "fichier", "test.csv", "text/csv",
@@ -204,8 +207,8 @@ class ImportInitiativeServiceTest {
         when(initiativeRepository.countByIdOrganisation(1L)).thenReturn(3L);
 
         String csv = """
-                code;nom;statut;priorite;responsable
-                PROJ-004;Projet en trop;A planifier;Normale;admin@it6.ma
+                code;nom;statut;priorite;responsable;entite
+                PROJ-004;Projet en trop;A planifier;Normale;admin@it6.ma;Direction Digitale
                 """;
         MockMultipartFile fichier = new MockMultipartFile(
                 "fichier", "test.csv", "text/csv",
@@ -237,6 +240,34 @@ class ImportInitiativeServiceTest {
         assertThatThrownBy(() -> service.importer(fichier, false))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("priorite");
+    }
+
+    // ------------------------------------------------------------------
+    // Modèle CSV téléchargeable
+    // ------------------------------------------------------------------
+
+    @Test
+    void modele_csv_entetes_et_ligne_exemple() {
+        byte[] modele = service.modele();
+
+        // BOM UTF-8 en tête (convention des exports : Excel ouvre sans « ANSI »)
+        assertThat(modele[0]).isEqualTo((byte) 0xEF);
+        assertThat(modele[1]).isEqualTo((byte) 0xBB);
+        assertThat(modele[2]).isEqualTo((byte) 0xBF);
+
+        String texte = new String(modele, StandardCharsets.UTF_8).replace("\uFEFF", "");
+        String[] lignes = texte.split("\r\n|\n");
+
+        // Ligne 1 : colonnes requises (entite comprise, NOT NULL en base)
+        // puis optionnelles, séparateur « ; »
+        assertThat(lignes[0]).startsWith("code;nom;statut;priorite;responsable;entite");
+        assertThat(lignes[0])
+                .contains("description;dateDebut;dateFinPrevue;budget;objectif");
+
+        // Une seule ligne d'exemple, sur les 11 colonnes déclarées
+        assertThat(lignes).hasSize(2);
+        assertThat(lignes[1]).startsWith("EXEMPLE-001;");
+        assertThat(lignes[1].split(";", -1)).hasSize(11);
     }
 
     @AfterEach

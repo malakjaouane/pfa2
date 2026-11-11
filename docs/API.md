@@ -146,6 +146,20 @@ Les initiatives exposent leur rattachement à un objectif stratégique :
 { "idObjectif": 1, "code": "OBJ-EXP", "libelle": "Optimiser l'expérience client", "description": "…" }
 ```
 
+### Import CSV / Excel (`POST /initiatives/import`, `GET /initiatives/import/modele`)
+
+| Méthode | Route | Permission | Description |
+|---|---|---|---|
+| GET | `/initiatives/import/modele` | `INITIATIVE_CREER` | Modèle CSV téléchargeable (BOM UTF-8, séparateur `;`) : colonnes requises `code, nom, statut, priorite, responsable, entite` puis optionnelles `description, dateDebut, dateFinPrevue, budget, objectif`, avec une ligne d'exemple |
+| POST | `/initiatives/import` | `INITIATIVE_CREER` | `multipart/form-data` : champ `fichier` (.csv / .xlsx / .xls) + paramètre `ignorerErreurs` (défaut `false`) |
+
+- `entite` est **obligatoire** (colonne ET valeur) : `initiative.id_entite` est `NOT NULL` en base ; une cellule vide ou un libellé inconnu produit une erreur ligne par ligne, jamais un plantage.
+
+- **Mode strict** (défaut) : toute ligne invalide renvoie **400** avec le rapport ligne par ligne (`erreurs[] = { ligne, message }`) et **rien n'est importé**.
+- **Mode `ignorerErreurs=true`** : **201**, seules les lignes valides sont importées (`lignesImportees`), les lignes fautives sont comptées dans `lignesIgnorees` et détaillées dans `erreurs`.
+- La ligne d'en-tête est obligatoire ; les valeurs `statut`, `priorite`, `entite`, `objectif` et `responsable` (e-mail) sont résolues dans les référentiels **de l'organisation de l'utilisateur**.
+- **Limite de plan** : si `nb_initiatives_max` serait dépassé, l'import est refusé (400) sans rien créer.
+
 ---
 
 ## 5. Étapes

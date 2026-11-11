@@ -45,6 +45,7 @@ import ma.it6.portefeuille.repository.PrioriteRepository;
 import ma.it6.portefeuille.repository.StatutInitiativeRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
 import ma.it6.portefeuille.security.OrganisationContext;
+import ma.it6.portefeuille.util.CsvUtil;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -75,12 +76,15 @@ public class ImportInitiativeService {
     private static final Set<String> EXTENSIONS_CSV = Set.of("csv");
     private static final Set<String> EXTENSIONS_EXCEL = Set.of("xlsx", "xls");
 
+    // entite est REQUISE : initiative.id_entite est NOT NULL (V1) et la
+    // création normale exige également idEntite — une ligne sans entité
+    // plantait en Contrainte d'intégrité (409) au lieu d'un rapport d'erreurs.
     private static final String[] COLONNES_REQUISES = {
-        "code", "nom", "statut", "priorite", "responsable"
+        "code", "nom", "statut", "priorite", "responsable", "entite"
     };
 
     private static final String[] COLONNES_OPTIONNELLES = {
-        "description", "dateDebut", "dateFinPrevue", "budget", "entite", "objectif"
+        "description", "dateDebut", "dateFinPrevue", "budget", "objectif"
     };
 
     private final InitiativeRepository initiativeRepository;
@@ -235,6 +239,33 @@ public class ImportInitiativeService {
                 .erreurs(erreurs)
                 .mode(ignorerErreurs ? "ignorer_erreurs" : "strict")
                 .build();
+    }
+
+    /**
+     * Modèle CSV téléchargeable (4B) : en-têtes — colonnes requises puis
+     * optionnelles — et une ligne d'exemple à adapter aux référentiels de
+     * l'organisation. Mêmes conventions que les exports (BOM UTF-8,
+     * séparateur point-virgule) : le fichier se réimporte tel quel, le BOM
+     * étant retiré à la lecture.
+     *
+     * @return contenu CSV du modèle
+     */
+    public byte[] modele() {
+        List<String> entetes = new ArrayList<>(List.of(COLONNES_REQUISES));
+        entetes.addAll(List.of(COLONNES_OPTIONNELLES));
+        List<List<String>> lignes = List.of(List.of(
+                "EXEMPLE-001",
+                "Initiative d'exemple",
+                "En cours",
+                "Moyenne",
+                "prenom.nom@organisation.ma",
+                "Nom de votre entite",
+                "Description libre (optionnel)",
+                "2026-01-05",
+                "2026-06-30",
+                "150000",
+                "CODE-OBJECTIF"));
+        return CsvUtil.construire(entetes, lignes);
     }
 
     // ------------------------------------------------------------------
@@ -448,8 +479,12 @@ public class ImportInitiativeService {
             erreurs.add("priorite inconnue : " + prioriteLibelle);
         }
 
+        // initiative.id_entite est NOT NULL : vide ou inconnue = erreur de
+        // ligne signalée (rapport ligne par ligne) — jamais un plantage SQL.
         Entite entite = null;
-        if (!entiteNom.isEmpty()) {
+        if (entiteNom.isEmpty()) {
+            erreurs.add("entite est obligatoire.");
+        } else {
             entite = entites.get(entiteNom.toLowerCase());
             if (entite == null) {
                 erreurs.add("entite inconnue : " + entiteNom);

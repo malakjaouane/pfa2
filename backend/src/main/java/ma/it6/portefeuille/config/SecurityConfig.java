@@ -182,6 +182,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/depenses/**", "/api/initiatives/*/depenses")
                         .hasAuthority("DEPENSE_SAISIR")
                         // Initiatives
+                        // Modèle CSV d'import (4B) : même droit que l'import,
+                        // déclaré AVANT la règle GET générique suivante
+                        // (sinon INITIATIVE_CONSULTER suffirait à le lire).
+                        .requestMatchers(HttpMethod.GET, "/api/initiatives/import/modele")
+                        .hasAuthority("INITIATIVE_CREER")
                         .requestMatchers(HttpMethod.GET, "/api/initiatives/**").hasAuthority("INITIATIVE_CONSULTER")
                         .requestMatchers(HttpMethod.POST, "/api/initiatives").hasAuthority("INITIATIVE_CREER")
                         // Import d'initiatives (4B) : même droit que la création.

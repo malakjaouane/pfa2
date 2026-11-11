@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import api, { messageErreur } from '../api';
+import api, { messageErreur, messageErreurBlob, telechargerFichier } from '../api';
 import { useI18n } from '../i18n/I18nContext';
 import { useToast } from '../components/ui/use-toast';
 import { Button } from '../components/ui/button';
@@ -19,6 +19,9 @@ import { Badge } from '../components/ui/badge';
  * En mode strict (défaut), toute erreur rejette l'import entier.
  * En mode « ignorer les erreurs », seules les lignes valides sont
  * importées et les erreurs sont rapportées.
+ *
+ * Un modèle CSV (colonnes requises + ligne d'exemple) est téléchargeable
+ * depuis la page — même droit que l'import.
  */
 export default function ImportInitiativesPage() {
   const { t, langue } = useI18n();
@@ -40,15 +43,29 @@ export default function ImportInitiativesPage() {
       });
       setResultat(res.data);
       toast({
-        title: t('importation.succès', {
-          n: resultat.lignesImportees,
-        }),
+        title: t('importation.succes', { n: res.data.lignesImportees }),
         variant: 'success',
       });
     } catch (err) {
-      toast({ title: messageErreur(err), variant: 'destructive' });
+      const rapport = err.response?.data;
+      if (rapport && Array.isArray(rapport.erreurs)) {
+        // Mode strict : le serveur renvoie le rapport ligne par ligne
+        // (HTTP 400) — on l'affiche dans le panneau de résultat.
+        setResultat(rapport);
+        toast({ title: t('importation.refuse'), variant: 'destructive' });
+      } else {
+        toast({ title: messageErreur(err), variant: 'destructive' });
+      }
     } finally {
       setEnvoiCreation(false);
+    }
+  };
+
+  const telechargerModele = async () => {
+    try {
+      await telechargerFichier('/initiatives/import/modele', 'modele-import-initiatives.csv');
+    } catch (err) {
+      toast({ title: messageErreurBlob(err), variant: 'destructive' });
     }
   };
 
@@ -94,8 +111,21 @@ export default function ImportInitiativesPage() {
                 {envoiCreation ? t('importation.enCours') : t('importation.importer')}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {t('importation.formats')}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-muted-foreground">
+                {t('importation.formats')}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={telechargerModele}
+              >
+                {t('importation.modele')}
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {t('importation.modeleAide')}
             </p>
           </form>
         </CardContent>

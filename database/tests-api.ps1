@@ -68,6 +68,56 @@ function Convertir-Reponse {
     return ($texte | ConvertFrom-Json)
 }
 
+# Upload multipart (section 23) : PowerShell 5.1 n'a pas -Form, la
+# requête est construite à la main (bordure, en-têtes de partie, octets).
+# $Token null = requête anonyme (test 401).
+function Invoke-Import {
+    param([string]$Url, [string]$Nom, [string]$Contenu, [string]$Token, [bool]$Ignorer = $false)
+    $boundary = '----pfa' + [System.Guid]::NewGuid().ToString('N')
+    $CRLF = "`r`n"
+    $morceaux = New-Object System.Collections.Generic.List[byte[]]
+    if ($Ignorer) {
+        $champ = "--$boundary$CRLF" +
+            'Content-Disposition: form-data; name="ignorerErreurs"' + $CRLF + $CRLF +
+            'true' + $CRLF
+        $morceaux.Add([System.Text.Encoding]::UTF8.GetBytes($champ))
+    }
+    $debut = "--$boundary$CRLF" +
+        "Content-Disposition: form-data; name=`"fichier`"; filename=`"$Nom`"" + $CRLF +
+        'Content-Type: text/csv' + $CRLF + $CRLF
+    $morceaux.Add([System.Text.Encoding]::UTF8.GetBytes($debut))
+    $morceaux.Add([System.Text.Encoding]::UTF8.GetBytes($Contenu))
+    $morceaux.Add([System.Text.Encoding]::UTF8.GetBytes($CRLF + "--$boundary--$CRLF"))
+    $longueur = 0
+    foreach ($morceau in $morceaux) { $longueur += $morceau.Length }
+    $corps = New-Object byte[] $longueur
+    $offset = 0
+    foreach ($morceau in $morceaux) {
+        [Array]::Copy($morceau, 0, $corps, $offset, $morceau.Length)
+        $offset += $morceau.Length
+    }
+    $headers = @{}
+    if ($Token) { $headers['Authorization'] = "Bearer $Token" }
+    try {
+        $resp = Invoke-WebRequest -Uri $Url -Method Post -Headers $headers `
+            -ContentType "multipart/form-data; boundary=$boundary" -Body $corps `
+            -UseBasicParsing -ErrorAction Stop
+        return @{ OK = $true; Status = [int]$resp.StatusCode; Body = (Convertir-Reponse $resp) }
+    } catch {
+        $body = $null; $status = 0
+        if ($_.Exception.Response) {
+            $status = [int]$_.Exception.Response.StatusCode
+            try {
+                $flux = $_.Exception.Response.GetResponseStream()
+                $lecteur = New-Object System.IO.StreamReader($flux, [System.Text.Encoding]::UTF8)
+                $texte = $lecteur.ReadToEnd()
+                if (-not [string]::IsNullOrWhiteSpace($texte)) { $body = $texte | ConvertFrom-Json }
+            } catch { $body = $null }
+        }
+        return @{ OK = $false; Status = $status; Body = $body }
+    }
+}
+
 Write-Output "=== 1. Authentification ($emailTest) ==="
 
 $login = Invoke-Api 'Post' "$Base/auth/login" @{ email = 'admin@it6.ma'; motDePasse = 'Admin@123' }
@@ -1318,6 +1368,96 @@ foreach ($exp in $exports) {
     } catch { $expDetail = "($($_.Exception.Message))" }
     Test-Check "Export CSV $($exp.Nom) : 200 text/csv + BOM + en-tete" $expOk $expDetail
 }
+
+Write-Output '=== 23. Import CSV (modele, strict, ignorerErreurs, droits) ==='
+
+# Modèle téléchargeable : 200 text/csv, BOM UTF-8, colonnes requises.
+$modeleOk = $false; $modeleDetail = ''
+try {
+    $modeleResp = Invoke-WebRequest -UseBasicParsing -Uri "$Base/initiatives/import/modele" `
+        -Headers @{ Authorization = "Bearer $adminToken" }
+    $modeleOctets = $modeleResp.RawContentStream.ToArray()
+    $modeleTexte = [System.Text.Encoding]::UTF8.GetString($modeleOctets)
+    $modeleOk = ($modeleResp.StatusCode -eq 200) `
+        -and ((-join $modeleResp.Headers['Content-Type']) -like 'text/csv*') `
+        -and ($modeleOctets[0] -eq 0xEF) `
+        -and ($modeleTexte -like '*code;nom;statut;priorite;responsable*')
+    $modeleDetail = "($($modeleResp.StatusCode))"
+} catch { $modeleDetail = "($($_.Exception.Message))" }
+Test-Check 'Import : modele CSV 200 text/csv + BOM + en-tetes requis' $modeleOk $modeleDetail
+
+# Le modele exige INITIATIVE_CREER (la simple consultation ne suffit pas).
+$modeleVisStatus = 0
+try {
+    $null = Invoke-WebRequest -UseBasicParsing -Uri "$Base/initiatives/import/modele" `
+        -Headers @{ Authorization = "Bearer $visiteurToken" }
+    $modeleVisStatus = 200
+} catch {
+    if ($_.Exception.Response) { $modeleVisStatus = [int]$_.Exception.Response.StatusCode }
+}
+Test-Check 'Import : modele -> 403 pour le visiteur (INITIATIVE_CREER)' ($modeleVisStatus -eq 403) "($modeleVisStatus)"
+
+$impAnonyme = Invoke-Import "$Base/initiatives/import" 'import.csv' 'code;nom' $null
+Test-Check 'Import : anonyme -> 401' ($impAnonyme.OK -eq $false -and $impAnonyme.Status -eq 401) "($($impAnonyme.Status))"
+
+$impCsvValide = "code;nom;statut;priorite;responsable;entite`r`nTESTIMP-$suffixe;Import API;En cours;Moyenne;admin@it6.ma;Direction Digitale"
+$impVis = Invoke-Import "$Base/initiatives/import" 'import.csv' $impCsvValide $visiteurToken
+Test-Check 'Import : visiteur -> 403 (INITIATIVE_CREER)' ($impVis.OK -eq $false -and $impVis.Status -eq 403) "($($impVis.Status))"
+
+# Mode strict : une ligne invalide rejette tout (400, rien n'est cree).
+$impCsvKO = "code;nom;statut;priorite;responsable;entite;budget`r`n" +
+    "TESTIMPBAD-$suffixe;Import KO;En cours;Moyenne;admin@it6.ma;Direction Digitale;-5`r`n" +
+    "TESTIMPOK-$suffixe;Import OK;En cours;Moyenne;admin@it6.ma;Direction Digitale;1000"
+$impStrict = Invoke-Import "$Base/initiatives/import" 'import.csv' $impCsvKO $adminToken
+Test-Check 'Import strict : ligne invalide -> 400' ($impStrict.OK -eq $false -and $impStrict.Status -eq 400) "($($impStrict.Status))"
+Test-Check 'Import strict : rapport d''erreurs present' ($null -ne $impStrict.Body -and $impStrict.Body.erreurs.Count -ge 1) "($($impStrict.Body.erreurs.Count))"
+Test-Check 'Import strict : 0 ligne importee' ($impStrict.Body.lignesImportees -eq 0) "($($impStrict.Body.lignesImportees))"
+$impRech = Invoke-Api 'Get' "$Base/initiatives?recherche=TESTIMPOK-$suffixe" $null $adminToken
+Test-Check 'Import strict : la ligne valide N''est pas creee' (@($impRech.Body).Count -eq 0) "(@($impRech.Body).Count)"
+
+# Mode ignorer les erreurs : la ligne valide passe, la fautive est rapportee.
+$impIgnore = Invoke-Import "$Base/initiatives/import" 'import.csv' $impCsvKO $adminToken -Ignorer $true
+Test-Check 'Import ignorerErreurs : 201, 1 importee / 1 ignoree' `
+    ($impIgnore.OK -and $impIgnore.Status -eq 201 -and $impIgnore.Body.lignesImportees -eq 1 -and $impIgnore.Body.lignesIgnorees -eq 1) `
+    "($($impIgnore.Status) i=$($impIgnore.Body.lignesImportees) x=$($impIgnore.Body.lignesIgnorees))"
+
+# Fichier valide : 201 + creation confirmee, puis nettoyage (archivage).
+$impValide = Invoke-Import "$Base/initiatives/import" 'import.csv' $impCsvValide $adminToken
+Test-Check 'Import valide : 201, 1 ligne importee' `
+    ($impValide.OK -and $impValide.Status -eq 201 -and $impValide.Body.lignesImportees -eq 1) `
+    "($($impValide.Status))"
+$impTrouve = Invoke-Api 'Get' "$Base/initiatives?recherche=TESTIMP-$suffixe" $null $adminToken
+$impId = $null
+if ($impTrouve.OK -and @($impTrouve.Body).Count -ge 1) { $impId = @($impTrouve.Body)[0].idInitiative }
+Test-Check 'Import : initiative creee trouvable par code' ($null -ne $impId) "($impId)"
+if ($null -ne $impId) {
+    # L'archivage n'est ouvert qu'aux initiatives « Terminée » ou
+    # « Annulée » : on termine d'abord la ligne importée (PUT complet,
+    # avancement 100 % exigé pour « Terminée »), puis on archive.
+    $impLue = @($impTrouve.Body)[0]
+    $txFin = Invoke-Api 'Put' "$Base/initiatives/$impId" @{
+        code = $impLue.code
+        nom = $impLue.nom
+        description = ''
+        dateDebut = '2026-01-01'
+        dateFinPrevue = '2026-12-31'
+        budget = 1000
+        idEntite = $impLue.entite.idEntite
+        idPriorite = $impLue.priorite.idPriorite
+        idResponsable = $impLue.responsable.idUser
+        idStatut = 4
+        avancement = 100
+    } $adminToken
+    Test-Check 'Import : nettoyage (statut Terminee via PUT)' ($txFin.OK -and $txFin.Body.statut.libelle -eq 'Terminée') "($($txFin.Status))"
+    $archImp = Invoke-Api 'Patch' "$Base/initiatives/$impId/archive" $null $adminToken
+    Test-Check 'Import : nettoyage (archivage)' ($archImp.OK -and $archImp.Body.archive -eq $true)
+}
+
+# Extension non supportee / fichier vide -> 400.
+$impExt = Invoke-Import "$Base/initiatives/import" 'donnees.txt' $impCsvValide $adminToken
+Test-Check 'Import : extension .txt -> 400' ($impExt.OK -eq $false -and $impExt.Status -eq 400) "($($impExt.Status))"
+$impVide = Invoke-Import "$Base/initiatives/import" 'vide.csv' '' $adminToken
+Test-Check 'Import : fichier vide -> 400' ($impVide.OK -eq $false -and $impVide.Status -eq 400) "($($impVide.Status))"
 
 Write-Output ''
 Write-Output '------------------------------------------------------------'

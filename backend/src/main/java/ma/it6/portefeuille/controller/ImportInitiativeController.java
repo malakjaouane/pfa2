@@ -1,8 +1,11 @@
 package ma.it6.portefeuille.controller;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -16,8 +19,10 @@ import ma.it6.portefeuille.service.ImportInitiativeService;
  * Import d'initiatives depuis un fichier CSV (séparateur point-virgule) ou
  * Excel (.xlsx).
  *
- * <p>Route :</p>
+ * <p>Routes :</p>
  * <ul>
+ *   <li>{@code GET /api/initiatives/import/modele} — modèle CSV
+ *       téléchargeable (colonnes requises + ligne d'exemple) ;</li>
  *   <li>{@code POST /api/initiatives/import} — upload du fichier avec
  *       option « ignorer les erreurs » (réservé à
  *       {@code INITIATIVE_CREER}).</li>
@@ -46,6 +51,21 @@ public class ImportInitiativeController {
     }
 
     /**
+     * Modèle CSV d'import : colonnes requises + optionnelles, avec une
+     * ligne d'exemple. Même droit que l'import (INITIATIVE_CREER).
+     *
+     * @return fichier CSV téléchargeable (BOM UTF-8, séparateur « ; »)
+     */
+    @GetMapping("/initiatives/import/modele")
+    public ResponseEntity<byte[]> modele() {
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=modele-import-initiatives.csv")
+                .body(importService.modele());
+    }
+
+    /**
      * Importe des initiatives depuis un fichier CSV ou Excel.
      *
      * @param fichier          fichier à importer (non vide)
@@ -54,7 +74,7 @@ public class ImportInitiativeController {
      * @param email            e-mail du compte connecté (principal JWT)
      * @return résultat détaillé de l'import
      */
-    @PostMapping("/api/initiatives/import")
+    @PostMapping("/initiatives/import")
     public ResponseEntity<ImportResultatDTO> importer(
             @RequestParam MultipartFile fichier,
             @RequestParam(defaultValue = "false") boolean ignorerErreurs,
