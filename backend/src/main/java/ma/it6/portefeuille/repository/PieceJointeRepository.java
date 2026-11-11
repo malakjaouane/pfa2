@@ -10,9 +10,11 @@ public interface PieceJointeRepository extends JpaRepository<PieceJointe, Long> 
 
     Optional<PieceJointe> findByIdPieceJointe(Long idPieceJointe);
 
-    List<PieceJointe> findByIdInitiative(Long idInitiative);
+    // Chemins de propriété : PieceJointe.initiative / .commentaire (M2O)
+    // -> clé nichée de l'entité cible (convention : findByInitiativeIdInitiative).
+    List<PieceJointe> findByInitiativeIdInitiative(Long idInitiative);
 
-    List<PieceJointe> findByIdCommentaire(Long idCommentaire);
+    List<PieceJointe> findByCommentaireIdCommentaire(Long idCommentaire);
 
     long countByIdOrganisation(Long idOrganisation);
 }

@@ -2,6 +2,7 @@ package ma.it6.portefeuille.service;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
@@ -12,9 +13,7 @@ import ma.it6.portefeuille.dto.PreferenceNotificationDTO;
 import ma.it6.portefeuille.entity.Notification;
 import ma.it6.portefeuille.entity.PreferenceNotification;
 import ma.it6.portefeuille.entity.Utilisateur;
-import ma.it6.portefeuille.notification.CanalEmail;
 import ma.it6.portefeuille.notification.CanalNotification;
-import ma.it6.portefeuille.notification.CanalWhatsApp;
 import ma.it6.portefeuille.repository.NotificationRepository;
 import ma.it6.portefeuille.repository.PreferenceNotificationRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
@@ -38,15 +37,17 @@ public class NotificationService {
     public NotificationService(PreferenceNotificationRepository preferenceRepository,
                                NotificationRepository notificationRepository,
                                UtilisateurRepository utilisateurRepository,
-                               CanalEmail canalEmail,
-                               CanalWhatsApp canalWhatsApp) {
+                               List<CanalNotification> canauxDisponibles) {
         this.preferenceRepository = preferenceRepository;
         this.notificationRepository = notificationRepository;
         this.utilisateurRepository = utilisateurRepository;
+        // Injection de TOUS les canaux déclarés : CanalWhatsApp porte
+        // @ConditionalOnProperty (notification.whatsapp.actif) — un
+        // paramètre de type concret ferait échouer le démarrage quand le
+        // connecteur est désactivé (cas par défaut, sans configuration).
         this.canaux = new HashMap<>();
-        this.canaux.put(canalEmail.getCode(), canalEmail);
-        if (canalWhatsApp != null) {
-            this.canaux.put(canalWhatsApp.getCode(), canalWhatsApp);
+        for (CanalNotification canal : canauxDisponibles) {
+            this.canaux.put(canal.getCode(), canal);
         }
     }
 
@@ -59,7 +60,7 @@ public class NotificationService {
         Utilisateur u = utilisateurRepository.findById(idUtilisateur)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Utilisateur introuvable"));
 
-        PreferenceNotification p = preferenceRepository.findByIdUtilisateur(idUtilisateur)
+        PreferenceNotification p = preferenceRepository.findByUtilisateurIdUser(idUtilisateur)
                 .orElse(null);
         if (p == null) {
             p = PreferenceNotification.builder()
@@ -83,7 +84,7 @@ public class NotificationService {
         Utilisateur u = utilisateurRepository.findById(idUtilisateur)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Utilisateur introuvable"));
 
-        PreferenceNotification p = preferenceRepository.findByIdUtilisateur(idUtilisateur)
+        PreferenceNotification p = preferenceRepository.findByUtilisateurIdUser(idUtilisateur)
                 .orElse(null);
         if (p == null) {
             p = PreferenceNotification.builder()
@@ -109,7 +110,7 @@ public class NotificationService {
         Utilisateur u = utilisateurRepository.findById(idUtilisateur)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Utilisateur introuvable"));
 
-        PreferenceNotification p = preferenceRepository.findByIdUtilisateur(idUtilisateur)
+        PreferenceNotification p = preferenceRepository.findByUtilisateurIdUser(idUtilisateur)
                 .orElse(null);
         if (p == null) {
             return false;

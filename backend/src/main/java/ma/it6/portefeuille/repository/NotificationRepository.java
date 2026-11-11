@@ -7,5 +7,8 @@ import java.util.List;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-    List<Notification> findByIdUtilisateurOrderByDateEnvoiDesc(Long idUtilisateur);
+    // Chemin de propriété : Notification.utilisateur -> Utilisateur.idUser
+    // (une propriété « idUtilisateur » n'existe pas sur l'entité : la
+    // forme dérivée antérieure faisait échouer le démarrage du contexte).
+    List<Notification> findByUtilisateurIdUserOrderByDateEnvoiDesc(Long idUtilisateur);
 }

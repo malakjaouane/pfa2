@@ -7,5 +7,7 @@ import java.util.Optional;
 
 public interface PreferenceNotificationRepository extends JpaRepository<PreferenceNotification, Long> {
 
-    Optional<PreferenceNotification> findByIdUtilisateur(Long idUtilisateur);
+    // Chemin de propriété : PreferenceNotification.utilisateur -> Utilisateur.idUser
+    // (convention du dépôt : findByInitiativeIdInitiative, cf. EtapeRepository).
+    Optional<PreferenceNotification> findByUtilisateurIdUser(Long idUtilisateur);
 }

@@ -31,14 +31,17 @@ spring:
     properties:
       hibernate:
         format_sql: true
-    mail:
-      host: ${MAIL_HOST:}
-      port: ${MAIL_PORT:25}
-      username: ${MAIL_USERNAME:}
-      password: ${MAIL_PASSWORD:}
-      properties:
-        mail.smtp.auth: ${MAIL_SMTP_AUTH:false}
-        mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS:false}
+  # SMTP (spring.mail.* — doit être un enfant direct de « spring: »,
+  # pas de « jpa: » : sous jpa, Spring Boot ne lit jamais le host et
+  # CanalEmail échoue au démarrage faute de JavaMailSender).
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:25}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS:false}
   profiles:
     # Profil par défaut : autorise les valeurs de développement ci-dessous.
     # Tout autre profil (recette, production, conteneur) fait échouer le
