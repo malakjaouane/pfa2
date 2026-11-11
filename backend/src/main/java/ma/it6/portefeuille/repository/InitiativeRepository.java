@@ -18,7 +18,13 @@ public interface InitiativeRepository extends JpaRepository<Initiative, Long>, J
 
     boolean existsByCodeAndIdInitiativeNot(String code, Long idInitiative);
 
-    long countByIdOrganisation(Long idOrganisation);
+    /**
+     * Nombre d'initiatives <b>actives</b> (non archivées) d'une
+     * organisation — base du contrôle des limites de plan : une initiative
+     * archivée est retirée du portefeuille et ne consomme plus de quota
+     * (sinon le plan serait bloqué définitivement après archivage).
+     */
+    long countByIdOrganisationAndArchiveFalse(Long idOrganisation);
 
     /**
      * Toutes les initiatives d'une organisation (pour le recalcul des scores

@@ -48,7 +48,7 @@ public class PlanService {
     @Transactional(readOnly = true)
     public boolean peutCreerInitiative(Long idOrganisation) {
         Plan plan = planDe(idOrganisation);
-        long nb = initiativeRepository.countByIdOrganisation(idOrganisation);
+        long nb = initiativeRepository.countByIdOrganisationAndArchiveFalse(idOrganisation);
         return nb < plan.getNbInitiativesMax();
     }
 

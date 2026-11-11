@@ -164,7 +164,7 @@ public class ImportInitiativeService {
         Map<String, ObjectifStrategique> objectifs = chargerObjectifs();
         Map<String, Utilisateur> utilisateurs = chargerUtilisateurs();
 
-        long countExistant = initiativeRepository.countByIdOrganisation(idOrganisation);
+        long countExistant = initiativeRepository.countByIdOrganisationAndArchiveFalse(idOrganisation);
         long nbInitiativesMax = plan.getNbInitiativesMax();
 
         List<ErreurLigneDTO> erreurs = new ArrayList<>();

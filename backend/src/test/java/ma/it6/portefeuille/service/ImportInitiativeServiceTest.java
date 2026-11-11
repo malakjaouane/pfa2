@@ -82,7 +82,7 @@ class ImportInitiativeServiceTest {
         plan.setNbInitiativesMax(3);
         when(planRepository.findByCode("gratuit")).thenReturn(plan);
 
-        when(initiativeRepository.countByIdOrganisation(1L)).thenReturn(0L);
+        when(initiativeRepository.countByIdOrganisationAndArchiveFalse(1L)).thenReturn(0L);
         when(initiativeRepository.existsByCode(anyString())).thenReturn(false);
 
         Utilisateur admin = new Utilisateur();
@@ -204,7 +204,7 @@ class ImportInitiativeServiceTest {
     @Test
     void importer_limite_plan_depassee() {
         // Organisation deja a 3 initiatives sur un plan max 3
-        when(initiativeRepository.countByIdOrganisation(1L)).thenReturn(3L);
+        when(initiativeRepository.countByIdOrganisationAndArchiveFalse(1L)).thenReturn(3L);
 
         String csv = """
                 code;nom;statut;priorite;responsable;entite
