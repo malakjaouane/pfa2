@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +37,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), List.of());
+    }
+
+    /**
+     * {@code ResponseStatusException} portée par les services (validations de
+     * fichier d'import, règles métier HTTP…). Sans ce handler elle tombait
+     * dans le catch-all {@code Exception} : le statut voulu (400…) devenait
+     * un 500 « Erreur non gérée ».
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiError> handleResponseStatus(ResponseStatusException ex) {
+        HttpStatus statut = HttpStatus.valueOf(ex.getStatusCode().value());
+        String message = ex.getReason() == null ? statut.getReasonPhrase() : ex.getReason();
+        return build(statut, message, List.of());
     }
 
     /**
