@@ -106,6 +106,9 @@ app:
     # courts côté HTTP, réponse tronquée.
     modele: ${IA_MODELE:${ANTHROPIC_MODELE:claude-haiku-4-5}}
     max-tokens: ${IA_MAX_TOKENS:1024}
+    # Budget des appels interactifs : reponse plus courte, donc plus rapide
+    # (sur un modele local sans GPU, la generation est le facteur de latence).
+    max-tokens-chat: ${IA_MAX_TOKENS_CHAT:256}
     timeout-ms: ${IA_TIMEOUT_MS:60000}
     url-api: ${IA_BASE_URL:${ANTHROPIC_BASE_URL:https://api.anthropic.com}}
 

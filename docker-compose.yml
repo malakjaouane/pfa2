@@ -80,6 +80,7 @@ services:
       IA_BASE_URL: ${IA_BASE_URL:-https://api.anthropic.com}
       IA_MODELE: ${IA_MODELE:-claude-haiku-4-5}
       IA_MAX_TOKENS: ${IA_MAX_TOKENS:-1024}
+      IA_MAX_TOKENS_CHAT: ${IA_MAX_TOKENS_CHAT:-256}
       IA_TIMEOUT_MS: ${IA_TIMEOUT_MS:-60000}
       # SMTP (Mailpit en developpement ; a configurer en production)
       MAIL_HOST: ${MAIL_HOST:-mailpit}

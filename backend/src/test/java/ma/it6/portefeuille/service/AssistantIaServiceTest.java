@@ -67,7 +67,7 @@ class AssistantIaServiceTest {
 
     private AssistantIaService service(boolean actif, String cle, String format) {
         return new AssistantIaService(initiativeRepository, jalonRepository, calculeurSante,
-                journalIaRepository, clientIa, actif, cle, format);
+                journalIaRepository, clientIa, actif, cle, format, 256);
     }
 
     private static Initiative initiativeTest() {
@@ -148,7 +148,7 @@ class AssistantIaServiceTest {
         when(initiativeRepository.findAllFetch()).thenReturn(List.of(initiativeTest()));
         when(calculeurSante.calculerTous(any()))
                 .thenReturn(Map.of(1L, new SanteDto(SanteDto.VERTE, "conforme", Map.of())));
-        when(clientIa.generer(anyString(), anyString())).thenReturn("  Réponse locale.  ");
+        when(clientIa.generer(anyString(), anyString(), eq(256))).thenReturn("  Réponse locale.  ");
 
         AssistantIaResponse reponse = service(true, "", "openai")
                 .poserQuestion("Combien d'initiatives ?", "fr", null);
@@ -169,7 +169,7 @@ class AssistantIaServiceTest {
         when(initiativeRepository.findAllFetch()).thenReturn(List.of(initiativeTest()));
         when(calculeurSante.calculerTous(any()))
                 .thenReturn(Map.of(1L, new SanteDto(SanteDto.VERTE, "conforme", Map.of())));
-        when(clientIa.generer(anyString(), eq("Quelles initiatives sont à risque ?")))
+        when(clientIa.generer(anyString(), eq("Quelles initiatives sont à risque ?"), eq(256)))
                 .thenReturn("  Aucune initiative n'est actuellement à risque.  ");
 
         AssistantIaResponse reponse = service(true, CLE)
@@ -181,7 +181,7 @@ class AssistantIaServiceTest {
 
         // Le prompt système doit contenir le portefeuille réel et la langue.
         ArgumentCaptor<String> systemeCaptor = ArgumentCaptor.forClass(String.class);
-        verify(clientIa).generer(systemeCaptor.capture(), anyString());
+        verify(clientIa).generer(systemeCaptor.capture(), anyString(), eq(256));
         assertThat(systemeCaptor.getValue())
                 .contains("TESTIA-001")
                 .contains("VERTE")
@@ -202,12 +202,12 @@ class AssistantIaServiceTest {
         when(clientIa.modele()).thenReturn(MODELE);
         when(initiativeRepository.findAllFetch()).thenReturn(List.of(archivee));
         when(calculeurSante.calculerTous(any())).thenReturn(Map.of());
-        when(clientIa.generer(anyString(), anyString())).thenReturn("Réponse.");
+        when(clientIa.generer(anyString(), anyString(), eq(256))).thenReturn("Réponse.");
 
         service(true, CLE).poserQuestion("Et le budget ?", "fr", null);
 
         ArgumentCaptor<String> systemeCaptor = ArgumentCaptor.forClass(String.class);
-        verify(clientIa).generer(systemeCaptor.capture(), anyString());
+        verify(clientIa).generer(systemeCaptor.capture(), anyString(), eq(256));
         assertThat(systemeCaptor.getValue()).contains("0 initiatives non archivées");
     }
 
@@ -217,7 +217,7 @@ class AssistantIaServiceTest {
         when(clientIa.modele()).thenReturn(MODELE);
         when(initiativeRepository.findAllFetch()).thenReturn(List.of(initiativeTest()));
         when(calculeurSante.calculerTous(any())).thenReturn(Map.of());
-        when(clientIa.generer(anyString(), anyString()))
+        when(clientIa.generer(anyString(), anyString(), eq(256)))
                 .thenThrow(new IaIndisponibleException("Quota du service d'IA atteint."));
 
         assertThatThrownBy(() -> service(true, CLE)
@@ -250,14 +250,14 @@ class AssistantIaServiceTest {
         when(jalonRepository.chercherParInitiatives(List.of(1L))).thenReturn(List.of(jalon));
         when(calculeurSante.calculer(any(Initiative.class)))
                 .thenReturn(new SanteDto(SanteDto.ORANGE, "ecartPlanning", Map.of()));
-        when(clientIa.generer(anyString(), anyString())).thenReturn("Résumé : migration à 40 %…");
+        when(clientIa.generer(anyString(), anyString(), eq(256))).thenReturn("Résumé : migration à 40 %…");
 
         AssistantIaResponse reponse = service(true, CLE).resumerInitiative(1L, "en", null);
 
         assertThat(reponse.reponse()).startsWith("Résumé");
 
         ArgumentCaptor<String> systemeCaptor = ArgumentCaptor.forClass(String.class);
-        verify(clientIa).generer(systemeCaptor.capture(), anyString());
+        verify(clientIa).generer(systemeCaptor.capture(), anyString(), eq(256));
         assertThat(systemeCaptor.getValue())
                 .contains("Cadrage")
                 .contains("Go-live")
@@ -277,5 +277,22 @@ class AssistantIaServiceTest {
         assertThatThrownBy(() -> service(true, CLE).resumerInitiative(999L, "fr", null))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("999");
+    }
+
+    // =================================================================
+    // Budget de génération
+    // =================================================================
+
+    @Test
+    @DisplayName("appel interactif : la génération est plafonnée au budget de chat (256)")
+    void budgetInteractif() {
+        when(clientIa.modele()).thenReturn(MODELE);
+        when(clientIa.generer(anyString(), anyString(), eq(256))).thenReturn("Réponse.");
+
+        service(true, CLE).poserQuestion("Quelles initiatives sont à risque ?", "fr", null);
+
+        // Le budget de chat borne la génération : la réponse interactive reste
+        // courte (donc rapide) sur un modèle local sans GPU.
+        verify(clientIa).generer(anyString(), anyString(), eq(256));
     }
 }

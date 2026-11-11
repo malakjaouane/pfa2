@@ -68,6 +68,12 @@ public class AssistantIaService {
     private final String cleApi;
     /** La clé est-elle obligatoire ? Faux en mode openai (Ollama local). */
     private final boolean cleExigee;
+    /**
+     * Budget de génération des appels interactifs (tokens). Sur un modèle
+     * local sans GPU, la génération est le principal facteur de latence :
+     * un budget réduit rend la réponse nettement plus rapide.
+     */
+    private final int maxTokensChat;
 
     public AssistantIaService(InitiativeRepository initiativeRepository,
                               JalonRepository jalonRepository,
@@ -76,7 +82,8 @@ public class AssistantIaService {
                               ClientIa clientIa,
                               @Value("${app.ia.actif:true}") boolean actif,
                               @Value("${app.ia.cle-api:}") String cleApi,
-                              @Value("${app.ia.format:anthropic}") String format) {
+                              @Value("${app.ia.format:anthropic}") String format,
+                              @Value("${app.ia.max-tokens-chat:256}") int maxTokensChat) {
         this.initiativeRepository = initiativeRepository;
         this.jalonRepository = jalonRepository;
         this.calculeurSante = calculeurSante;
@@ -85,6 +92,7 @@ public class AssistantIaService {
         this.actif = actif;
         this.cleApi = cleApi == null ? "" : cleApi;
         this.cleExigee = !ClientIa.FORMAT_OPENAI.equalsIgnoreCase(format);
+        this.maxTokensChat = maxTokensChat;
     }
 
     // ------------------------------------------------------------------
@@ -114,7 +122,7 @@ public class AssistantIaService {
 
         long debut = System.currentTimeMillis();
         try {
-            String reponse = clientIa.generer(systeme, question);
+            String reponse = clientIa.generer(systeme, question, maxTokensChat);
             long duree = System.currentTimeMillis() - debut;
             journaliser(utilisateur, JournalIa.TYPE_QUESTION, question, reponse, null,
                     JournalIa.STATUT_OK, null, duree);
@@ -146,7 +154,7 @@ public class AssistantIaService {
 
         long debut = System.currentTimeMillis();
         try {
-            String reponse = clientIa.generer(systeme, instruction);
+            String reponse = clientIa.generer(systeme, instruction, maxTokensChat);
             long duree = System.currentTimeMillis() - debut;
             journaliser(utilisateur, JournalIa.TYPE_RESUME, demande, reponse, initiative,
                     JournalIa.STATUT_OK, null, duree);

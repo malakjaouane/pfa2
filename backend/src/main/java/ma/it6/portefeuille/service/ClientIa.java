@@ -53,13 +53,17 @@ public class ClientIa {
     private final String format;
     private final String cleApi;
     private final String modele;
+    /** Plafond global de generation (jamais depasse). */
     private final int maxTokens;
+    /** Budget des appels interactifs : reponse plus courte, donc plus rapide. */
+    private final int maxTokensChat;
 
     public ClientIa(@Value("${app.ia.url-api:https://api.anthropic.com}") String urlApi,
                     @Value("${app.ia.cle-api:}") String cleApi,
                     @Value("${app.ia.format:anthropic}") String format,
                     @Value("${app.ia.modele:claude-haiku-4-5}") String modele,
                     @Value("${app.ia.max-tokens:1024}") int maxTokens,
+                    @Value("${app.ia.max-tokens-chat:256}") int maxTokensChat,
                     @Value("${app.ia.timeout-ms:60000}") long timeoutMs) {
         SimpleClientHttpRequestFactory fabrique = new SimpleClientHttpRequestFactory();
         fabrique.setConnectTimeout(Duration.ofSeconds(10));
@@ -75,6 +79,7 @@ public class ClientIa {
         this.cleApi = cleApi == null ? "" : cleApi;
         this.modele = modele;
         this.maxTokens = maxTokens;
+        this.maxTokensChat = maxTokensChat;
     }
 
     /** Modèle configuré (traçabilité dans le journal et les réponses). */
@@ -91,11 +96,25 @@ public class ClientIa {
      * Pose {@code instruction} au modèle, encadrée par le prompt système
      * {@code systeme} (contexte du portefeuille + règles de réponse).
      *
+     * <p>Appel interactif : la génération est limitée au budget
+     * {@code app.ia.max-tokens-chat}, sans jamais dépasser le plafond global
+     * {@code app.ia.max-tokens}.</p>
+     *
      * @return le texte de la réponse (jamais {@code null})
      * @throws IaIndisponibleException si le service est injoignable,
      *         refuse la clé, ou renvoie une réponse vide
      */
     public String generer(String systeme, String instruction) {
+        return generer(systeme, instruction, maxTokensChat);
+    }
+
+    /**
+     * Variante à budget explicite : la génération est limitée à
+     * {@code budgetTokens} tokens, sans jamais dépasser le plafond global.
+     * Réservée aux appels qui justifient une réponse plus longue.
+     */
+    public String generer(String systeme, String instruction, int budgetTokens) {
+        int budget = Math.min(budgetTokens, maxTokens);
         boolean ouvert = FORMAT_OPENAI.equalsIgnoreCase(format);
         RestClient.RequestBodySpec requete = restClient.post()
                 .uri(ouvert ? "/v1/chat/completions" : "/v1/messages")
@@ -107,13 +126,13 @@ public class ClientIa {
         Map<String, Object> corps = ouvert
                 ? Map.of(
                         "model", modele,
-                        "max_tokens", maxTokens,
+                        "max_tokens", budget,
                         "messages", List.of(
                                 Map.of("role", "system", "content", systeme),
                                 Map.of("role", "user", "content", instruction)))
                 : Map.of(
                         "model", modele,
-                        "max_tokens", maxTokens,
+                        "max_tokens", budget,
                         "system", systeme,
                         "messages", List.of(Map.of("role", "user", "content", instruction)));
 
