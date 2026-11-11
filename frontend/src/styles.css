@@ -1410,7 +1410,7 @@ mark {
   z-index: 2;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 84px 24px 96px;
+  padding: 60px 24px 76px;
   display: grid;
   grid-template-columns: 1.02fr 0.98fr;
   gap: 56px;
@@ -1453,7 +1453,7 @@ mark {
   border: 1px solid rgba(235, 201, 196, 0.38);
   border-radius: 999px;
   padding: 6px 14px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .sn-eyebrow-dot {
@@ -1479,7 +1479,7 @@ mark {
 
 .sn-hero h1 {
   color: #fff;
-  font-size: 52px;
+  font-size: 54px;
   line-height: 1.08;
   font-weight: 800;
 }
@@ -1487,8 +1487,8 @@ mark {
 .sn-highlight { color: var(--sn-rose); }
 
 .sn-hero-lead {
-  margin-top: 20px;
-  font-size: 17px;
+  margin-top: 18px;
+  font-size: 18px;
   line-height: 1.6;
   color: #E8D6D9;
   max-width: 540px;
@@ -1498,13 +1498,13 @@ mark {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
-  margin-top: 30px;
+  margin-top: 26px;
 }
 
 /* Phrase « accès réservé » sous le CTA du hero */
 .sn-hero-note {
-  margin-top: 16px;
-  font-size: 13.5px;
+  margin-top: 12px;
+  font-size: 14.5px;
   line-height: 1.5;
   color: #C9B2B5;
   max-width: 540px;
@@ -1521,18 +1521,26 @@ mark {
 
 .sn-avantages {
   list-style: none;
-  margin-top: 32px;
+  margin-top: 26px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px 22px;
+  gap: 14px 24px;
 }
 
+/* Les 4 avantages du hero : gros caractères pour être lus d'emblée. */
 .sn-avantages li {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 14px;
+  font-size: 17px;
+  line-height: 1.45;
+  font-weight: 600;
   color: #F0E1E3;
+}
+
+.sn-avantages .sn-check {
+  width: 22px;
+  height: 22px;
 }
 
 .sn-check {

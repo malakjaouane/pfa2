@@ -341,10 +341,10 @@ export default function LandingPage() {
             </div>
             <p className="sn-hero-note">{t('landing.accesReserve')}</p>
             <ul className="sn-avantages">
-              <li><span className="sn-check"><IconCheck size={12} /></span>{t('landing.avantage.pilotage')}</li>
-              <li><span className="sn-check"><IconCheck size={12} /></span>{t('landing.avantage.workflow')}</li>
-              <li><span className="sn-check"><IconCheck size={12} /></span>{t('landing.avantage.alignement')}</li>
-              <li><span className="sn-check"><IconCheck size={12} /></span>{t('landing.avantage.decisions')}</li>
+              <li><span className="sn-check"><IconCheck size={14} /></span>{t('landing.avantage.pilotage')}</li>
+              <li><span className="sn-check"><IconCheck size={14} /></span>{t('landing.avantage.workflow')}</li>
+              <li><span className="sn-check"><IconCheck size={14} /></span>{t('landing.avantage.alignement')}</li>
+              <li><span className="sn-check"><IconCheck size={14} /></span>{t('landing.avantage.decisions')}</li>
             </ul>
           </div>
 
