@@ -109,94 +109,90 @@ public class ExportComitePiloteService {
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage();
             document.addPage(page);
-            PDPageContentStream stream = new PDPageContentStream(document, page);
-            stream.setFont(PDType1Font.HELVETICA_BOLD, 16);
-            stream.beginText();
-            stream.newLineAtOffset(50, 750);
-            stream.showText("Comite de pilotage - Rapport");
-            stream.endText();
+            // Un seul objet texte pour toute la page : newLineAtOffset est
+            // relatif a la position courante et n'a de sens que dans un
+            // objet BT/ET ouvert — des endText intermediaires fermaient
+            // l'objet et faisaient echouer chaque export PDF (500).
+            try (PDPageContentStream stream = new PDPageContentStream(document, page)) {
+                stream.beginText();
+                stream.setFont(PDType1Font.HELVETICA_BOLD, 16);
+                stream.newLineAtOffset(50, 750);
+                stream.showText("Comite de pilotage - Rapport");
 
-            stream.setFont(PDType1Font.HELVETICA, 12);
-            stream.newLineAtOffset(0, -30);
-            stream.showText("Date : " + LocalDate.now());
-            stream.newLineAtOffset(0, -20);
-            stream.showText("Organisation : " + OrganisationContext.getId());
-            stream.endText();
-
-            stream.newLineAtOffset(0, -40);
-            stream.setFont(PDType1Font.HELVETICA_BOLD, 12);
-            stream.showText("Initiatives par statut :");
-            stream.endText();
-            Map<String, Long> parStatut = initiatives.stream()
-                    .collect(Collectors.groupingBy(
-                            i -> i.getStatut() != null ? i.getStatut().getLibelle() : "Non defini",
-                            Collectors.counting()));
-            stream.setFont(PDType1Font.HELVETICA, 12);
-            for (Map.Entry<String, Long> e : parStatut.entrySet()) {
+                stream.setFont(PDType1Font.HELVETICA, 12);
+                stream.newLineAtOffset(0, -30);
+                stream.showText("Date : " + LocalDate.now());
                 stream.newLineAtOffset(0, -20);
-                stream.showText("  " + e.getKey() + " : " + e.getValue());
-            }
-            stream.endText();
+                stream.showText("Organisation : " + OrganisationContext.getId());
 
-            stream.newLineAtOffset(0, -40);
-            stream.setFont(PDType1Font.HELVETICA_BOLD, 12);
-            stream.showText("Initiatives en retard :");
-            stream.endText();
-            LocalDate aujourdHui = LocalDate.now();
-            List<Initiative> enRetard = initiatives.stream()
-                    .filter(i -> i.getDateFinPrevue() != null
-                            && i.getDateFinPrevue().isBefore(aujourdHui)
-                            && (i.getAvancement() == null || i.getAvancement() < 100))
-                    .sorted(Comparator.comparing(i -> i.getDateFinPrevue() != null ? i.getDateFinPrevue() : LocalDate.MIN))
-                    .collect(Collectors.toList());
-            stream.setFont(PDType1Font.HELVETICA, 12);
-            for (Initiative i : enRetard) {
+                stream.newLineAtOffset(0, -40);
+                stream.setFont(PDType1Font.HELVETICA_BOLD, 12);
+                stream.showText("Initiatives par statut :");
+                Map<String, Long> parStatut = initiatives.stream()
+                        .collect(Collectors.groupingBy(
+                                i -> i.getStatut() != null ? i.getStatut().getLibelle() : "Non defini",
+                                Collectors.counting()));
+                stream.setFont(PDType1Font.HELVETICA, 12);
+                for (Map.Entry<String, Long> e : parStatut.entrySet()) {
+                    stream.newLineAtOffset(0, -20);
+                    stream.showText("  " + e.getKey() + " : " + e.getValue());
+                }
+
+                stream.newLineAtOffset(0, -40);
+                stream.setFont(PDType1Font.HELVETICA_BOLD, 12);
+                stream.showText("Initiatives en retard :");
+                LocalDate aujourdHui = LocalDate.now();
+                List<Initiative> enRetard = initiatives.stream()
+                        .filter(i -> i.getDateFinPrevue() != null
+                                && i.getDateFinPrevue().isBefore(aujourdHui)
+                                && (i.getAvancement() == null || i.getAvancement() < 100))
+                        .sorted(Comparator.comparing(i -> i.getDateFinPrevue() != null ? i.getDateFinPrevue() : LocalDate.MIN))
+                        .collect(Collectors.toList());
+                stream.setFont(PDType1Font.HELVETICA, 12);
+                for (Initiative i : enRetard) {
+                    stream.newLineAtOffset(0, -20);
+                    stream.showText("  " + i.getCode() + " - " + i.getNom()
+                            + " (fin prevue : " + i.getDateFinPrevue() + ")");
+                }
+
+                stream.newLineAtOffset(0, -40);
+                stream.setFont(PDType1Font.HELVETICA_BOLD, 12);
+                stream.showText("Risques critiques (score >= 15) :");
+                List<Risque> critiques = risques.stream()
+                        .filter(r -> r.getProbabilite() != null && r.getImpact() != null
+                                && r.getProbabilite() * r.getImpact() >= 15)
+                        .collect(Collectors.toList());
+                stream.setFont(PDType1Font.HELVETICA, 12);
+                for (Risque r : critiques) {
+                    stream.newLineAtOffset(0, -20);
+                    stream.showText("  " + r.getTitre() + " - score "
+                            + (r.getProbabilite() * r.getImpact()) + "/25");
+                }
+
+                stream.newLineAtOffset(0, -40);
+                stream.setFont(PDType1Font.HELVETICA_BOLD, 12);
+                stream.showText("Budget :");
+                Double budgetTotal = initiatives.stream()
+                        .map(i -> i.getBudget() != null ? i.getBudget().doubleValue() : 0.0)
+                        .reduce(0.0, Double::sum);
+                Double depensesTotales = depenses.stream()
+                        .map(d -> d.getMontant() != null ? d.getMontant().doubleValue() : 0.0)
+                        .reduce(0.0, Double::sum);
+                stream.setFont(PDType1Font.HELVETICA, 12);
                 stream.newLineAtOffset(0, -20);
-                stream.showText("  " + i.getCode() + " - " + i.getNom()
-                        + " (fin prevue : " + i.getDateFinPrevue() + ")");
-            }
-            stream.endText();
-
-            stream.newLineAtOffset(0, -40);
-            stream.setFont(PDType1Font.HELVETICA_BOLD, 12);
-            stream.showText("Risques critiques (score >= 15) :");
-            stream.endText();
-            List<Risque> critiques = risques.stream()
-                    .filter(r -> r.getProbabilite() != null && r.getImpact() != null
-                            && r.getProbabilite() * r.getImpact() >= 15)
-                    .collect(Collectors.toList());
-            stream.setFont(PDType1Font.HELVETICA, 12);
-            for (Risque r : critiques) {
+                stream.showText("  Budget total : " + String.format("%.2f", budgetTotal) + " MAD");
                 stream.newLineAtOffset(0, -20);
-                stream.showText("  " + r.getTitre() + " - score "
-                        + (r.getProbabilite() * r.getImpact()) + "/25");
+                stream.showText("  Depenses reelles : " + String.format("%.2f", depensesTotales) + " MAD");
+                stream.newLineAtOffset(0, -20);
+                stream.showText("  Ecart : " + String.format("%.2f", budgetTotal - depensesTotales) + " MAD");
+                stream.newLineAtOffset(0, -20);
+                stream.showText("  (Le montant consomme calcule au prorata de l'avancement est");
+                stream.newLineAtOffset(0, -15);
+                stream.showText("   une estimation. Les depenses reelles proviennent du registre.)");
+
+                stream.endText();
             }
-            stream.endText();
 
-            stream.newLineAtOffset(0, -40);
-            stream.setFont(PDType1Font.HELVETICA_BOLD, 12);
-            stream.showText("Budget :");
-            stream.endText();
-            Double budgetTotal = initiatives.stream()
-                    .map(i -> i.getBudget() != null ? i.getBudget().doubleValue() : 0.0)
-                    .reduce(0.0, Double::sum);
-            Double depensesTotales = depenses.stream()
-                    .map(d -> d.getMontant() != null ? d.getMontant().doubleValue() : 0.0)
-                    .reduce(0.0, Double::sum);
-            stream.setFont(PDType1Font.HELVETICA, 12);
-            stream.newLineAtOffset(0, -20);
-            stream.showText("  Budget total : " + String.format("%.2f", budgetTotal) + " MAD");
-            stream.newLineAtOffset(0, -20);
-            stream.showText("  Depenses reelles : " + String.format("%.2f", depensesTotales) + " MAD");
-            stream.newLineAtOffset(0, -20);
-            stream.showText("  Ecart : " + String.format("%.2f", budgetTotal - depensesTotales) + " MAD");
-            stream.newLineAtOffset(0, -20);
-            stream.showText("  (Le montant consomme calcule au prorata de l'avancement est");
-            stream.newLineAtOffset(0, -15);
-            stream.showText("   une estimation. Les depenses reelles proviennent du registre.)");
-            stream.endText();
-
-            stream.close();
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             document.save(baos);
             return baos.toByteArray();

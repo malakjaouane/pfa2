@@ -239,6 +239,11 @@ public class SecurityConfig {
                         // connecté peut gérer ses propres préférences.
                         .requestMatchers(HttpMethod.GET, "/api/notifications/preferences").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/notifications/preferences").authenticated()
+                        // Export comité de pilotage (4F) : même droit que le
+                        // dashboard — le document résume tout le portefeuille
+                        // (initiatives, retards, risques, budget réel).
+                        .requestMatchers(HttpMethod.GET, "/api/export/comite-pilote")
+                        .hasAuthority("DASHBOARD_CONSULTER")
                         // Journal des modifications (audit métier) : lecture =
                         // même permission que la lecture des initiatives
                         // (pas de nouveau droit). JOURNAL IMMUABLE : aucun

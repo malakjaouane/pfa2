@@ -1459,6 +1459,62 @@ Test-Check 'Import : extension .txt -> 400' ($impExt.OK -eq $false -and $impExt.
 $impVide = Invoke-Import "$Base/initiatives/import" 'vide.csv' '' $adminToken
 Test-Check 'Import : fichier vide -> 400' ($impVide.OK -eq $false -and $impVide.Status -eq 400) "($($impVide.Status))"
 
+Write-Output '=== 24. Export comite de pilotage (PDF + PowerPoint, DASHBOARD_CONSULTER) ==='
+
+# Anonyme -> 401 (route isolee, avant la regle generale anyRequest).
+$comAnonyme = Invoke-Api 'Get' "$Base/export/comite-pilote?format=pdf" $null $null
+Test-Check 'Comite : anonyme -> 401' ($comAnonyme.OK -eq $false -and $comAnonyme.Status -eq 401) "($($comAnonyme.Status))"
+
+# PDF : 200, octets magiques %PDF, type + disposition de telechargement.
+$comPdfOk = $false; $comPdfDetail = ''
+try {
+    $comPdf = Invoke-WebRequest -UseBasicParsing -Uri "$Base/export/comite-pilote?format=pdf" `
+        -Headers @{ Authorization = "Bearer $adminToken" }
+    $comPdfOctets = $comPdf.RawContentStream.ToArray()
+    $comPdfOk = ($comPdf.StatusCode -eq 200) `
+        -and ($comPdfOctets[0] -eq 0x25 -and $comPdfOctets[1] -eq 0x50) `
+        -and ($comPdfOctets[2] -eq 0x44 -and $comPdfOctets[3] -eq 0x46) `
+        -and ((-join $comPdf.Headers['Content-Type']) -like 'application/pdf*') `
+        -and ((-join $comPdf.Headers['Content-Disposition']) -like '*comite-pilote.pdf*')
+    $comPdfDetail = "($($comPdf.StatusCode), $($comPdfOctets.Length) o)"
+} catch { $comPdfDetail = "($($_.Exception.Message))" }
+Test-Check 'Comite : PDF 200, octets %PDF, type + disposition' $comPdfOk $comPdfDetail
+
+# PPTX : 200, octets magiques PK (zip OOXML), type presentationml.
+$comPptxOk = $false; $comPptxDetail = ''
+try {
+    $comPptx = Invoke-WebRequest -UseBasicParsing -Uri "$Base/export/comite-pilote?format=pptx" `
+        -Headers @{ Authorization = "Bearer $adminToken" }
+    $comPptxOctets = $comPptx.RawContentStream.ToArray()
+    $comPptxOk = ($comPptx.StatusCode -eq 200) `
+        -and ($comPptxOctets[0] -eq 0x50 -and $comPptxOctets[1] -eq 0x4B) `
+        -and ((-join $comPptx.Headers['Content-Type']) -like '*presentationml*') `
+        -and ((-join $comPptx.Headers['Content-Disposition']) -like '*comite-pilote.pptx*')
+    $comPptxDetail = "($($comPptx.StatusCode), $($comPptxOctets.Length) o)"
+} catch { $comPptxDetail = "($($_.Exception.Message))" }
+Test-Check 'Comite : PPTX 200, octets PK (zip OOXML) + disposition' $comPptxOk $comPptxDetail
+
+# Format non supporte -> 400 (le catch-all renverrait 500).
+$comDocxStatus = 0
+try {
+    $null = Invoke-WebRequest -UseBasicParsing -Uri "$Base/export/comite-pilote?format=docx" `
+        -Headers @{ Authorization = "Bearer $adminToken" }
+    $comDocxStatus = 200
+} catch {
+    if ($_.Exception.Response) { $comDocxStatus = [int]$_.Exception.Response.StatusCode }
+}
+Test-Check 'Comite : format docx -> 400' ($comDocxStatus -eq 400) "($comDocxStatus)"
+
+# Le visiteur dispose de DASHBOARD_CONSULTER (lecture seule) : export ouvert.
+$comVisOk = $false; $comVisDetail = ''
+try {
+    $comVis = Invoke-WebRequest -UseBasicParsing -Uri "$Base/export/comite-pilote?format=pdf" `
+        -Headers @{ Authorization = "Bearer $visiteurToken" }
+    $comVisOk = ($comVis.StatusCode -eq 200)
+    $comVisDetail = "($($comVis.StatusCode))"
+} catch { $comVisDetail = "($($_.Exception.Message))" }
+Test-Check 'Comite : visiteur (DASHBOARD_CONSULTER) -> 200' $comVisOk $comVisDetail
+
 Write-Output ''
 Write-Output '------------------------------------------------------------'
 Write-Output "RESULTATS : $script:Pass reussis, $script:Fail echoues"

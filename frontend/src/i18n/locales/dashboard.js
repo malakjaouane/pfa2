@@ -29,7 +29,7 @@ export default {
     'dashboard.kpi.enRetard': 'En retard',
     'dashboard.kpi.jalonsEnRetard': 'Jalons en retard',
     'dashboard.kpi.budgetTotal': 'Budget total',
-    'dashboard.budget.note': "Le budget affiché est le montant saisi pour chaque initiative : l'application n'enregistre aucune dépense réelle. Les montants dérivés (budget consommé, écart) sont des estimations calculées au prorata de l'avancement.",
+    'dashboard.budget.note': "Le budget affiché est le montant saisi pour chaque initiative. Les dépenses réelles figurent au registre des dépenses (et dans l'export comité) ; les montants dérivés (budget consommé, écart) affichés ici sont des estimations calculées au prorata de l'avancement.",
     'dashboard.kpi.enPause': 'En pause',
 
     'dashboard.filtre.titre': 'Filtres du portefeuille',
@@ -92,7 +92,12 @@ export default {
 
     'dashboard.budget.millions': '{valeur} M MAD',
     'dashboard.budget.milliers': '{valeur} k MAD',
-    'dashboard.budget.dirhams': '{valeur} MAD'
+    'dashboard.budget.dirhams': '{valeur} MAD',
+
+    'dashboard.export.pdf': 'PDF',
+    'dashboard.export.powerpoint': 'PowerPoint',
+    'dashboard.export.aide': 'Rapport de comité de pilotage : dépenses réelles, prorata affiché comme estimation',
+    'dashboard.export.succes': 'Téléchargement : {nom}'
   },
 
   en: {
@@ -124,7 +129,7 @@ export default {
     'dashboard.kpi.enRetard': 'Late',
     'dashboard.kpi.jalonsEnRetard': 'Late milestones',
     'dashboard.kpi.budgetTotal': 'Total budget',
-    'dashboard.budget.note': 'The budget shown is the amount entered for each initiative: the application records no actual spending. Derived figures (consumed budget, variance) are estimates computed pro rata to progress.',
+    'dashboard.budget.note': 'The budget shown is the amount entered for each initiative. Actual spending is recorded in the expense register (and in the committee export); the derived figures (consumed budget, variance) shown here are estimates computed pro rata to progress.',
     'dashboard.kpi.enPause': 'On hold',
 
     'dashboard.filtre.titre': 'Portfolio filters',
@@ -187,7 +192,12 @@ export default {
 
     'dashboard.budget.millions': '{valeur}M MAD',
     'dashboard.budget.milliers': '{valeur}k MAD',
-    'dashboard.budget.dirhams': '{valeur} MAD'
+    'dashboard.budget.dirhams': '{valeur} MAD',
+
+    'dashboard.export.pdf': 'PDF',
+    'dashboard.export.powerpoint': 'PowerPoint',
+    'dashboard.export.aide': 'Steering committee report: actual spending, pro rata shown as an estimate',
+    'dashboard.export.succes': 'Downloaded: {nom}'
   },
 
   ar: {
@@ -219,7 +229,7 @@ export default {
     'dashboard.kpi.enRetard': 'متأخرة',
     'dashboard.kpi.jalonsEnRetard': 'المعالم المتأخرة',
     'dashboard.kpi.budgetTotal': 'إجمالي الميزانية',
-    'dashboard.budget.note': 'الميزانية المعروضة هي المبلغ المُدخل لكل مبادرة، ولا يسجّل التطبيق أي إنفاق فعلي. الأرقام المشتقة (الميزانية المستهلكة، الفرق) تقديرات محسوبة بالنسبة إلى نسبة الإنجاز.',
+    'dashboard.budget.note': 'الميزانية المعروضة هي المبلغ المُدخل لكل مبادرة. الإنفاق الفعلي مسجَّل في سجل النفقات (وفي تصدير لجنة التوجيه)؛ الأرقام المشتقة (الميزانية المستهلكة، الفرق) المعروضة هنا تقديرات محسوبة بالنسبة إلى نسبة الإنجاز.',
     'dashboard.kpi.enPause': 'متوقفة',
 
     'dashboard.filtre.titre': 'مرشحات المحفظة',
@@ -282,7 +292,12 @@ export default {
 
     'dashboard.budget.millions': '{valeur} مليون MAD',
     'dashboard.budget.milliers': '{valeur} ألف MAD',
-    'dashboard.budget.dirhams': '{valeur} MAD'
+    'dashboard.budget.dirhams': '{valeur} MAD',
+
+    'dashboard.export.pdf': 'PDF',
+    'dashboard.export.powerpoint': 'PowerPoint',
+    'dashboard.export.aide': 'تقرير لجنة التوجيه: النفقات الفعلية، النسبة المئوية معروضة كتقدير',
+    'dashboard.export.succes': 'تم التنزيل: {nom}'
   },
 
   es: {
@@ -314,7 +329,7 @@ export default {
     'dashboard.kpi.enRetard': 'Atrasadas',
     'dashboard.kpi.jalonsEnRetard': 'Hitos atrasados',
     'dashboard.kpi.budgetTotal': 'Presupuesto total',
-    'dashboard.budget.note': 'El presupuesto mostrado es el importe introducido en cada iniciativa: la aplicación no registra gastos reales. Las cifras derivadas (presupuesto consumido, desviación) son estimaciones calculadas en proporción al avance.',
+    'dashboard.budget.note': 'El presupuesto mostrado es el importe introducido en cada iniciativa. Los gastos reales constan en el registro de gastos (y en la exportación del comité); las cifras derivadas (presupuesto consumido, desviación) que se muestran aquí son estimaciones calculadas en proporción al avance.',
     'dashboard.kpi.enPause': 'En pausa',
 
     'dashboard.filtre.titre': 'Filtros del portafolio',
@@ -377,6 +392,11 @@ export default {
 
     'dashboard.budget.millions': '{valeur} M MAD',
     'dashboard.budget.milliers': '{valeur} k MAD',
-    'dashboard.budget.dirhams': '{valeur} MAD'
+    'dashboard.budget.dirhams': '{valeur} MAD',
+
+    'dashboard.export.pdf': 'PDF',
+    'dashboard.export.powerpoint': 'PowerPoint',
+    'dashboard.export.aide': 'Informe del comité de dirección: gastos reales, prorrata mostrado como estimación',
+    'dashboard.export.succes': 'Descargado: {nom}'
   }
 };

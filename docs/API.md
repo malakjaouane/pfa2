@@ -65,11 +65,12 @@ Permission `BUDGET_CONSULTER`. Les trois routes acceptent **les mêmes filtres**
 que `GET /initiatives` : le budget affiché correspond donc toujours à la
 sélection visible à l'écran.
 
-> **Ces montants sont des PROJECTIONS, pas une comptabilité.** Le cahier des
-> charges ne prévoit **aucune saisie de dépenses réelles** : il n'existe ni table
-> de mouvements financiers, ni saisie de factures. Le champ `budget` d'une
-> initiative est le montant **saisi** ; tout montant dérivé en dehors de lui est
-> une **estimation**.
+> **Ces montants sont des PROJECTIONS, pas une comptabilité.** Le champ
+> `budget` d'une initiative est le montant **saisi** ; tout montant dérivé en
+> dehors de lui (`consomme`, `ecart`) est une **estimation au prorata de
+> l'avancement**. Les dépenses réelles sont saisies à part — registre
+> `GET /depenses` (section 17) — et figurent dans l'export comité
+> (ci-dessous) ; elles n'entrent **jamais** dans ces agrégats.
 
 | Champ | Définition |
 |---|---|
@@ -84,6 +85,22 @@ sélection visible à l'écran.
 Côté interface, la même précision est portée explicitement : la légende sous les
 indicateurs du tableau de bord, l'infobulle de la colonne « Budget » de la liste
 et la note sous le budget de la fiche d'une initiative.
+
+### Export comité de pilotage (`GET /export/comite-pilote`)
+
+Document **PDF ou PowerPoint généré côté serveur** pour le comité de
+pilotage : répartition du portefeuille par statut, initiatives en retard,
+risques critiques (score ≥ 15/25) et budget — **dépenses réelles** du
+registre face au budget engagé (le prorata d'avancement y est affiché
+comme *estimation*). Données isolées par organisation.
+
+| Méthode | Route | Permission | Description |
+|---|---|---|---|
+| GET | `/export/comite-pilote?format=pdf\|pptx` | `DASHBOARD_CONSULTER` | `200` — `Content-Disposition: attachment; filename=comite-pilote.<format>`, `application/pdf` ou `…presentationml.presentation` |
+
+Paramètre `format` : `pdf` ou `pptx` ; toute autre valeur → `400`. Sans jeton
+→ `401`. Le téléchargement côté client passe par `telechargerFichier` (flux
+`blob` authentifié, nom pris dans `Content-Disposition`).
 
 ---
 

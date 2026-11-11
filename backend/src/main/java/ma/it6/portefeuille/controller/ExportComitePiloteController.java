@@ -65,7 +65,7 @@ public class ExportComitePiloteController {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=comite-pilote-" + extension)
+                        "attachment; filename=comite-pilote." + extension)
                 .body(contenu);
     }
 }

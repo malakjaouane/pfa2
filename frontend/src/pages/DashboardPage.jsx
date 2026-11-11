@@ -10,7 +10,7 @@ import {
   Legend
 } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
-import api, { messageErreur } from '../api';
+import api, { messageErreur, messageErreurBlob, telechargerFichier } from '../api';
 import { useAuth } from '../AuthContext';
 import { useI18n } from '../i18n/I18nContext';
 import { useReferentiels } from '../i18n/referentiels';
@@ -29,7 +29,8 @@ import {
   IconFlag,
   IconPlus,
   IconArrowRight,
-  IconSearch
+  IconSearch,
+  IconDownload
 } from '../components/Icons';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
@@ -434,6 +435,24 @@ export default function DashboardPage() {
     setSearchParams({}, { replace: true });
   };
 
+  // Export comité de pilotage (4F) : PDF ou PowerPoint générés côté
+  // serveur (dépenses réelles du registre, prorata = estimation).
+  const [exportEnCours, setExportEnCours] = useState('');
+  const exporterComite = async (format) => {
+    setExportEnCours(format);
+    try {
+      const nom = await telechargerFichier(
+        `/export/comite-pilote?format=${format}`,
+        `comite-pilote.${format}`
+      );
+      toast({ title: t('dashboard.export.succes', { nom }) });
+    } catch (err) {
+      toast({ title: messageErreurBlob(err), variant: 'destructive' });
+    } finally {
+      setExportEnCours('');
+    }
+  };
+
   const recentes = useMemo(() => {
     const base = initiatives.filter((i) => !i.archive);
     const q = rechercheRecente.trim().toLowerCase();
@@ -480,6 +499,32 @@ export default function DashboardPage() {
             <p className="text-sm text-muted-foreground">{t('dashboard.hero.sousTitre')}</p>
           </div>
           <div className="flex items-center gap-2">
+            {hasPermission('DASHBOARD_CONSULTER') && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => exporterComite('pdf')}
+                  disabled={exportEnCours !== ''}
+                  title={t('dashboard.export.aide')}
+                >
+                  <IconDownload size={14} className="mr-1.5" />
+                  {exportEnCours === 'pdf' ? '…' : t('dashboard.export.pdf')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => exporterComite('pptx')}
+                  disabled={exportEnCours !== ''}
+                  title={t('dashboard.export.aide')}
+                >
+                  <IconDownload size={14} className="mr-1.5" />
+                  {exportEnCours === 'pptx' ? '…' : t('dashboard.export.powerpoint')}
+                </Button>
+              </>
+            )}
             <Link to="/roadmap" className="flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
               <IconFlag size={14} />
               {kpis.jalonsSemaine === 1
