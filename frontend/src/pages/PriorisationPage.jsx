@@ -72,11 +72,11 @@ export default function PriorisationPage() {
 
   const texteScore = (score) => {
     if (!score) return '—';
-    if (score >= 20) return 'Critique';
-    if (score >= 15) return 'Élevé';
-    if (score >= 10) return 'Moyen';
-    if (score >= 5) return 'Faible';
-    return 'Très faible';
+    if (score >= 20) return t('priorisation.bande.critique');
+    if (score >= 15) return t('priorisation.bande.eleve');
+    if (score >= 10) return t('priorisation.bande.moyen');
+    if (score >= 5) return t('priorisation.bande.faible');
+    return t('priorisation.bande.tresFaible');
   };
 
   if (chargement) {
@@ -181,24 +181,24 @@ export default function PriorisationPage() {
 
       <div className="mt-6 max-w-[1240px]">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Légende
+          {t('priorisation.legende')}
         </h3>
         <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-destructive/25" />
-            {t('priorisation.colScore')} ≥ 20 : critique
+            {t('priorisation.colScore')} ≥ 20 : {t('priorisation.bande.critique')}
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-destructive/15" />
-            {t('priorisation.colScore')} ≥ 15 : élevé
+            {t('priorisation.colScore')} ≥ 15 : {t('priorisation.bande.eleve')}
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-amber/15" />
-            {t('priorisation.colScore')} ≥ 10 : moyen
+            {t('priorisation.colScore')} ≥ 10 : {t('priorisation.bande.moyen')}
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-blue/10" />
-            {t('priorisation.colScore')} ≥ 5 : faible
+            {t('priorisation.colScore')} ≥ 5 : {t('priorisation.bande.faible')}
           </span>
         </div>
       </div>

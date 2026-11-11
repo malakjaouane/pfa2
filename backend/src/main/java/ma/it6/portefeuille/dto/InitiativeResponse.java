@@ -12,6 +12,12 @@ import java.time.LocalDate;
  * le lire comme un solde comptable. Les agrégats projetés (consommé, écart)
  * sont regroupés sur {@code GET /api/budget}, avec leurs définitions.</p>
  *
+ * <p>{@code valeur}, {@code effort} et {@code scorePriorisation} portent la
+ * notation de priorisation (4C) : valeur et effort se notent de 1 à 5,
+ * {@code scorePriorisation} est calculé serveur (valeur × 25 ÷ effort,
+ * borné 1-25). Tous trois restent {@code null} tant que le couple n'a pas
+ * été noté — le score sert de critère de tri et de couleur d'affichage.</p>
+ *
  * <p>{@code sante} est le score de santé automatique (feu vert / orange /
  * rouge + motif), calculé pour les lectures (liste, fiche, dashboard) et
  * {@code null} pour les écritures et les archives. Voir {@code CalculeurSante}.</p>
@@ -32,6 +38,9 @@ public record InitiativeResponse(
         UserSummaryDto responsable,
         StatutInitiativeDto statut,
         PrioriteDto priorite,
-        ObjectifDto objectif
+        ObjectifDto objectif,
+        Integer valeur,
+        Integer effort,
+        Integer scorePriorisation
 ) {
 }

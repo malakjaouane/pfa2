@@ -81,4 +81,34 @@ class InitiativeMapperTest {
         assertThat(response.enRetard()).isTrue();
         assertThat(response.statut().libelle()).isEqualTo("En cours");
     }
+
+    @Test
+    @DisplayName("toResponse propage valeur, effort et score de priorisation")
+    void toResponse_exposePriorisation() {
+        var initiative = Initiative.builder()
+                .idInitiative(1L)
+                .code("INIT-1")
+                .nom("Nom")
+                .valeur(4)
+                .effort(2)
+                .scorePriorisation(20)
+                .build();
+
+        var response = InitiativeMapper.toResponse(initiative);
+
+        assertThat(response.valeur()).isEqualTo(4);
+        assertThat(response.effort()).isEqualTo(2);
+        assertThat(response.scorePriorisation()).isEqualTo(20);
+    }
+
+    @Test
+    @DisplayName("toResponse laisse la priorisation à null tant que non notée")
+    void toResponse_priorisationNonNotee() {
+        var response = InitiativeMapper.toResponse(
+                initiative(AUJOURDHUI.plusDays(10), "À planifier", 0, false));
+
+        assertThat(response.valeur()).isNull();
+        assertThat(response.effort()).isNull();
+        assertThat(response.scorePriorisation()).isNull();
+    }
 }

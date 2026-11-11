@@ -61,6 +61,15 @@ export default function InitiativeDetailPage() {
   const [resumeIa, setResumeIa] = useState('');
   const [resumeEnCours, setResumeEnCours] = useState(false);
 
+  // Priorisation (4C) : notation valeur / effort enregistrée par
+  // PATCH /api/initiatives/{id}/priorisation (INITIATIVE_MODIFIER).
+  const [noteValeur, setNoteValeur] = useState('');
+  const [noteEffort, setNoteEffort] = useState('');
+  useEffect(() => {
+    setNoteValeur(initiative?.valeur != null ? String(initiative.valeur) : '');
+    setNoteEffort(initiative?.effort != null ? String(initiative.effort) : '');
+  }, [initiative]);
+
   const genererResume = async () => {
     setResumeEnCours(true);
     try {
@@ -136,6 +145,28 @@ export default function InitiativeDetailPage() {
     try {
       await api.patch(`/initiatives/${initiative.idInitiative}/archive`);
       toast({ title: t('initiativeDetail.archivee'), variant: 'success' });
+      charger();
+    } catch (err) {
+      toast({ title: messageErreur(err), variant: 'destructive' });
+    }
+  };
+
+  // ---------------- Priorisation ----------------
+
+  // Score affiché en direct : valeur × 25 ÷ effort, borné 1 à 25.
+  const scoreNote =
+    noteValeur && noteEffort
+      ? Math.max(1, Math.min(25, Math.floor((Number(noteValeur) * 25) / Number(noteEffort))))
+      : null;
+  const noteInchangee =
+    noteValeur === (initiative.valeur != null ? String(initiative.valeur) : '') &&
+    noteEffort === (initiative.effort != null ? String(initiative.effort) : '');
+
+  const enregistrerNote = async () => {
+    if (!noteValeur || !noteEffort) return;
+    try {
+      await api.patch(`/initiatives/${id}/priorisation?valeur=${noteValeur}&effort=${noteEffort}`);
+      toast({ title: t('initiativeDetail.noteEnregistree'), variant: 'success' });
       charger();
     } catch (err) {
       toast({ title: messageErreur(err), variant: 'destructive' });
@@ -383,6 +414,73 @@ export default function InitiativeDetailPage() {
               <strong className="text-sm">{formatBudget(initiative.budget)}</strong>
               <small className="text-xs text-muted-foreground block mt-0.5">
                 {t('initiativeDetail.budgetAide')}
+              </small>
+            </div>
+            <div className="lg:col-span-3">
+              <span className="text-xs font-medium text-muted-foreground libelle block mb-1">
+                {t('initiativeDetail.priorisation')}
+              </span>
+              {peutModifier ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="text-xs text-muted-foreground" htmlFor="note-valeur">
+                    {t('initiativeDetail.valeur')}
+                  </label>
+                  <select
+                    id="note-valeur"
+                    className="rounded-md border border-input bg-background px-2 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    value={noteValeur}
+                    onChange={(e) => setNoteValeur(e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                  <label className="text-xs text-muted-foreground" htmlFor="note-effort">
+                    {t('initiativeDetail.effort')}
+                  </label>
+                  <select
+                    id="note-effort"
+                    className="rounded-md border border-input bg-background px-2 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    value={noteEffort}
+                    onChange={(e) => setNoteEffort(e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                  <Badge
+                    variant={scoreNote != null && scoreNote >= 15 ? 'destructive' : 'secondary'}
+                    className="border-transparent"
+                  >
+                    {scoreNote != null
+                      ? t('initiativeDetail.scoreSur', { score: scoreNote })
+                      : t('initiativeDetail.nonNote')}
+                  </Badge>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!noteValeur || !noteEffort || noteInchangee}
+                    onClick={enregistrerNote}
+                  >
+                    {t('initiativeDetail.noter')}
+                  </Button>
+                </div>
+              ) : (
+                <strong className="text-sm">
+                  {initiative.valeur != null && initiative.effort != null
+                    ? t('initiativeDetail.noteAffichee', {
+                        valeur: initiative.valeur,
+                        effort: initiative.effort,
+                        score: initiative.scorePriorisation ?? '—'
+                      })
+                    : t('initiativeDetail.nonNote')}
+                </strong>
+              )}
+              <small className="text-xs text-muted-foreground block mt-0.5">
+                {t('initiativeDetail.priorisationAide')}
               </small>
             </div>
             <div className="lg:col-span-3">

@@ -87,7 +87,10 @@ public final class InitiativeMapper {
                 UtilisateurMapper.toSummary(i.getResponsable()),
                 toStatutDto(i.getStatut()),
                 toPrioriteDto(i.getPriorite()),
-                toObjectifDto(i.getObjectif())
+                toObjectifDto(i.getObjectif()),
+                i.getValeur(),
+                i.getEffort(),
+                i.getScorePriorisation()
         );
     }
 }

@@ -14,6 +14,12 @@ export const fr = {
   'priorisation.voirMatrice': 'Voir la matrice de priorisation',
   'priorisation.aucuneInitiative': 'Aucune initiative avec ce couple valeur / effort.',
   'priorisation.legendeScore': 'Score = Valeur × 25 ÷ Effort (1 à 25). Plus le score est élevé, plus l’initiative est prioritaire.',
+  'priorisation.legende': 'Légende',
+  'priorisation.bande.critique': 'critique',
+  'priorisation.bande.eleve': 'élevé',
+  'priorisation.bande.moyen': 'moyen',
+  'priorisation.bande.faible': 'faible',
+  'priorisation.bande.tresFaible': 'très faible',
   'priorisation.initiatives': '{n} initiative{plural}',
   'priorisation.initiatives_plural': '{n} initiatives'
 };
@@ -30,6 +36,12 @@ export const en = {
   'priorisation.voirMatrice': 'View prioritization matrix',
   'priorisation.aucuneInitiative': 'No initiative with this value / effort pair.',
   'priorisation.legendeScore': 'Score = Value × 25 ÷ Effort (1 to 25). The higher the score, the more priority the initiative.',
+  'priorisation.legende': 'Legend',
+  'priorisation.bande.critique': 'critical',
+  'priorisation.bande.eleve': 'high',
+  'priorisation.bande.moyen': 'medium',
+  'priorisation.bande.faible': 'low',
+  'priorisation.bande.tresFaible': 'very low',
   'priorisation.initiatives': '{n} initiative',
   'priorisation.initiatives_plural': '{n} initiatives'
 };
@@ -46,6 +58,12 @@ export const ar = {
   'priorisation.voirMatrice': 'عرض مصفوفة الأولوية',
   'priorisation.aucuneInitiative': 'لا توجد مبادرة مع هذا الزوج من القيمة / الجهد.',
   'priorisation.legendeScore': 'النتيجة = القيمة × 25 ÷ الجهد (من 1 إلى 25). كلما ارتفع الناتج، زادت أولوية المبادرة.',
+  'priorisation.legende': 'مفتاح',
+  'priorisation.bande.critique': 'حرجة',
+  'priorisation.bande.eleve': 'مرتفعة',
+  'priorisation.bande.moyen': 'متوسطة',
+  'priorisation.bande.faible': 'منخفضة',
+  'priorisation.bande.tresFaible': 'منخفضة جدًا',
   'priorisation.initiatives': '{n} مبادرة',
   'priorisation.initiatives_plural': '{n} مبادرات'
 };
@@ -62,6 +80,12 @@ export const es = {
   'priorisation.voirMatrice': 'Ver matriz de priorización',
   'priorisation.aucuneInitiative': 'No hay ninguna iniciativa con este par de valor / esfuerzo.',
   'priorisation.legendeScore': 'Puntuación = Valor × 25 ÷ Esfuerzo (1 a 25). Cuanto mayor sea la puntuación, más prioritaria es la iniciativa.',
+  'priorisation.legende': 'Leyenda',
+  'priorisation.bande.critique': 'crítico',
+  'priorisation.bande.eleve': 'alto',
+  'priorisation.bande.moyen': 'medio',
+  'priorisation.bande.faible': 'bajo',
+  'priorisation.bande.tresFaible': 'muy bajo',
   'priorisation.initiatives': '{n} iniciativa',
   'priorisation.initiatives_plural': '{n} iniciativas'
 };

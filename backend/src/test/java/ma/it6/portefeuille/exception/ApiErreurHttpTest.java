@@ -3,6 +3,7 @@ package ma.it6.portefeuille.exception;
 import ma.it6.portefeuille.config.SecurityConfig;
 import ma.it6.portefeuille.controller.AuthController;
 import ma.it6.portefeuille.controller.InitiativeController;
+import ma.it6.portefeuille.controller.PriorisationController;
 import ma.it6.portefeuille.security.CookieService;
 import ma.it6.portefeuille.security.CustomUserDetailsService;
 import ma.it6.portefeuille.service.MembreInitiativeService;
@@ -29,6 +30,7 @@ import ma.it6.portefeuille.service.EtapeService;
 import ma.it6.portefeuille.service.HistoriqueConnexionService;
 import ma.it6.portefeuille.service.HistoriqueModificationService;
 import ma.it6.portefeuille.service.InitiativeService;
+import ma.it6.portefeuille.service.PriorisationService;
 import ma.it6.portefeuille.service.UtilisateurService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -52,6 +54,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -72,7 +75,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(controllers = {
         InitiativeController.class,
-        AuthController.class
+        AuthController.class,
+        PriorisationController.class
 })
 @Import({SecurityConfig.class, JwtService.class, CookieService.class})
 class ApiErreurHttpTest {
@@ -88,6 +92,8 @@ class ApiErreurHttpTest {
     // ---- Services applicatifs simulés (l'anomalie survient avant leur appel) ----
     @MockitoBean
     private InitiativeService initiativeService;
+    @MockitoBean
+    private PriorisationService priorisationService;
     @MockitoBean
     private EtapeService etapeService;
     @MockitoBean
@@ -202,6 +208,19 @@ class ApiErreurHttpTest {
                             .accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.status").value(400));
+        }
+
+        @Test
+        @DisplayName("?effort=3 sans ?valeur= (paramètre obligatoire absent) : 400 en nommant le paramètre")
+        void parametreRequeteManquant() throws Exception {
+            mockMvc.perform(patch("/api/initiatives/1/priorisation")
+                            .param("effort", "3")
+                            .with(auth("INITIATIVE_MODIFIER"))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.message")
+                            .value(org.hamcrest.Matchers.containsString("valeur")));
         }
     }
 

@@ -16,6 +16,7 @@ import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -145,6 +146,19 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST,
                 "Valeur « " + ex.getValue() + " » invalide pour le paramètre « " + ex.getName()
                         + " » (type attendu : " + attendu + ").", List.of());
+    }
+
+    /**
+     * Paramètre de requête obligatoire absent (ex.
+     * {@code PATCH /initiatives/{id}/priorisation} sans {@code ?valeur=}) :
+     * 400 en nommant le paramètre manquant — sans ce handler, Spring
+     * laissait l'exception monter jusqu'au catch-all : 500.
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiError> handleMissingParameter(MissingServletRequestParameterException ex) {
+        return build(HttpStatus.BAD_REQUEST,
+                "Paramètre de requête manquant : « " + ex.getParameterName() + " » (type attendu : "
+                        + ex.getParameterType() + ").", List.of());
     }
 
     /**

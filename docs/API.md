@@ -163,6 +163,24 @@ Les initiatives exposent leur rattachement à un objectif stratégique :
 { "idObjectif": 1, "code": "OBJ-EXP", "libelle": "Optimiser l'expérience client", "description": "…" }
 ```
 
+### Priorisation (`PATCH /initiatives/{id}/priorisation`)
+
+Notation **valeur / effort** de chaque initiative, qui alimente la matrice
+5×5 de la page « Priorisation » et le tri « Par score de priorisation ».
+
+| Méthode | Route | Permission | Description |
+|---|---|---|---|
+| PATCH | `/initiatives/{id}/priorisation?valeur=1..5&effort=1..5` | `INITIATIVE_MODIFIER` | `200` — l'initiative mise à jour avec `valeur`, `effort` et `scorePriorisation` recalculé |
+
+- **Score** = `valeur × 25 ÷ effort` (division entière), **borné 1-25** :
+  un score élevé = forte valeur pour faible effort (initiative prioritaire).
+- `valeur` et `effort` sont des **paramètres de requête obligatoires**,
+  entiers de 1 à 5 (paramètre manquant ou hors borne → `400` ;
+  initiative inconnue → `404`).
+- `valeur`, `effort` et `scorePriorisation` sont exposés par
+  `GET /initiatives` et `GET /initiatives/{id}` — `null` tant que le couple
+  n'a pas été noté.
+
 ### Import CSV / Excel (`POST /initiatives/import`, `GET /initiatives/import/modele`)
 
 | Méthode | Route | Permission | Description |

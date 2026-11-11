@@ -1515,6 +1515,54 @@ try {
 } catch { $comVisDetail = "($($_.Exception.Message))" }
 Test-Check 'Comite : visiteur (DASHBOARD_CONSULTER) -> 200' $comVisOk $comVisDetail
 
+Write-Output '=== 25. Priorisation valeur / effort (score 1-25, INITIATIVE_MODIFIER) ==='
+
+# Initiative dediee a la section, nettoyee (annulee + archivee) en fin de parcours.
+$priCorps = @{ code = "TESTPRI-$suffixe"; nom = 'Priorisation de test'; avancement = 0; idEntite = 1; idStatut = 1; idPriorite = 1 }
+$priCree = Invoke-Api 'Post' "$Base/initiatives" $priCorps $adminToken
+Test-Check 'Priorisation : initiative de test creee' ($priCree.OK -and $priCree.Status -eq 201) "($($priCree.Status))"
+$priId = $priCree.Body.idInitiative
+
+# Anonyme -> 401 (avant toute regle de permission).
+$priAnonyme = Invoke-Api 'Patch' "$Base/initiatives/$priId/priorisation?valeur=5&effort=1" $null $null
+Test-Check 'Priorisation : anonyme -> 401' ($priAnonyme.OK -eq $false -and $priAnonyme.Status -eq 401) "($($priAnonyme.Status))"
+
+# Le visiteur est en lecture seule : pas de INITIATIVE_MODIFIER -> 403.
+$priVisiteur = Invoke-Api 'Patch' "$Base/initiatives/$priId/priorisation?valeur=5&effort=1" $null $visiteurToken
+Test-Check 'Priorisation : visiteur (sans INITIATIVE_MODIFIER) -> 403' ($priVisiteur.OK -eq $false -and $priVisiteur.Status -eq 403) "($($priVisiteur.Status))"
+
+# Score : 5/1 -> 25 (plafond 125 borne a 25), 3/4 -> 18 (18.75 arrondi inferieur).
+$priMax = Invoke-Api 'Patch' "$Base/initiatives/$priId/priorisation?valeur=5&effort=1" $null $adminToken
+Test-Check 'Priorisation : 5/1 -> score 25/25 (plafond)' ($priMax.OK -and $priMax.Body.valeur -eq 5 -and $priMax.Body.effort -eq 1 -and $priMax.Body.scorePriorisation -eq 25) "($($priMax.Status)/$($priMax.Body.scorePriorisation))"
+
+$priMilieu = Invoke-Api 'Patch' "$Base/initiatives/$priId/priorisation?valeur=3&effort=4" $null $adminToken
+Test-Check 'Priorisation : 3/4 -> score 18 (arrondi inferieur)' ($priMilieu.OK -and $priMilieu.Body.scorePriorisation -eq 18) "($($priMilieu.Status)/$($priMilieu.Body.scorePriorisation))"
+
+# Garde-fous bornes 1-5 et parametre obligatoire -> 400.
+$priValeur0 = Invoke-Api 'Patch' "$Base/initiatives/$priId/priorisation?valeur=0&effort=3" $null $adminToken
+Test-Check 'Priorisation : valeur 0 -> 400' ($priValeur0.OK -eq $false -and $priValeur0.Status -eq 400) "($($priValeur0.Status))"
+
+$priEffort6 = Invoke-Api 'Patch' "$Base/initiatives/$priId/priorisation?valeur=3&effort=6" $null $adminToken
+Test-Check 'Priorisation : effort 6 -> 400' ($priEffort6.OK -eq $false -and $priEffort6.Status -eq 400) "($($priEffort6.Status))"
+
+$priSansValeur = Invoke-Api 'Patch' "$Base/initiatives/$priId/priorisation?effort=3" $null $adminToken
+Test-Check 'Priorisation : parametre valeur manquant -> 400' ($priSansValeur.OK -eq $false -and $priSansValeur.Status -eq 400) "($($priSansValeur.Status))"
+
+# Initiative inexistante -> 404.
+$priInconnue = Invoke-Api 'Patch' "$Base/initiatives/999999/priorisation?valeur=3&effort=3" $null $adminToken
+Test-Check 'Priorisation : initiative inconnue -> 404' ($priInconnue.OK -eq $false -and $priInconnue.Status -eq 404) "($($priInconnue.Status))"
+
+# La liste expose valeur / effort / score : matrice et tri cote client.
+$priListe = Invoke-Api 'Get' "$Base/initiatives" $null $adminToken
+$priLigne = @($priListe.Body) | Where-Object { $_.idInitiative -eq $priId } | Select-Object -First 1
+Test-Check 'Priorisation : liste avec valeur/effort/scorePriorisation' ($priListe.OK -and $null -ne $priLigne -and $priLigne.valeur -eq 3 -and $priLigne.effort -eq 4 -and $priLigne.scorePriorisation -eq 18) "($($priLigne.valeur)/$($priLigne.effort)/$($priLigne.scorePriorisation))"
+
+# Nettoyage : statut Annulee (corps PUT complet) puis archivage.
+$priClotCorps = @{ code = "TESTPRI-$suffixe"; nom = 'Priorisation de test'; description = ''; dateDebut = $null; dateFinPrevue = $null; budget = 0; avancement = 0; idEntite = 1; idResponsable = $null; idStatut = 5; idPriorite = 1 }
+$priClot = Invoke-Api 'Put' "$Base/initiatives/$priId" $priClotCorps $adminToken
+$priArch = Invoke-Api 'Patch' "$Base/initiatives/$priId/archive" $null $adminToken
+Test-Check 'Priorisation : nettoyage (annulee puis archivee)' ($priClot.OK -and $priArch.OK -and $priArch.Body.archive -eq $true) "($($priClot.Status)/$($priArch.Status))"
+
 Write-Output ''
 Write-Output '------------------------------------------------------------'
 Write-Output "RESULTATS : $script:Pass reussis, $script:Fail echoues"

@@ -8,7 +8,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import ma.it6.portefeuille.dto.InitiativeResponse;
 import ma.it6.portefeuille.entity.Initiative;
+import ma.it6.portefeuille.mapper.InitiativeMapper;
 import ma.it6.portefeuille.service.PriorisationService;
 
 /**
@@ -44,12 +46,14 @@ public class PriorisationController {
      * @return l'initiative mise à jour (avec son score recalculé)
      */
     @PatchMapping("/initiatives/{idInitiative}/priorisation")
-    public ResponseEntity<Initiative> mettreAJourPriorisation(
+    public ResponseEntity<InitiativeResponse> mettreAJourPriorisation(
             @PathVariable Long idInitiative,
             @RequestParam Integer valeur,
             @RequestParam Integer effort,
             @AuthenticationPrincipal String email) {
         Initiative initiative = priorisationService.mettreAJourPriorisation(idInitiative, valeur, effort);
-        return ResponseEntity.ok(initiative);
+        // DTO comme partout ailleurs : l'entite brute exposerait des proxies
+        // Hibernate que Jackson ne sait pas serialiser (500).
+        return ResponseEntity.ok(InitiativeMapper.toResponse(initiative));
     }
 }
