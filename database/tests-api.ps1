@@ -68,11 +68,11 @@ function Convertir-Reponse {
     return ($texte | ConvertFrom-Json)
 }
 
-# Upload multipart (section 23) : PowerShell 5.1 n'a pas -Form, la
+# Upload multipart (sections 23 et 27) : PowerShell 5.1 n'a pas -Form, la
 # requête est construite à la main (bordure, en-têtes de partie, octets).
-# $Token null = requête anonyme (test 401).
+# $Token null = requête anonyme (test 401). $TypeMime = type du fichier.
 function Invoke-Import {
-    param([string]$Url, [string]$Nom, [string]$Contenu, [string]$Token, [bool]$Ignorer = $false)
+    param([string]$Url, [string]$Nom, [string]$Contenu, [string]$Token, [bool]$Ignorer = $false, [string]$TypeMime = 'text/csv')
     $boundary = '----pfa' + [System.Guid]::NewGuid().ToString('N')
     $CRLF = "`r`n"
     $morceaux = New-Object System.Collections.Generic.List[byte[]]
@@ -84,7 +84,7 @@ function Invoke-Import {
     }
     $debut = "--$boundary$CRLF" +
         "Content-Disposition: form-data; name=`"fichier`"; filename=`"$Nom`"" + $CRLF +
-        'Content-Type: text/csv' + $CRLF + $CRLF
+        "Content-Type: $TypeMime" + $CRLF + $CRLF
     $morceaux.Add([System.Text.Encoding]::UTF8.GetBytes($debut))
     $morceaux.Add([System.Text.Encoding]::UTF8.GetBytes($Contenu))
     $morceaux.Add([System.Text.Encoding]::UTF8.GetBytes($CRLF + "--$boundary--$CRLF"))
@@ -1599,6 +1599,58 @@ $prefsRemise = Invoke-Api 'Patch' "$Base/notifications/preferences" @{
     emailActif = $false; frequence = 'aucune'; whatsappActif = $false; telephone = $null
 } $adminToken
 Test-Check 'Preferences : retour aux defauts (idempotence)' ($prefsRemise.OK -and $prefsRemise.Body.frequence -eq 'aucune' -and $prefsRemise.Body.emailActif -eq $false) "($($prefsRemise.Body.frequence))"
+
+Write-Output '=== 27. Pieces jointes (upload, scan MIME serveur, suppression) ==='
+
+# Initiative dediee a la section, nettoyee (annulee + archivee) en fin de parcours.
+$pjCorps = @{ code = "TESTPJ-$suffixe"; nom = 'Pieces jointes de test'; avancement = 0; idEntite = 1; idStatut = 1; idPriorite = 1 }
+$pjCree = Invoke-Api 'Post' "$Base/initiatives" $pjCorps $adminToken
+Test-Check 'Pieces jointes : initiative de test creee' ($pjCree.OK -and $pjCree.Status -eq 201) "($($pjCree.Status))"
+$pjId = $pjCree.Body.idInitiative
+
+# Anonyme -> 401 (avant toute regle de permission).
+$pjAnonyme = Invoke-Import -Url "$Base/initiatives/$pjId/pieces-jointes" -Nom 'fiche.pdf' -Contenu '%PDF-1.7 test' -TypeMime 'application/pdf' -Token $null
+Test-Check 'Pieces jointes : anonyme -> 401' ($pjAnonyme.OK -eq $false -and $pjAnonyme.Status -eq 401) "($($pjAnonyme.Status))"
+
+# Le visiteur n'a pas INITIATIVE_MODIFIER -> 403.
+$pjVisiteur = Invoke-Import -Url "$Base/initiatives/$pjId/pieces-jointes" -Nom 'fiche.pdf' -Contenu '%PDF-1.7 test' -TypeMime 'application/pdf' -Token $visiteurToken
+Test-Check 'Pieces jointes : visiteur (sans INITIATIVE_MODIFIER) -> 403' ($pjVisiteur.OK -eq $false -and $pjVisiteur.Status -eq 403) "($($pjVisiteur.Status))"
+
+# Upload valide (magic bytes PDF conformes) -> 201.
+$pjUpload = Invoke-Import -Url "$Base/initiatives/$pjId/pieces-jointes" -Nom 'fiche.pdf' -Contenu '%PDF-1.7 test' -TypeMime 'application/pdf' -Token $adminToken
+Test-Check 'Pieces jointes : upload PDF -> 201' ($pjUpload.OK -and $pjUpload.Status -eq 201 -and $pjUpload.Body.nomFichier -eq 'fiche.pdf') "($($pjUpload.Status))"
+$pjFichierId = $pjUpload.Body.idPieceJointe
+
+# Contenu GIF declare PDF -> 400 (scan MIME serveur).
+$pjMismatch = Invoke-Import -Url "$Base/initiatives/$pjId/pieces-jointes" -Nom 'fiche.pdf' -Contenu 'GIF89a faux pdf' -TypeMime 'application/pdf' -Token $adminToken
+Test-Check 'Pieces jointes : contenu GIF declare PDF -> 400' ($pjMismatch.OK -eq $false -and $pjMismatch.Status -eq 400) "($($pjMismatch.Status))"
+
+# Type MIME hors liste -> 400.
+$pjHtml = Invoke-Import -Url "$Base/initiatives/$pjId/pieces-jointes" -Nom 'page.html' -Contenu '<html></html>' -TypeMime 'text/html' -Token $adminToken
+Test-Check 'Pieces jointes : MIME text/html -> 400' ($pjHtml.OK -eq $false -and $pjHtml.Status -eq 400) "($($pjHtml.Status))"
+
+# Telechargement : 200, type PDF, contenu restitue.
+$pjTelOk = $false; $pjTelDetail = ''
+try {
+    $pjTel = Invoke-WebRequest -UseBasicParsing -Uri "$Base/pieces-jointes/$pjFichierId/telecharger" -Headers @{ Authorization = "Bearer $adminToken" }
+    $pjTelOk = ($pjTel.StatusCode -eq 200 -and ((-join $pjTel.Headers['Content-Type']) -like '*application/pdf*'))
+    $pjTelDetail = "($($pjTel.StatusCode))"
+} catch { $pjTelDetail = "($($_.Exception.Message))" }
+Test-Check 'Pieces jointes : telechargement 200 type PDF' $pjTelOk $pjTelDetail
+
+# Suppression par l'uploader -> 204.
+$pjSuppr = Invoke-Api 'Delete' "$Base/pieces-jointes/$pjFichierId" $null $adminToken
+Test-Check 'Pieces jointes : suppression uploader -> 204' ($pjSuppr.OK -and $pjSuppr.Status -eq 204) "($($pjSuppr.Status))"
+
+# Suppression de la piece jointe supprimee -> 404.
+$pjSuppr2 = Invoke-Api 'Delete' "$Base/pieces-jointes/$pjFichierId" $null $adminToken
+Test-Check 'Pieces jointes : suppression deja effectuee -> 404' ($pjSuppr2.OK -eq $false -and $pjSuppr2.Status -eq 404) "($($pjSuppr2.Status))"
+
+# Nettoyage : statut Annulee (corps PUT complet) puis archivage.
+$pjClotCorps = @{ code = "TESTPJ-$suffixe"; nom = 'Pieces jointes de test'; description = ''; dateDebut = $null; dateFinPrevue = $null; budget = 0; avancement = 0; idEntite = 1; idResponsable = $null; idStatut = 5; idPriorite = 1 }
+$pjClot = Invoke-Api 'Put' "$Base/initiatives/$pjId" $pjClotCorps $adminToken
+$pjArch = Invoke-Api 'Patch' "$Base/initiatives/$pjId/archive" $null $adminToken
+Test-Check 'Pieces jointes : nettoyage (annulee puis archivee)' ($pjClot.OK -and $pjArch.OK -and $pjArch.Body.archive -eq $true) "($($pjClot.Status)/$($pjArch.Status))"
 
 Write-Output ''
 Write-Output '------------------------------------------------------------'

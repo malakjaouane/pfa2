@@ -3,6 +3,7 @@ package ma.it6.portefeuille.service;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -23,6 +24,7 @@ import ma.it6.portefeuille.repository.PieceJointeRepository;
 import ma.it6.portefeuille.repository.UtilisateurRepository;
 import ma.it6.portefeuille.security.OrganisationContext;
 import ma.it6.portefeuille.storage.StockageFichier;
+import ma.it6.portefeuille.util.DetecteurTypeMime;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -38,6 +40,9 @@ import static org.springframework.http.HttpStatus.*;
  *   <li>taille maximale configurable ({@code stockage.taille-max-octets},
  *       défaut 10 Mo) ;</li>
  *   <li>types MIME autorisés configurables ({@code stockage.mime-autorises}) ;</li>
+ *   <li>scan MIME serveur : les premiers octets du fichier doivent coller au
+ *       type déclaré (PDF, PNG, JPEG, GIF, ZIP xlsx/docx, OLE2, texte) — un
+ *       exécutable renommé en {@code .pdf} est refusé ;</li>
  *   <li>une pièce jointe se rattache soit à une initiative, soit à un
  *       commentaire (pas les deux) de la même organisation ;</li>
  *   <li>seul l'uploader ou un administrateur de l'organisation peut supprimer.</li>
@@ -59,6 +64,22 @@ public class PieceJointeService {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+
+    /**
+     * Correspondance type détecté (scan MIME serveur) → types déclarés
+     * acceptés. Un contenu dont la signature ne figure pas ici est refusé.
+     */
+    private static final Map<String, Set<String>> COMPATIBILITES = Map.of(
+            DetecteurTypeMime.PDF, Set.of("application/pdf"),
+            DetecteurTypeMime.PNG, Set.of("image/png"),
+            DetecteurTypeMime.JPEG, Set.of("image/jpeg", "image/jpg"),
+            DetecteurTypeMime.GIF, Set.of("image/gif"),
+            DetecteurTypeMime.XLSX, Set.of(
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+            DetecteurTypeMime.DOCX, Set.of(
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+            DetecteurTypeMime.OLE2, Set.of("application/msword", "application/vnd.ms-excel"),
+            DetecteurTypeMime.TEXTE, Set.of("text/csv"));
 
     private final PieceJointeRepository pieceJointeRepository;
     private final InitiativeRepository initiativeRepository;
@@ -103,18 +124,23 @@ public class PieceJointeService {
                                    Long idInitiative,
                                    Long idCommentaire,
                                    String email) {
-        validerFichier(fichier);
+        byte[] octets = lireOctets(fichier);
+        validerFichier(fichier, octets);
 
         // Vérifie que la cible existe et appartient à l'organisation courante
-        // (le filtre Hibernate filtreParOrganisation est actif).
+        // (le filtre Hibernate filtreParOrganisation est actif). L'entité
+        // gérée renvoyée sert de référence de persistance : construire une
+        // initiative « à la main » (identifiant seul, version nulle) rend la
+        // référence transitoire et fait échouer l'insertion (409).
+        Initiative initiative = null;
         if (idInitiative != null) {
-            if (initiativeRepository.findByIdInitiative(idInitiative) == null) {
-                throw new ResponseStatusException(NOT_FOUND, "Initiative introuvable");
-            }
-        } else if (idCommentaire != null) {
-            if (commentaireRepository.findById(idCommentaire).isEmpty()) {
-                throw new ResponseStatusException(NOT_FOUND, "Commentaire introuvable");
-            }
+            initiative = initiativeRepository.findByIdInitiative(idInitiative)
+                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Initiative introuvable"));
+        }
+        Commentaire commentaire = null;
+        if (idCommentaire != null) {
+            commentaire = commentaireRepository.findById(idCommentaire)
+                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Commentaire introuvable"));
         }
 
         Utilisateur uploader = utilisateurRepository.findByEmail(email)
@@ -127,15 +153,15 @@ public class PieceJointeService {
                     "Aucune organisation dans le contexte de requête");
         }
 
-        String cle = stockage.stocker(fichier.getOriginalFilename(), lireOctets(fichier), fichier.getContentType());
+        String cle = stockage.stocker(fichier.getOriginalFilename(), octets, fichier.getContentType());
 
         PieceJointe pj = PieceJointe.builder()
                 .nomFichier(fichier.getOriginalFilename())
                 .typeMime(fichier.getContentType())
                 .tailleOctets(fichier.getSize())
                 .cleStockage(cle)
-                .initiative(idInitiative != null ? Initiative.builder().idInitiative(idInitiative).build() : null)
-                .commentaire(idCommentaire != null ? Commentaire.builder().idCommentaire(idCommentaire).build() : null)
+                .initiative(initiative)
+                .commentaire(commentaire)
                 .utilisateur(uploader)
                 .dateCreation(LocalDateTime.now())
                 .build();
@@ -180,8 +206,11 @@ public class PieceJointeService {
         pieceJointeRepository.delete(pj);
     }
 
-    /** Valide la présence, la taille et le type MIME du fichier. */
-    private void validerFichier(MultipartFile fichier) {
+    /**
+     * Valide la présence, la taille, le type déclaré et la cohérence du
+     * contenu avec ce type (scan MIME serveur).
+     */
+    private void validerFichier(MultipartFile fichier, byte[] octets) {
         if (fichier == null || fichier.isEmpty()) {
             throw new ResponseStatusException(BAD_REQUEST, "Fichier absent");
         }
@@ -194,9 +223,17 @@ public class PieceJointeService {
             throw new ResponseStatusException(BAD_REQUEST,
                     "Type MIME non autorisé : " + mime);
         }
+        String typeDetecte = DetecteurTypeMime.detecter(octets);
+        if (typeDetecte == null || !COMPATIBILITES.getOrDefault(typeDetecte, Set.of()).contains(mime)) {
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "Contenu du fichier non conforme au type déclaré : " + mime);
+        }
     }
 
     private byte[] lireOctets(MultipartFile fichier) {
+        if (fichier == null) {
+            return new byte[0];
+        }
         try {
             return fichier.getBytes();
         } catch (java.io.IOException e) {
