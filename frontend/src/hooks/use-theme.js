@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>('light');
+  // Fichier JavaScript : pas de générique TypeScript ici. useState<Theme>(...)
+  // serait interprété comme une comparaison et lèverait « Theme is not defined »
+  // au premier rendu des pages authentifiées.
+  const [theme, setTheme] = useState('light');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
