@@ -60,8 +60,7 @@ export default function CommandPalette() {
   /** Exécute l'item sélectionné : navigation ou action (déconnexion). */
   const executer = useCallback((item) => {
     if (item.action === 'logout') {
-      logout();
-      navigate('/login');
+      logout().then(() => navigate('/login'));
     } else {
       navigate(item.href);
     }

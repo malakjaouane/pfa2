@@ -139,8 +139,11 @@ export default function Layout() {
 
   const basculerMenu = () => setTiroir((v) => !v);
 
-  const handleLogout = () => {
-    logout();
+  // La navigation attend la révocation serveur : sans cela, la requête
+  // serait annulée par le changement de page et les cookies resteraient
+  // valides (la session survivrait à la déconnexion).
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 

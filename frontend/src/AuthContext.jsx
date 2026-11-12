@@ -74,7 +74,21 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  const logout = useCallback(() => {
+  /**
+   * Déconnexion : révoque la session côté serveur (POST /auth/logout — le
+   * backend révoque les jetons de rafraîchissement et vide les cookies
+   * HttpOnly) puis efface le profil local.
+   *
+   * <p>Sans cet appel, les cookies restent valides : la session survit à
+   * la déconnexion, impossible de changer de compte, et /login renvoie
+   * systématiquement au tableau de bord.</p>
+   */
+  const logout = useCallback(async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Révocation best-effort : on déconnecte le client malgré l'échec.
+    }
     localStorage.removeItem('pfa_user');
     setUser(null);
   }, []);
