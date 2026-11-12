@@ -5,6 +5,9 @@ import StatutBadge from '../components/StatutBadge';
 import { useI18n } from '../i18n/I18nContext';
 import { useReferentiels } from '../i18n/referentiels';
 import { useToast } from '../components/ui/use-toast';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
+import { Label } from '../components/ui/label';
 
 const COULEURS = {
   'À planifier': '#D0BDF4',
