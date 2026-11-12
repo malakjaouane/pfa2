@@ -16,7 +16,7 @@ import { useI18n } from '../i18n/I18nContext';
 import { useReferentiels } from '../i18n/referentiels';
 import { badgeTypeJournal, libelleType, texteEvenement } from '../i18n/journal';
 import { Badge } from '../components/ui/badge';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 import { useToast } from '../components/ui/use-toast';
@@ -112,7 +112,8 @@ const construireParams = (f) => {
   return params;
 };
 
-function StatutBarre({ items, total, ref }) {
+function StatutBarre({ items, total, t }) {
+  const ref = useReferentiels();
   const affiches = items.filter((d) => d.count > 0);
   return (
     <div className="bg-card/50 rounded-lg p-4 border border-border">
@@ -135,7 +136,8 @@ function StatutBarre({ items, total, ref }) {
   );
 }
 
-function PrioriteBarre({ items, total, ref }) {
+function PrioriteBarre({ items, total, t }) {
+  const ref = useReferentiels();
   const affiches = items.filter((d) => d.count > 0);
   return (
     <div className="bg-card/50 rounded-lg p-4 border border-border">
@@ -182,7 +184,8 @@ function AvancementMoyen({ kpis, t }) {
   );
 }
 
-function RecentesSection({ recentes, initiatives, rechercheRecente, setRechercheRecente, t, ref, navigate }) {
+function RecentesSection({ recentes, initiatives, rechercheRecente, setRechercheRecente, t, navigate }) {
+  const ref = useReferentiels();
   return (
     <Card>
       <CardHeader>
@@ -234,7 +237,8 @@ function RecentesSection({ recentes, initiatives, rechercheRecente, setRecherche
   );
 }
 
-function SurveillerSection({ enRetard, joursDeRetard, t, ref, navigate }) {
+function SurveillerSection({ enRetard, joursDeRetard, t, navigate }) {
+  const ref = useReferentiels();
   const hasRetard = enRetard.length > 0;
   return (
     <section id="surveillance" className="mb-6">
@@ -277,7 +281,7 @@ function SurveillerSection({ enRetard, joursDeRetard, t, ref, navigate }) {
   );
 }
 
-function RisquesSection({ risquesCritiques, peutConsulterInitiatives, t, ref, navigate }) {
+function RisquesSection({ risquesCritiques, peutConsulterInitiatives, t, navigate }) {
   if (!peutConsulterInitiatives) return null;
   const hasRisques = risquesCritiques.length > 0;
   return (
@@ -469,8 +473,21 @@ export default function DashboardPage() {
   if (chargement) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center justify-center h-64 gap-3">
           <div className="animate-pulse rounded-full h-8 w-8 bg-primary" />
+          <p className="text-sm text-muted-foreground">{t('common.chargement')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Données absentes (appel en échec) : message explicite au lieu d'une
+  // page blanche — sans ce garde-fou, kpis null ferait echouer le rendu.
+  if (!kpis) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="flex flex-col items-center justify-center h-64 gap-2">
+          <p className="text-sm text-muted-foreground">{t('common.erreurInattendue')}</p>
         </div>
       </div>
     );
@@ -685,8 +702,8 @@ export default function DashboardPage() {
                     <CardTitle className="text-sm font-semibold">{t('dashboard.etat.titre')}</CardTitle>
                   </CardHeader>
                   <CardContent className="grid grid-cols-2 gap-4">
-                    <StatutBarre items={kpis.parStatut} total={totalStatuts} ref={ref} />
-                    <PrioriteBarre items={kpis.parPriorite} total={totalStatuts} ref={ref} />
+                    <StatutBarre items={kpis.parStatut} total={totalStatuts} t={t} />
+                    <PrioriteBarre items={kpis.parPriorite} total={totalStatuts} t={t} />
                     <AvancementMoyen kpis={kpis} t={t} />
                   </CardContent>
                 </Card>
@@ -698,14 +715,13 @@ export default function DashboardPage() {
                 rechercheRecente={rechercheRecente}
                 setRechercheRecente={setRechercheRecente}
                 t={t}
-                ref={ref}
                 navigate={navigate}
               />
             </section>
 
-            <SurveillerSection enRetard={enRetard} joursDeRetard={joursDeRetard} t={t} ref={ref} navigate={navigate} />
+            <SurveillerSection enRetard={enRetard} joursDeRetard={joursDeRetard} t={t} navigate={navigate} />
 
-            <RisquesSection risquesCritiques={risquesCritiques} peutConsulterInitiatives={peutConsulterInitiatives} t={t} ref={ref} navigate={navigate} />
+            <RisquesSection risquesCritiques={risquesCritiques} peutConsulterInitiatives={peutConsulterInitiatives} t={t} navigate={navigate} />
 
             <ActiviteSection activite={activite} peutConsulterInitiatives={peutConsulterInitiatives} t={t} langue={langue} navigate={navigate} />
           </>
