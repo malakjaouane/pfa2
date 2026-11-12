@@ -27,7 +27,7 @@ export default function ImportInitiativesPage() {
   const { t, langue } = useI18n();
   const { toast } = useToast();
   const [fichier, setFichier] = useState(null);
-  const [envoi, setEnvoiCreation] = useState(false);
+  const [envoiCreation, setEnvoiCreation] = useState(false);
   const [resultat, setResultat] = useState(null);
 
   const importer = async (e) => {
