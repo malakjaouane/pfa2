@@ -2,9 +2,9 @@
    Portefeuille d'initiatives digitales — IT6 Consulting
    Feuille de style globale — charte IT6 Consulting
    ------------------------------------------------------------
-   Palette de marque — Rose poudré #EBC9C4 | Blanc #FFFFFF | Bordeaux #5C1A2B
-     (déclinaisons : bordeaux foncé #3D1019, rose soutenu #D9978C,
-      rose dilué #F5E7E5 — fond #FFFFFF, bordures #E2E5E7, texte #221D1B)
+   Palette de marque IT6 Consulting :
+     Navy #032D42 | Cyan d'accent #24C2CE | Vert wasabi #00875A
+     (fond #FFFFFF, bordures #E2E5E7, texte #1D1D1D)
    ============================================================ */
 
 /* ------------------------------------------------------------
@@ -75,11 +75,11 @@
   /* Renommées (Phase 3) : --accent et --radius existent aussi dans index.css
      (design shadcn) importé après ; sans renommage, les règles legacy
      ci-dessous recevraient les valeurs HSL/shadcn et perdraient leur couleur. */
-  --accent-legacy: #5C1A2B;
-  --accent-hover: #4E1626;
-  --accent-fonce: #3D1019;
-  --accent-clair: #9D3952;
-  --accent-pale: #F5E7E5;
+  --accent-legacy: #8C2136;
+  --accent-hover: #751A2D;
+  --accent-fonce: #4E101E;
+  --accent-clair: #B4485C;
+  --accent-pale: #F3DEE3;
 
   /* ---- Neutres ---- */
   --n0: #FFFFFF;
@@ -642,7 +642,7 @@ h1, h2, h3 { color: var(--n800); font-weight: 600; }
   justify-content: center;
   background:
     radial-gradient(1200px 600px at 80% -10%, rgba(235, 201, 196, 0.30), transparent 60%),
-    linear-gradient(150deg, var(--accent-fonce), var(--accent-legacy) 70%, #A63F59);
+    linear-gradient(150deg, var(--accent-fonce), var(--accent-legacy) 70%, #A32D45);
   padding: 24px;
 }
 
@@ -1170,10 +1170,10 @@ mark {
 /* ============================================================
    Page d'accueil publique (vitrine)
    Direction artistique IT6 Consulting :
-     Navy devenu bordeaux profond · Bordeaux #5C1A2B · Rose poudré #EBC9C4
-   Le bordeaux reprend la teinte du logo ; la variante rose sert aux
-   accents posés sur les fonds sombres (navy), où le bordeaux profond
-   serait illisible.
+     Navy #032D42 · Cyan #24C2CE · Vert wasabi #00875A
+   Le navy habille les fonds sombres (hero, pied de page) ; le cyan
+   sert d'accent et le vert wasabi de halo. Le rouge IT6 #8C2136
+   reste réservé aux boutons d'action.
    Sept sections : navigation, hero, chiffres, problème/solution,
    fonctionnalités, aperçu (captures locales), étapes, appel à
    l'action, plus le pied de page.
@@ -1181,20 +1181,20 @@ mark {
    ============================================================ */
 
 .sn-page {
-  --sn-navy: #3D1019;
-  --sn-navy-800: #4A1421;
-  --sn-navy-700: #5C1A2B;
-  --sn-rouge: #5C1A2B;
-  --sn-rouge-600: #501625;
-  --sn-rouge-700: #45131F;
-  --sn-rouge-800: #3A0F19;
-  --sn-rouge-100: #F5E7E5;
-  --sn-rouge-50: #FBF6F5;
-  --sn-rose: #EBC9C4;
-  --sn-rose-600: #D9978C;
-  --sn-cyan: #5C1A2B;
-  --sn-cyan-700: #45131F;
-  --sn-ink: #221D1B;
+  --sn-navy: #032D42;
+  --sn-navy-800: #1B4459;
+  --sn-navy-700: #365B6F;
+  --sn-rouge: #8C2136;
+  --sn-rouge-600: #751A2D;
+  --sn-rouge-700: #631525;
+  --sn-rouge-800: #4E101E;
+  --sn-rouge-100: #F3DEE3;
+  --sn-rouge-50: #FBF3F5;
+  --sn-rose: #E9A8B4;
+  --sn-rose-600: #C68F99;
+  --sn-cyan: #24C2CE;
+  --sn-cyan-700: #0E8F9B;
+  --sn-ink: #1D1D1D;
   --sn-gray-50: #F7F7F7;
   --sn-gray-100: #EBEBEB;
   --sn-gray-200: #DBDBDB;
@@ -1493,7 +1493,7 @@ mark {
   margin-top: 18px;
   font-size: 18px;
   line-height: 1.6;
-  color: #E8D6D9;
+  color: #C9D6DD;
   max-width: 540px;
 }
 
@@ -1509,7 +1509,7 @@ mark {
   margin-top: 12px;
   font-size: 14.5px;
   line-height: 1.5;
-  color: #C9B2B5;
+  color: #9FB0BC;
   max-width: 540px;
 }
 
@@ -1538,7 +1538,7 @@ mark {
   font-size: 17px;
   line-height: 1.45;
   font-weight: 600;
-  color: #F0E1E3;
+  color: #D7E2E8;
 }
 
 .sn-avantages .sn-check {
@@ -1616,7 +1616,7 @@ mark {
 .sn-stat-libelle {
   font-size: 13.5px;
   font-weight: 600;
-  color: #E8D6D9;
+  color: #C9D6DD;
 }
 
 /* ---- Sections ---- */
@@ -1820,7 +1820,7 @@ mark {
 }
 
 .sn-band p {
-  color: #E8D6D9;
+  color: #C9D6DD;
   margin: 16px 0 30px;
   font-size: 16px;
 }
@@ -2282,7 +2282,7 @@ mark {
   background:
     radial-gradient(100% 80% at 15% 0%, rgba(235, 201, 196, 0.25), transparent 65%),
     var(--sn-navy);
-  color: #F7EBED;
+  color: #EAF2F6;
 }
 .aa-badge {
   display: inline-block;
@@ -2335,7 +2335,7 @@ mark {
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.08);
   font-size: 10.5px;
-  color: #DCC7CA;
+  color: #B7CDD8;
 }
 .aa-kpi strong { font-size: 17px; color: #fff; font-family: 'Poppins', sans-serif; }
 .aa-curseur {
@@ -3196,7 +3196,7 @@ mark {
 
 /* ============================================================
    Charte IT6 - application interne
-   Bordeaux #5C1A2B · Rose poudré #EBC9C4 · Blanc #FFFFFF
+   Navy #032D42 · Cyan #24C2CE · Vert wasabi #00875A · Blanc #FFFFFF
    Applique la charte de marque à l'ensemble de l'application.
    ============================================================ */
 
@@ -3225,8 +3225,8 @@ mark {
 h1, h2, h3 { font-family: 'Poppins', 'Inter', sans-serif; }
 
 /* Liens : bordeaux lisible sur fond clair (la vitrine garde ses propres règles) */
-a { color: #5C1A2B; }
-a:hover { color: #45131F; }
+a { color: #00718F; }
+a:hover { color: #00566D; }
 
 /* Boutons primaires : fond bordeaux, texte blanc */
 .btn-primaire,
@@ -3236,7 +3236,7 @@ a:hover { color: #45131F; }
 
 /* Élément de navigation actif : fond rose pâle, texte bordeaux foncé, liseré */
 .nav-link { position: relative; }
-.nav-link.active { color: #5C1A2B; }
+.nav-link.active { color: #4E101E; }
 .nav-link.active::before {
   content: "";
   position: absolute;
@@ -3245,21 +3245,21 @@ a:hover { color: #45131F; }
   bottom: 7px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: #5C1A2B;
+  background: #8C2136;
 }
 
 /* Statut « En cours » / priorité « Moyenne » : rose poudré sur fond clair (charte) */
-.badge-bleu { background: #F5E7E5; color: #5C1A2B; }
-.progress-bleu { background: #5C1A2B; }
+.badge-bleu { background: #D6EEF3; color: #0E7180; }
+.progress-bleu { background: #24C2CE; }
 
 /* Libellés accentués sur fond clair : teinte foncée pour la lisibilité */
 .vue-toggle button.actif,
-.dashboard-hero-eyebrow { color: #5C1A2B; }
+.dashboard-hero-eyebrow { color: #4E101E; }
 
 /* Barre supérieure navy (charte IT6) */
 
 /* Sélecteur de langue sur la barre supérieure navy */
-.topbar .langue-bouton { color: #F0E1E3; }
+.topbar .langue-bouton { color: #D7E2E8; }
 .topbar .langue-bouton:hover { background: rgba(255, 255, 255, 0.12); }
 
 /* Page de connexion : dégradé bordeaux + halos rosés */
@@ -3267,7 +3267,7 @@ a:hover { color: #45131F; }
   background:
     radial-gradient(1100px 560px at 82% -10%, rgba(235, 201, 196, 0.30), transparent 62%),
     radial-gradient(900px 520px at 12% 112%, rgba(235, 201, 196, 0.22), transparent 60%),
-    linear-gradient(150deg, #5C1A2B, #7E2E42 68%, #5C1A2B);
+    linear-gradient(150deg, #032D42, #0A5670 68%, #032D42);
 }
 
 /* ============================================================ */

@@ -3,49 +3,49 @@
 @tailwind utilities;
 
 /* Design system « Zellige contemporain » — docs/DESIGN_SYSTEM.md.
- * Charte : Rose poudré #EBC9C4 · Blanc #FFFFFF · Bordeaux #5C1A2B.
+ * Charte : Navy #032D42 · Cyan #24C2CE · Vert wasabi #00875A · Blanc #FFFFFF.
  * Tous les tokens de couleur, rayon, ombre et police vivent ici ; le thème
  * Tailwind (tailwind.config.js) ne fait que les exposer en classes utilitaires.
  */
 @layer base {
   :root {
-    /* Neutres — blanc pur, encre chaude */
+    /* Neutres — blanc, encre froide */
     --background: 0 0% 100%; /* #FFFFFF */
-    --foreground: 345 12% 12%; /* #221D1B */
+    --foreground: 200 25% 10%; /* #17191E */
 
     --card: 0 0% 100%;
-    --card-foreground: 345 12% 12%;
+    --card-foreground: 200 25% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 345 12% 12%;
+    --popover-foreground: 200 25% 10%;
 
-    /* Marque — bordeaux */
-    --primary: 345 56% 23%; /* #5C1A2B */
+    /* Marque — navy IT6 */
+    --primary: 200 91% 13%; /* #032D42 */
     --primary-foreground: 0 0% 100%; /* #FFFFFF */
 
-    --secondary: 8 45% 93%; /* #F5E7E5 rose très dilué */
-    --secondary-foreground: 345 12% 12%;
+    --secondary: 190 40% 94%; /* cyan très dilué */
+    --secondary-foreground: 200 25% 10%;
 
-    --muted: 8 40% 95%; /* #F7EDED */
-    --muted-foreground: 345 8% 42%; /* #746767 */
+    --muted: 200 25% 95%;
+    --muted-foreground: 200 10% 42%;
 
-    /* Accent — rose poudré : surfaces, hovers, badges.
-     * Jamais en texte sur fond clair (texte : bordeaux). */
-    --accent: 8 49% 85%; /* #EBC9C4 */
-    --accent-foreground: 345 56% 23%; /* #5C1A2B */
+    /* Accent — cyan #24C2CE : surfaces douces, hovers, badges.
+     * Jamais en texte sur fond clair (texte : navy). */
+    --accent: 184 63% 94%; /* #E5F8F9 */
+    --accent-foreground: 200 91% 13%; /* #032D42 */
 
-    /* Surlignage — rose soutenu */
-    --highlight: 8 55% 72%; /* #DF9B90 */
-    --highlight-foreground: 345 56% 23%;
+    /* Surlignage — cyan soutenu */
+    --highlight: 184 70% 47%; /* #24C2CE */
+    --highlight-foreground: 200 91% 13%;
 
     --destructive: 0 72% 51%; /* #DC2626 */
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 55% 32%; /* vert succès */
+    --success: 160 100% 26%; /* #00875A vert wasabi */
 
-    --border: 8 30% 90%; /* #EDE0DE filets rosés */
-    --input: 8 30% 90%;
-    --ring: 345 56% 23%;
+    --border: 200 25% 88%; /* #D7E3EA filets bleu-argent */
+    --input: 200 25% 88%;
+    --ring: 200 91% 13%;
 
     --radius: 0.5rem; /* 8 px — base de l'échelle xs 4 · sm 6 · md 8 · lg 12 · xl 16 */
 
@@ -61,40 +61,40 @@
   }
 
   .dark {
-    /* Fonds — bordeaux profond */
-    --background: 345 14% 8%; /* #171312 */
-    --foreground: 8 49% 85%; /* #EBC9C4 rose poudré */
+    /* Fonds — navy profond */
+    --background: 200 40% 7%; /* #061621 */
+    --foreground: 190 30% 92%; /* #E6F6F8 cyan très clair */
 
-    --card: 345 12% 11%; /* #1E1616 */
-    --card-foreground: 8 49% 85%;
+    --card: 200 32% 9%; /* #0A1C26 */
+    --card-foreground: 190 30% 92%;
 
-    --popover: 345 12% 11%;
-    --popover-foreground: 8 49% 85%;
+    --popover: 200 32% 9%;
+    --popover-foreground: 190 30% 92%;
 
-    /* Primaire — rose poudré (lisible sur sombre), texte bordeaux */
-    --primary: 8 49% 85%; /* #EBC9C4 */
-    --primary-foreground: 345 56% 23%; /* #5C1A2B */
+    /* Primaire — cyan (lisible sur sombre), texte navy */
+    --primary: 184 70% 47%; /* #24C2CE */
+    --primary-foreground: 200 91% 13%; /* #032D42 */
 
-    --secondary: 345 14% 16%;
-    --secondary-foreground: 8 49% 85%;
+    --secondary: 200 28% 14%;
+    --secondary-foreground: 190 30% 92%;
 
-    --muted: 345 12% 14%;
-    --muted-foreground: 8 25% 68%;
+    --muted: 200 25% 12%;
+    --muted-foreground: 195 18% 68%;
 
-    --accent: 345 35% 26%; /* survol : bordeaux rosé */
-    --accent-foreground: 8 49% 85%;
+    --accent: 200 30% 18%; /* survol : navy */
+    --accent-foreground: 190 30% 92%;
 
-    --highlight: 8 55% 62%;
-    --highlight-foreground: 345 40% 14%;
+    --highlight: 184 65% 42%;
+    --highlight-foreground: 200 91% 13%;
 
     --destructive: 0 72% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 150 55% 45%; /* vert plus lumineux sur fond sombre */
+    --success: 160 70% 42%; /* vert wasabi plus lumineux sur fond sombre */
 
-    --border: 345 16% 22%; /* #3A2A2C */
-    --input: 345 16% 22%;
-    --ring: 8 49% 85%;
+    --border: 200 22% 20%; /* #1F2C36 */
+    --input: 200 22% 20%;
+    --ring: 184 70% 47%;
   }
 
   * {

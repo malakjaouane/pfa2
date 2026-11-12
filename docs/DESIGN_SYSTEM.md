@@ -1,9 +1,10 @@
 # Design System — Phase 3 : refonte du design
 
 > **Statut : validé — fondations implémentées** (tokens clair/sombre, purge
-> ServiceNow, code mort supprimé, kit Radix ajouté). Charte **Rose poudré /
-> Blanc / Bordeaux** appliquée (tokens clair + sombre, vitrine, liens et
-> boutons legacy). Le reste de la phase suit ce document.
+> ServiceNow, code mort supprimé, kit Radix ajouté). Charte **Navy `#032D42` /
+> Cyan `#24C2CE` / Vert wasabi `#00875A` / Blanc `#FFFFFF`** appliquée (tokens
+> clair + sombre, vitrine, liens et boutons legacy). Le reste de la phase suit
+> ce document.
 > Objectif : app moderne et vivante (esprit Linear / Notion / Stripe) avec une
 > identité marocaine contemporaine. Fin de l'imitation ServiceNow.
 
@@ -13,19 +14,20 @@
 
 Le socle suit la retenue des produits Linear/Notion/Stripe : base neutre,
 **une** couleur de marque forte, filets fins, ombres discrètes, typographie serrée,
-beaucoup d'espace. La charte tient en trois couleurs :
+beaucoup d'espace. La charte tient en quatre couleurs :
 
-- **Bordeaux `#5C1A2B`** — marque : actions primaires, liens, navigation active, barres ;
-- **Rose poudré `#EBC9C4`** — accents : surfaces douces, hovers, badges, halos (jamais en texte sur clair : le texte d'accent est bordeaux) ;
+- **Navy `#032D42`** — marque : actions primaires, liens, navigation active, barres, fonds sombres ;
+- **Cyan `#24C2CE`** — accents : surfaces douces, hovers, badges, halos (jamais en texte sur clair : le texte d'accent est navy) ;
+- **Vert wasabi `#00875A`** — halos du hero et validations ;
 - **Blanc `#FFFFFF`** — fonds et cartes.
 
 Le motif `MotifZellige.jsx` prolonge l'identité — utilisé avec parcimonie : page
 de connexion, hero de la vitrine, fonds vides décoratifs. Jamais sous un formulaire
 ni derrière du texte dense.
 
-La charte historique **navy `#032D42` / cyan `#24C2CE` / vert `#00875A`** (« wasabi »,
-ADN ServiceNow) puis la charte intermédiaire **Majorelle `#0067A5` / ocre `#E8820D` /
-turquoise `#0D97AF`** sont supprimées (§8).
+La charte intermédiaire **Majorelle `#0067A5` / ocre `#E8820D` / turquoise
+`#0D97AF`** est supprimée (§8) ; le rouge IT6 `#8C2136` reste réservé aux
+boutons d'action de la vitrine.
 
 ---
 
@@ -36,28 +38,29 @@ turquoise `#0D97AF`** sont supprimées (§8).
 | Token | HSL | Usage |
 |---|---|---|
 | `--background` | `0 0% 100%` (#FFFFFF) | fond de page — blanc |
-| `--foreground` | `345 12% 12%` (#221D1B) | texte principal — encre chaude |
+| `--foreground` | `200 25% 10%` (#17191E) | texte principal — encre froide |
 | `--card` / `--popover` | `0 0% 100%` | cartes, menus |
-| `--primary` | `345 56% 23%` (#5C1A2B) | **Bordeaux** — actions primaires |
+| `--primary` | `200 91% 13%` (#032D42) | **Navy** — actions primaires |
 | `--primary-fg` | `0 0% 100%` | texte sur primaire |
-| `--accent` | `8 49% 85%` (#EBC9C4) | **Rose poudré** — surfaces, hovers, badges. Jamais en texte sur clair (texte : bordeaux `345 56% 23%`) |
-| `--highlight` | `8 55% 72%` (#DF9B90) | **rose soutenu** — surlignage |
-| `--muted` / `--muted-fg` | `8 40% 95%` / `345 8% 42%` | fonds secondaires, texte secondaire |
-| `--border` / `--input` | `8 30% 90%` (#EDE0DE) | filets, champs — neutres rosés |
-| `--success` | `152 55% 32%` | vert succès (sémantique conservée) |
+| `--accent` | `184 63% 94%` (#E5F8F9) | **Cyan très dilué** — surfaces, hovers, badges. Jamais en texte sur clair (texte : navy) |
+| `--highlight` | `184 70% 47%` (#24C2CE) | **Cyan soutenu** — surlignage |
+| `--secondary` | `190 40% 94%` | fonds secondaires |
+| `--muted` / `--muted-fg` | `200 25% 95%` / `200 10% 42%` | fonds tertiaires, texte secondaire |
+| `--border` / `--input` | `200 25% 88%` (#D7E3EA) | filets, champs — neutres bleu-argent |
+| `--success` | `160 100% 26%` (#00875A) | vert wasabi (sémantique conservée) |
 | `--destructive` | `0 72% 51%` | erreurs, suppression |
 
 ### 2.2 Couleurs — mode sombre (classe `.dark`, déjà câblée)
 
 | Token | HSL |
 |---|---|
-| `--background` | `345 14% 8%` (#171312) — bordeaux profond |
-| `--foreground` | `8 49% 85%` (#EBC9C4) — rose poudré |
-| `--card` | `345 12% 11%` |
-| `--border` | `345 16% 22%` |
-| `--primary` | `8 49% 85%` (rose poudré, texte bordeaux — 8,4:1) |
-| `--accent` | `345 35% 26%` (survol : bordeaux rosé) |
-| `--muted-fg` | `8 25% 68%` |
+| `--background` | `200 40% 7%` (#061621) — navy profond |
+| `--foreground` | `190 30% 92%` (#E6F6F8) — cyan très clair |
+| `--card` | `200 32% 9%` |
+| `--border` | `200 22% 20%` |
+| `--primary` | `184 70% 47%` (cyan, texte navy) |
+| `--accent` | `200 30% 18%` (survol : navy) |
+| `--muted-fg` | `195 18% 68%` |
 
 **Contrastes** : texte courant ≥ 7:1, texte d'action ≥ 4.5:1 (AA), anneau de focus
 visible dans les deux modes — vérifiés au calibrage avec un outil de contraste.

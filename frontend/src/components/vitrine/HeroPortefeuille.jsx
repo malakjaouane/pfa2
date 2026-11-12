@@ -21,7 +21,7 @@ const DEMO = [
   { cle: 'landing.demo.nom.4', budget: 0.9, avancement: 90, sante: 'VERTE' }
 ];
 
-const COULEUR = { VERTE: '#1E8E5A', ORANGE: '#FCA822', ROUGE: '#5C1A2B' };
+const COULEUR = { VERTE: '#1E8E5A', ORANGE: '#FCA822', ROUGE: '#8C2136' };
 
 const ANNEAUX = [
   { niveau: 'VERTE', cle: 'sante.verte', n: 2, pct: 50 },
