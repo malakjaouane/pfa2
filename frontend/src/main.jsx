@@ -24,15 +24,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );
 
-// Service worker PWA (enregistré uniquement en production).
-// updateViaCache: 'none' : le script du service worker ne doit jamais
-// provenir du cache HTTP du navigateur, sinon une nouvelle version peut
-// mettre des heures à être détectée — et le navigateur repart alors sur
-// l'ancien bundle (page incohérente ou bloquée).
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch((err) => {
-      console.warn('Enregistrement du service worker échoué :', err);
-    });
-  });
-}
+// Aucun service worker : la coquille applicative est toujours servie par
+// le réseau. Un cache applicatif peut sinon servir un ancien bundle après
+// un redéploiement (page blanche), et son remplacement dépend du cycle de
+// vie du navigateur. Le manifeste PWA reste présent (installation possible).
