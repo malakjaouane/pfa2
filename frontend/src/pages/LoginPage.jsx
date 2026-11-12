@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
  * matcher les textes bruts (login.seConnecter, login.oublieLien…).
  */
 export default function LoginPage() {
-  const { login, user } = useAuth();
+  const { login } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,9 +29,9 @@ export default function LoginPage() {
   const [envoi, setEnvoi] = useState(false);
   const [motDePasseOublie, setMotDePasseOublie] = useState(false);
 
-  if (user) {
-    navigate('/dashboard', { replace: true });
-  }
+  // Pas de redirection « déjà connecté » : la page de connexion reste
+  // atteignable, y compris pour changer de compte (la nouvelle connexion
+  // remplace la session en cours).
 
   const gererSoumission = async (e) => {
     e.preventDefault();

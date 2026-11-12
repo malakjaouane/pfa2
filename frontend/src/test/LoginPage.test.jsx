@@ -3,9 +3,13 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import LoginPage from '../pages/LoginPage';
 
+// L'utilisateur courant est pilotable par les tests (un compte déjà connecté
+// doit pouvoir atteindre le formulaire pour changer de compte).
+const etat = vi.hoisted(() => ({ user: null }));
+
 vi.mock('../AuthContext', () => ({
   useAuth: () => ({
-    user: null,
+    user: etat.user,
     login: vi.fn(),
     logout: vi.fn(),
     rafraichir: vi.fn(),
@@ -40,6 +44,7 @@ vi.mock('../i18n/langues', () => ({
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    etat.user = null;
   });
 
   it('rend le formulaire de connexion (email, mot de passe, bouton)', () => {
@@ -59,5 +64,18 @@ describe('LoginPage', () => {
       </MemoryRouter>
     );
     expect(screen.getByText(/login\.oublieLien/i)).toBeInTheDocument();
+  });
+
+  it('un compte déjà connecté voit le formulaire (pas de redirection)', () => {
+    // Sans ce garde-fou, la page de connexion renvoyait vers le tableau de
+    // bord : impossible de changer de compte depuis la landing.
+    etat.user = { email: 'admin@it6.ma', permissions: [] };
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('button', { name: /login\.seConnecter/i })).toBeInTheDocument();
   });
 });

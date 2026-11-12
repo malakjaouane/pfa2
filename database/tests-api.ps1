@@ -161,6 +161,14 @@ Test-Check 'Permissions COMMENTAIRE_AJOUTER / RISQUE_GERER / DEPENSE_SAISIR (adm
     (($loginR.Body.permissions | Where-Object { $_ -eq 'COMMENTAIRE_AJOUTER' -or $_ -eq 'RISQUE_GERER' -or $_ -eq 'DEPENSE_SAISIR' }).Count -eq 3) -and
     (($loginV.Body.permissions | Where-Object { $_ -eq 'COMMENTAIRE_AJOUTER' -or $_ -eq 'RISQUE_GERER' -or $_ -eq 'DEPENSE_SAISIR' }).Count -eq 0))
 
+# Inscription : un corps incomplet est refuse en 400 (avant : 500 par
+# NullPointerException sur un champ absent). Aucun compte n'est cree.
+$insVide = Invoke-Api 'Post' "$Base/auth/signup" @{ email = '' } $null
+Test-Check 'Inscription : e-mail absent -> 400' ($insVide.OK -eq $false -and $insVide.Status -eq 400) "($($insVide.Status))"
+
+$insIncomplet = Invoke-Api 'Post' "$Base/auth/signup" @{ email = "test$suffixe@it6.ma"; motDePasse = 'Admin@123' } $null
+Test-Check 'Inscription : champs manquants (nom, prenom, organisation) -> 400' ($insIncomplet.OK -eq $false -and $insIncomplet.Status -eq 400) "($($insIncomplet.Status))"
+
 Write-Output '=== 2. Dashboard / KPI ==='
 $dash = Invoke-Api 'Get' "$Base/dashboard" $null $adminToken
 $listeRef = Invoke-Api 'Get' "$Base/initiatives" $null $adminToken
